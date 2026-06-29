@@ -1,0 +1,108 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { apiFetch, useApi, useMe } from "@/lib/client";
+import { Card, Button, Skeleton, EmptyState, NeedLogin } from "@/components/ui";
+import { Icon, type IconName } from "@/components/icons";
+import { cn, relativeTime } from "@/lib/display";
+
+type Notif = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  reference_type: string | null;
+  reference_id: string | null;
+  is_read: boolean;
+  created_at: string;
+};
+
+const NOTIF_ICON: Record<string, IconName> = {
+  CLAIM_REQUEST_RECEIVED: "user",
+  CLAIM_APPROVED: "gift",
+  CLAIM_REJECTED: "x",
+  COUPON_EXPIRING_SOON: "clock",
+  COUPON_EXPIRED: "clock",
+  TRANSACTION_COMPLETED: "swap",
+  RATING_RECEIVED: "star",
+  REPORT_UPDATED: "flag",
+};
+
+export default function NotificationsPage() {
+  const router = useRouter();
+  const { me, loading: meLoading } = useMe();
+  const { data, loading, refetch } = useApi<{ data: Notif[]; unread_count: number }>(
+    me ? "/api/v1/notifications" : null,
+  );
+
+  if (meLoading)
+    return (
+      <div className="flex justify-center py-20">
+        <Skeleton className="h-8 w-8 rounded-full" />
+      </div>
+    );
+  if (!me) return <NeedLogin message="登入後即可查看你的通知。" />;
+
+  async function open(n: Notif) {
+    if (!n.is_read) {
+      await apiFetch(`/api/v1/notifications/${n.id}/read`, { method: "POST" }).catch(() => {});
+      refetch();
+    }
+    if (n.reference_type === "coupon" && n.reference_id) router.push(`/coupons/${n.reference_id}`);
+    else if (n.reference_type === "transaction") router.push("/wallet");
+  }
+
+  async function markAll() {
+    await apiFetch("/api/v1/notifications/read-all", { method: "POST" }).catch(() => {});
+    refetch();
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-ink">通知中心</h1>
+        {(data?.unread_count ?? 0) > 0 && (
+          <Button size="sm" variant="ghost" icon="check" onClick={markAll}>
+            全部已讀
+          </Button>
+        )}
+      </div>
+
+      <div className="mt-5 space-y-2.5">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)
+        ) : !data || data.data.length === 0 ? (
+          <EmptyState icon="bell" title="目前沒有通知" hint="有人申請或回應你的票券時，會在這裡通知你。" />
+        ) : (
+          data.data.map((n) => (
+            <button key={n.id} onClick={() => open(n)} className="block w-full text-left">
+              <Card
+                className={cn(
+                  "flex items-start gap-3 p-4 transition-colors hover:border-sand-2",
+                  !n.is_read && "border-accent/30 bg-accent-tint/30",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                    n.is_read ? "bg-sand text-ink-soft" : "bg-accent text-white",
+                  )}
+                >
+                  <Icon name={NOTIF_ICON[n.type] ?? "bell"} size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate font-medium text-ink">{n.title}</p>
+                    {!n.is_read && <span className="h-2 w-2 shrink-0 rounded-full bg-accent" />}
+                  </div>
+                  <p className="mt-0.5 line-clamp-2 text-sm text-ink-soft">{n.body}</p>
+                  <p className="mt-1 text-xs text-ink-faint">{relativeTime(n.created_at)}</p>
+                </div>
+              </Card>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}

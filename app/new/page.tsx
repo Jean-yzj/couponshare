@@ -1,0 +1,251 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { apiFetch, useMe, ApiErr } from "@/lib/client";
+import {
+  Button,
+  Card,
+  Field,
+  Input,
+  Textarea,
+  Select,
+  Banner,
+  NeedLogin,
+  Spinner,
+} from "@/components/ui";
+import { Icon } from "@/components/icons";
+import { cn } from "@/lib/display";
+
+function defaultExpiry(): string {
+  const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+
+export default function NewCouponPage() {
+  const router = useRouter();
+  const { me, loading } = useMe();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [title, setTitle] = useState("");
+  const [brand, setBrand] = useState("");
+  const [expiry, setExpiry] = useState(defaultExpiry);
+  const [type, setType] = useState<"GIFT" | "EXCHANGE">("GIFT");
+  const [exchangeTarget, setExchangeTarget] = useState("");
+  const [description, setDescription] = useState("");
+  const [visibility, setVisibility] = useState("PUBLIC");
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  const draftId = useRef<string | null>(null);
+  const uploaded = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [stepText, setStepText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Spinner className="text-ink-faint" />
+      </div>
+    );
+  }
+  if (!me) return <NeedLogin message="登入後即可上傳並分享你的優惠券。" />;
+
+  function pickFile(f: File | null) {
+    if (preview) URL.revokeObjectURL(preview);
+    setFile(f);
+    setPreview(f ? URL.createObjectURL(f) : null);
+    uploaded.current = false;
+  }
+
+  function validate(): string | null {
+    if (!file) return "請上傳條碼或 QR Code 圖片";
+    if (!title.trim()) return "請填寫標題";
+    if (!brand.trim()) return "請填寫品牌";
+    if (!expiry || new Date(expiry).getTime() <= Date.now()) return "到期日必須晚於現在";
+    if (type === "EXCHANGE" && !exchangeTarget.trim()) return "交換類型必須填寫想交換的目標";
+    return null;
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const v = validate();
+    if (v) {
+      setError(v);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      // 1. Draft
+      if (!draftId.current) {
+        setStepText("建立票券中…");
+        const created = await apiFetch<{ id: string }>("/api/v1/coupons", {
+          method: "POST",
+          body: JSON.stringify({
+            title: title.trim(),
+            brand: brand.trim(),
+            description: description.trim() || null,
+            expiry_date: new Date(expiry).toISOString(),
+            type,
+            exchange_target: type === "EXCHANGE" ? exchangeTarget.trim() : null,
+            visibility_level: visibility,
+          }),
+        });
+        draftId.current = created.id;
+      }
+      // 2. Encrypted barcode upload
+      if (file && !uploaded.current) {
+        setStepText("加密上傳條碼中…");
+        const fd = new FormData();
+        fd.append("file", file);
+        await apiFetch(`/api/v1/coupons/${draftId.current}/barcode`, { method: "POST", body: fd });
+        uploaded.current = true;
+      }
+      // 3. Publish
+      setStepText("上架中…");
+      await apiFetch(`/api/v1/coupons/${draftId.current}/publish`, { method: "POST" });
+      router.push(`/coupons/${draftId.current}`);
+    } catch (err) {
+      setError(err instanceof ApiErr ? err.message : "發生錯誤，請稍後再試");
+      setBusy(false);
+      setStepText("");
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl">
+      <button
+        onClick={() => router.back()}
+        className="mb-4 inline-flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
+      >
+        <Icon name="arrowLeft" size={16} />
+        返回
+      </button>
+
+      <h1 className="text-2xl font-bold tracking-tight text-ink">新增優惠券</h1>
+      <p className="mt-1.5 text-sm text-ink-soft">
+        條碼會經 AES-256 加密保存，只有你選定的領取者才看得到。
+      </p>
+
+      <form onSubmit={submit} className="mt-6 space-y-5">
+        {/* Barcode upload */}
+        <Card className="p-5">
+          <p className="mb-2 flex items-center gap-1 text-sm font-medium text-ink">
+            條碼 / QR Code 圖片<span className="text-accent">*</span>
+          </p>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+          />
+          {preview ? (
+            <div className="flex items-center gap-4">
+              <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-line bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={preview} alt="條碼預覽" className="max-h-full max-w-full object-contain" />
+              </div>
+              <div className="space-y-2">
+                <p className="flex items-center gap-1.5 text-sm text-pine">
+                  <Icon name="check" size={16} /> 已選擇圖片
+                </p>
+                <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                  更換圖片
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-canvas/50 py-9 text-ink-soft transition-colors hover:border-accent hover:bg-accent-tint/40 hover:text-accent"
+            >
+              <Icon name="image" size={28} />
+              <span className="text-sm font-medium">點此上傳條碼圖片</span>
+              <span className="text-xs text-ink-faint">支援 JPG / PNG，上限 5MB</span>
+            </button>
+          )}
+        </Card>
+
+        <Card className="space-y-4 p-5">
+          <Field label="標題" required>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例如：星巴克買一送一" />
+          </Field>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="品牌" required>
+              <Input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="例如：Starbucks" />
+            </Field>
+            <Field label="到期日" required>
+              <Input
+                type="datetime-local"
+                value={expiry}
+                onChange={(e) => setExpiry(e.target.value)}
+              />
+            </Field>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-sm font-medium text-ink">分享類型</p>
+            <div className="grid grid-cols-2 gap-2">
+              {(["GIFT", "EXCHANGE"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setType(t)}
+                  className={cn(
+                    "flex items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-medium transition-colors",
+                    type === t
+                      ? "border-accent bg-accent-tint text-accent-press"
+                      : "border-line bg-paper text-ink-soft hover:bg-canvas-2",
+                  )}
+                >
+                  <Icon name={t === "GIFT" ? "gift" : "swap"} size={17} />
+                  {t === "GIFT" ? "免費贈送" : "交換"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {type === "EXCHANGE" && (
+            <Field label="想交換的目標" required>
+              <Input
+                value={exchangeTarget}
+                onChange={(e) => setExchangeTarget(e.target.value)}
+                placeholder="例如：想換一杯手搖飲折價券"
+              />
+            </Field>
+          )}
+
+          <Field label="使用限制 / 備註">
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="例如：限本週使用、需內用、限指定門市…"
+            />
+          </Field>
+
+          <Field label="可見範圍" hint="可限制較高等級的會員才能看到與申請">
+            <Select value={visibility} onChange={(e) => setVisibility(e.target.value)}>
+              <option value="PUBLIC">公開（所有人）</option>
+              <option value="LEVEL_2_ONLY">達人以上</option>
+              <option value="LEVEL_3_ONLY">傳奇限定</option>
+            </Select>
+          </Field>
+        </Card>
+
+        {error && <Banner tone="warn" icon="info">{error}</Banner>}
+
+        <div className="flex items-center justify-end gap-3">
+          {busy && stepText && <span className="text-sm text-ink-soft">{stepText}</span>}
+          <Button type="submit" size="lg" icon="ticket" loading={busy}>
+            上架優惠券
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}

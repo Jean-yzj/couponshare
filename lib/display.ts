@@ -1,0 +1,69 @@
+// Pure presentation helpers shared across client components.
+
+export function cn(...parts: (string | false | null | undefined)[]): string {
+  return parts.filter(Boolean).join(" ");
+}
+
+export const LEVEL_META: Record<string, { name: string; en: string; cls: string }> = {
+  LEVEL_1: { name: "新手", en: "Newcomer", cls: "bg-sand text-ink-soft" },
+  LEVEL_2: { name: "達人", en: "Pro", cls: "bg-teal-tint text-teal" },
+  LEVEL_3: { name: "傳奇", en: "Legend", cls: "bg-gold-tint text-gold" },
+};
+
+export const STATUS_META: Record<string, { label: string; cls: string }> = {
+  DRAFT: { label: "草稿", cls: "bg-sand text-ink-soft" },
+  AVAILABLE: { label: "可領取", cls: "bg-pine-tint text-pine" },
+  PENDING: { label: "處理中", cls: "bg-gold-tint text-gold" },
+  CLAIMED: { label: "已領取", cls: "bg-accent-tint text-accent-press" },
+  EXPIRED: { label: "已過期", cls: "bg-sand text-ink-faint" },
+  CANCELLED: { label: "已取消", cls: "bg-sand text-ink-faint" },
+  REPORTED: { label: "檢舉中", cls: "bg-accent-tint text-accent-press" },
+  SUSPENDED: { label: "已暫停", cls: "bg-sand text-ink-faint" },
+};
+
+export function typeMeta(type: string) {
+  return type === "GIFT"
+    ? { label: "免費贈送", icon: "gift" as const, cls: "bg-pine-tint text-pine" }
+    : { label: "交換", icon: "swap" as const, cls: "bg-teal-tint text-teal" };
+}
+
+export function formatDate(d: string | Date): string {
+  const date = typeof d === "string" ? new Date(d) : d;
+  return date.toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric" });
+}
+
+export function expiryText(d: string | Date): { text: string; urgent: boolean } {
+  const date = typeof d === "string" ? new Date(d) : d;
+  const ms = date.getTime() - Date.now();
+  if (ms <= 0) return { text: "已過期", urgent: true };
+  const hours = Math.floor(ms / 3_600_000);
+  if (hours < 24) return { text: `${hours} 小時後到期`, urgent: true };
+  const days = Math.floor(hours / 24);
+  if (days <= 7) return { text: `${days} 天後到期`, urgent: days <= 2 };
+  return { text: `${formatDate(date)} 到期`, urgent: false };
+}
+
+export function relativeTime(d: string | Date): string {
+  const date = typeof d === "string" ? new Date(d) : d;
+  const ms = Date.now() - date.getTime();
+  const m = Math.floor(ms / 60_000);
+  if (m < 1) return "剛剛";
+  if (m < 60) return `${m} 分鐘前`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} 小時前`;
+  const days = Math.floor(h / 24);
+  if (days < 7) return `${days} 天前`;
+  return formatDate(date);
+}
+
+const AVATAR_BG = ["#E8552D", "#BD8F37", "#2F7D5B", "#2B7787", "#9A5B3F", "#7A6CA8"];
+
+export function avatarColor(seed: string): string {
+  let h = 0;
+  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return AVATAR_BG[h % AVATAR_BG.length];
+}
+
+export function initials(name: string): string {
+  return (name.trim()[0] ?? "?").toUpperCase();
+}

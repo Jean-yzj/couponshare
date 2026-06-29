@@ -1,0 +1,362 @@
+// CouponShare — Prisma schema
+// Faithful to PRD v1.1 §6. Camel-case fields map to snake_case columns.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── Enums ───────────────────────────
+
+enum LoginProvider {
+  EMAIL
+  GOOGLE
+  APPLE
+  LINE
+  ANONYMOUS
+}
+
+enum UserLevel {
+  LEVEL_1
+  LEVEL_2
+  LEVEL_3
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+// Shared by coupon.type, claim_request.request_type, transaction.transaction_type
+enum CouponType {
+  GIFT
+  EXCHANGE
+}
+
+enum CouponStatus {
+  DRAFT
+  AVAILABLE
+  PENDING
+  CLAIMED
+  EXPIRED
+  CANCELLED
+  REPORTED
+  SUSPENDED
+}
+
+enum UnlockPolicy {
+  OWNER_APPROVAL
+  AUTO_REVEAL_AFTER_MESSAGE
+}
+
+enum VisibilityLevel {
+  PUBLIC
+  LEVEL_2_ONLY
+  LEVEL_3_ONLY
+}
+
+enum ClaimRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum TransactionStatus {
+  CREATED
+  COMPLETED
+  DISPUTED
+  CANCELLED
+}
+
+enum ReportReason {
+  INVALID_COUPON
+  EXPIRED_COUPON
+  ALREADY_USED
+  NO_RESPONSE
+  ABUSIVE_MESSAGE
+  SCAM
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  REJECTED
+}
+
+enum ScoreEventType {
+  COUPON_GIFTED
+  COUPON_EXCHANGED
+  THANK_YOU_MESSAGE
+  POSITIVE_RATING
+  INVALID_COUPON_REPORT_CONFIRMED
+  NO_SHOW_REPORT_CONFIRMED
+  ADMIN_ADJUSTMENT
+}
+
+enum ScoreReferenceType {
+  COUPON
+  TRANSACTION
+  REPORT
+  ADMIN
+}
+
+enum NotificationType {
+  CLAIM_REQUEST_RECEIVED
+  CLAIM_APPROVED
+  CLAIM_REJECTED
+  COUPON_EXPIRING_SOON
+  COUPON_EXPIRED
+  TRANSACTION_COMPLETED
+  RATING_RECEIVED
+  REPORT_UPDATED
+}
+
+// ─────────────────────────── Models ───────────────────────────
+
+model User {
+  id                String        @id @default(uuid())
+  displayName       String        @map("display_name")
+  avatarUrl         String?       @map("avatar_url")
+  email             String?       @unique
+  passwordHash      String?       @map("password_hash")
+  phone             String?
+  loginProvider     LoginProvider @default(EMAIL) @map("login_provider")
+  deviceId          String?       @map("device_id")
+  contributionScore Int           @default(0) @map("contribution_score")
+  userLevel         UserLevel     @default(LEVEL_1) @map("user_level")
+  riskFlag          Boolean       @default(false) @map("risk_flag")
+  status            UserStatus    @default(ACTIVE)
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  lastLoginAt       DateTime?     @map("last_login_at")
+
+  ownedCoupons         Coupon[]             @relation("OwnedCoupons")
+  claimedCoupons       Coupon[]             @relation("ClaimedCoupons")
+  claimRequests        ClaimRequest[]
+  ownerTransactions    Transaction[]        @relation("OwnerTransactions")
+  claimantTransactions Transaction[]        @relation("ClaimantTransactions")
+  sentMessages         TransactionMessage[]
+  ratingsGiven         Rating[]             @relation("RatingsGiven")
+  ratingsReceived      Rating[]             @relation("RatingsReceived")
+  reportsMade          Report[]             @relation("ReportsMade")
+  reportsAgainst       Report[]             @relation("ReportsAgainst")
+  scoreLedgers         ScoreLedger[]
+  notifications        Notification[]
+
+  @@map("users")
+}
+
+model Coupon {
+  id                   String          @id @default(uuid())
+  ownerId              String          @map("owner_id")
+  title                String
+  brand                String
+  description          String?
+  expiryDate           DateTime        @map("expiry_date")
+  type                 CouponType
+  exchangeTarget       String?         @map("exchange_target")
+  status               CouponStatus    @default(DRAFT)
+  claimantId           String?         @map("claimant_id")
+  barcodeEncryptedData String?         @map("barcode_encrypted_data")
+  barcodeMime          String?         @map("barcode_mime")
+  barcodeImageUrl      String?         @map("barcode_image_url")
+  barcodeStorageKey    String?         @map("barcode_storage_key")
+  unlockPolicy         UnlockPolicy    @default(OWNER_APPROVAL) @map("unlock_policy")
+  visibilityLevel      VisibilityLevel @default(PUBLIC) @map("visibility_level")
+  viewCount            Int             @default(0) @map("view_count")
+  claimRequestCount    Int             @default(0) @map("claim_request_count")
+  reportCount          Int             @default(0) @map("report_count")
+  claimedAt            DateTime?       @map("claimed_at")
+  cancelledAt          DateTime?       @map("cancelled_at")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+
+  owner         User           @relation("OwnedCoupons", fields: [ownerId], references: [id])
+  claimant      User?          @relation("ClaimedCoupons", fields: [claimantId], references: [id])
+  claimRequests ClaimRequest[]
+  transactions  Transaction[]
+  reports       Report[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([brand])
+  @@index([type])
+  @@index([expiryDate])
+  @@index([createdAt])
+  @@index([status, expiryDate])
+  @@index([status, brand, createdAt])
+  @@map("coupons")
+}
+
+model ClaimRequest {
+  id                    String             @id @default(uuid())
+  couponId              String             @map("coupon_id")
+  requesterId           String             @map("requester_id")
+  requestType           CouponType         @map("request_type")
+  message               String
+  exchangeOfferText     String?            @map("exchange_offer_text")
+  exchangeOfferImageUrl String?            @map("exchange_offer_image_url")
+  status                ClaimRequestStatus @default(PENDING)
+  ownerResponseMessage  String?            @map("owner_response_message")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+  approvedAt            DateTime?          @map("approved_at")
+  rejectedAt            DateTime?          @map("rejected_at")
+
+  coupon       Coupon        @relation(fields: [couponId], references: [id])
+  requester    User          @relation(fields: [requesterId], references: [id])
+  transactions Transaction[]
+
+  @@unique([couponId, requesterId])
+  @@index([couponId])
+  @@index([requesterId])
+  @@index([status])
+  @@index([couponId, status])
+  @@map("claim_requests")
+}
+
+model Transaction {
+  id              String            @id @default(uuid())
+  couponId        String            @unique @map("coupon_id")
+  ownerId         String            @map("owner_id")
+  claimantId      String            @map("claimant_id")
+  claimRequestId  String            @map("claim_request_id")
+  transactionType CouponType        @map("transaction_type")
+  status          TransactionStatus @default(CREATED)
+  completedAt     DateTime?         @map("completed_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  coupon       Coupon               @relation(fields: [couponId], references: [id])
+  owner        User                 @relation("OwnerTransactions", fields: [ownerId], references: [id])
+  claimant     User                 @relation("ClaimantTransactions", fields: [claimantId], references: [id])
+  claimRequest ClaimRequest         @relation(fields: [claimRequestId], references: [id])
+  messages     TransactionMessage[]
+  ratings      Rating[]
+  reports      Report[]
+
+  @@index([ownerId])
+  @@index([claimantId])
+  @@map("transactions")
+}
+
+model TransactionMessage {
+  id            String   @id @default(uuid())
+  transactionId String   @map("transaction_id")
+  senderId      String   @map("sender_id")
+  message       String
+  imageUrl      String?  @map("image_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  sender      User        @relation(fields: [senderId], references: [id])
+
+  @@index([transactionId])
+  @@map("transaction_messages")
+}
+
+model Rating {
+  id            String   @id @default(uuid())
+  transactionId String   @map("transaction_id")
+  fromUserId    String   @map("from_user_id")
+  toUserId      String   @map("to_user_id")
+  ratingScore   Int      @map("rating_score")
+  tags          Json     @default("[]")
+  comment       String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  fromUser    User        @relation("RatingsGiven", fields: [fromUserId], references: [id])
+  toUser      User        @relation("RatingsReceived", fields: [toUserId], references: [id])
+
+  @@unique([transactionId, fromUserId, toUserId])
+  @@index([toUserId])
+  @@map("ratings")
+}
+
+model Report {
+  id               String       @id @default(uuid())
+  reporterId       String       @map("reporter_id")
+  couponId         String?      @map("coupon_id")
+  transactionId    String?      @map("transaction_id")
+  reportedUserId   String?      @map("reported_user_id")
+  reason           ReportReason
+  description      String?
+  evidenceImageUrl String?      @map("evidence_image_url")
+  status           ReportStatus @default(PENDING)
+  adminNote        String?      @map("admin_note")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  resolvedAt       DateTime?    @map("resolved_at")
+
+  reporter     User         @relation("ReportsMade", fields: [reporterId], references: [id])
+  reportedUser User?        @relation("ReportsAgainst", fields: [reportedUserId], references: [id])
+  coupon       Coupon?      @relation(fields: [couponId], references: [id])
+  transaction  Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@unique([reporterId, couponId])
+  @@index([status])
+  @@index([couponId])
+  @@map("reports")
+}
+
+model ScoreLedger {
+  id            String             @id @default(uuid())
+  userId        String             @map("user_id")
+  eventType     ScoreEventType     @map("event_type")
+  scoreDelta    Int                @map("score_delta")
+  referenceType ScoreReferenceType @map("reference_type")
+  referenceId   String             @map("reference_id")
+  description   String?
+  createdAt     DateTime           @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, eventType, referenceType, referenceId])
+  @@index([userId])
+  @@map("score_ledgers")
+}
+
+model Notification {
+  id            String           @id @default(uuid())
+  userId        String           @map("user_id")
+  type          NotificationType
+  title         String
+  body          String
+  referenceType String?          @map("reference_type")
+  referenceId   String?          @map("reference_id")
+  isRead        Boolean          @default(false) @map("is_read")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  readAt        DateTime?        @map("read_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?  @map("actor_id")
+  action     String
+  targetType String   @map("target_type")
+  targetId   String   @map("target_id")
+  beforeValue Json?   @map("before_value")
+  afterValue  Json?   @map("after_value")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([targetType, targetId])
+  @@map("audit_logs")
+}
