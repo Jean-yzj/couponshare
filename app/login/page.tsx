@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch, useApi, ApiErr } from "@/lib/client";
 import { Button, Card, Field, Input, Avatar, Banner, Spinner } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -15,6 +15,17 @@ type DemoUser = {
   email: string;
 };
 
+function GoogleG({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.6 2.4 30.2 0 24 0 14.6 0 6.4 5.4 2.5 13.3l7.9 6.1C12.3 13.2 17.7 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.5 3-2.2 5.5-4.7 7.2l7.3 5.7c4.3-4 6.7-9.9 6.7-17.4z" />
+      <path fill="#FBBC05" d="M10.4 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6l-7.9-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.7l7.9-6.1z" />
+      <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.3-5.7c-2 1.4-4.7 2.3-8.6 2.3-6.3 0-11.7-3.7-13.6-9.9l-7.9 6.1C6.4 42.6 14.6 48 24 48z" />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -23,6 +34,12 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: demo } = useApi<{ data: DemoUser[] }>("/api/v1/auth/demo");
+
+  useEffect(() => {
+    const err = new URLSearchParams(window.location.search).get("error");
+    if (err === "google_not_configured") setError("Google 登入尚未設定，請改用 Email 或 Demo 帳號");
+    else if (err === "google_failed") setError("Google 登入失敗，請再試一次");
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -72,7 +89,23 @@ export default function LoginPage() {
       </div>
 
       <Card className="p-5">
-        <div className="mb-5 grid grid-cols-2 gap-1 rounded-full bg-sand/70 p-1">
+        <button
+          onClick={() => {
+            window.location.href = "/api/v1/auth/google";
+          }}
+          className="flex w-full items-center justify-center gap-2.5 rounded-full border border-line bg-paper py-2.5 text-[15px] font-medium text-ink transition-colors hover:bg-canvas-2"
+        >
+          <GoogleG />
+          使用 Google 繼續
+        </button>
+
+        <div className="my-4 flex items-center gap-3">
+          <span className="h-px flex-1 bg-line" />
+          <span className="text-xs text-ink-faint">或用 Email</span>
+          <span className="h-px flex-1 bg-line" />
+        </div>
+
+        <div className="mb-5 grid grid-cols-2 gap-1 rounded-full bg-sand p-1">
           {(["login", "register"] as const).map((m) => (
             <button
               key={m}
@@ -147,7 +180,7 @@ export default function LoginPage() {
                 key={u.id}
                 onClick={() => demoLogin(u.id)}
                 disabled={busy}
-                className="flex w-full items-center gap-3 rounded-2xl border border-line bg-paper px-4 py-3 text-left shadow-soft transition-colors hover:border-sand-2 hover:bg-canvas-2 disabled:opacity-50"
+                className="flex w-full items-center gap-3 rounded-2xl border border-line bg-paper px-4 py-3 text-left shadow-soft transition-colors hover:border-accent/40 hover:bg-canvas-2 disabled:opacity-50"
               >
                 <Avatar name={u.display_name} url={u.avatar_url} size={40} />
                 <div className="min-w-0 flex-1">

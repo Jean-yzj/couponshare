@@ -70,7 +70,7 @@ export default function ScorePage() {
 
       {/* Score hero */}
       <Card className="mt-5 overflow-hidden">
-        <div className="bg-gradient-to-br from-accent-tint to-transparent px-6 py-6">
+        <div className="bg-accent-tint px-6 py-6">
           <div className="flex items-end justify-between">
             <div>
               <p className="text-sm font-medium text-ink-soft">目前貢獻分</p>

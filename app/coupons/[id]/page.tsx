@@ -129,7 +129,7 @@ export default function CouponDetailPage() {
     }
   }
 
-  const railTint = coupon.type === "GIFT" ? "from-pine/12" : "from-teal/12";
+  const headerTint = coupon.type === "GIFT" ? "bg-pine-tint/50" : "bg-teal-tint/50";
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -143,7 +143,7 @@ export default function CouponDetailPage() {
 
       {/* Header */}
       <Card className="overflow-hidden">
-        <div className={cn("bg-gradient-to-br to-transparent px-5 pt-5 pb-4", railTint)}>
+        <div className={cn("border-b border-line px-5 pt-5 pb-4", headerTint)}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">{coupon.brand}</p>
@@ -156,7 +156,7 @@ export default function CouponDetailPage() {
             <span
               className={cn(
                 "inline-flex items-center gap-1 rounded-full bg-paper/70 px-2.5 py-1 text-xs font-medium",
-                exp.urgent ? "text-accent-press" : "text-ink-soft",
+                exp.urgent ? "text-danger" : "text-ink-soft",
               )}
             >
               <Icon name="clock" size={13} />

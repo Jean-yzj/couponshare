@@ -24,7 +24,7 @@ const BTN_VARIANTS = {
   secondary: "bg-sand text-ink hover:bg-sand-2",
   outline: "border border-line bg-paper text-ink hover:bg-canvas-2",
   ghost: "text-ink-soft hover:bg-sand/60",
-  danger: "bg-accent-tint text-accent-press hover:brightness-95",
+  danger: "bg-danger-tint text-danger hover:brightness-95",
   gold: "bg-gold text-white hover:brightness-95 shadow-soft",
 } as const;
 
@@ -307,8 +307,8 @@ export function Banner({
   children: ReactNode;
 }) {
   const tones = {
-    info: "bg-teal-tint text-teal",
-    warn: "bg-accent-tint text-accent-press",
+    info: "bg-accent-tint text-accent-press",
+    warn: "bg-danger-tint text-danger",
     success: "bg-pine-tint text-pine",
   } as const;
   return (
