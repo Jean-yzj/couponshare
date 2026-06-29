@@ -13,6 +13,7 @@ export const POST = route(async (req) => {
       ownerId: user.id,
       title: body.title,
       brand: body.brand,
+      category: body.category,
       description: body.description ?? null,
       expiryDate: body.expiry_date,
       type: body.type,

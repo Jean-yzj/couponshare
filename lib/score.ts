@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient, ScoreEventType, ScoreReferenceType } from "@prisma/client";
-import { levelFromScore } from "./levels";
+import { recomputeLevel } from "./leveling";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -50,14 +50,10 @@ export async function applyScore(
     },
   });
 
-  const user = await db.user.update({
+  await db.user.update({
     where: { id: args.userId },
     data: { contributionScore: { increment: args.delta } },
   });
 
-  const level = levelFromScore(user.contributionScore);
-  const riskFlag = user.contributionScore < 0;
-  if (level !== user.userLevel || riskFlag !== user.riskFlag) {
-    await db.user.update({ where: { id: args.userId }, data: { userLevel: level, riskFlag } });
-  }
+  await recomputeLevel(db, args.userId);
 }

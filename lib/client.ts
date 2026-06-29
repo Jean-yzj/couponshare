@@ -68,11 +68,12 @@ export type Me = {
   user_level: "LEVEL_1" | "LEVEL_2" | "LEVEL_3";
   level_name: string;
   contribution_score: number;
+  monthly_gifts?: number;
   risk_flag: boolean;
   status: string;
   daily_claim_limit: number;
   daily_publish_limit: number;
-  next_level: { level: string; at: number } | null;
+  next_level: { level: string; name: string; needScore: number; needGifts: number } | null;
 };
 
 export function useMe() {

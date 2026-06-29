@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { apiFetch, useMe } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
+import { Landing } from "@/components/Landing";
 import { Button, Input, Skeleton, EmptyState } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/display";
+import { CATEGORIES } from "@/lib/categories";
 
 const TYPES = [
   { value: "ALL", label: "全部" },
@@ -21,10 +23,26 @@ const SORTS = [
 
 const LIMIT = 12;
 
-export default function FeedPage() {
+export default function HomePage() {
+  const { me, loading } = useMe();
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-44 rounded-2xl" />
+        ))}
+      </div>
+    );
+  }
+  if (!me) return <Landing />;
+  return <FeedView />;
+}
+
+function FeedView() {
   const { me } = useMe();
   const [brand, setBrand] = useState("");
   const [debounced, setDebounced] = useState("");
+  const [category, setCategory] = useState<string>("ALL");
   const [type, setType] = useState<"ALL" | "GIFT" | "EXCHANGE">("ALL");
   const [sort, setSort] = useState<"latest" | "expiry_soon" | "popular">("latest");
   const [items, setItems] = useState<FeedCoupon[]>([]);
@@ -39,7 +57,7 @@ export default function FeedPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [debounced, type, sort]);
+  }, [debounced, type, sort, category]);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,6 +65,7 @@ export default function FeedPage() {
     const qs = new URLSearchParams({ sort, page: String(page), limit: String(LIMIT) });
     if (debounced) qs.set("brand", debounced);
     if (type !== "ALL") qs.set("type", type);
+    if (category !== "ALL") qs.set("category", category);
     apiFetch<{ data: FeedCoupon[]; pagination: { total: number } }>(`/api/v1/coupons/feed?${qs}`)
       .then((r) => {
         if (cancelled) return;
@@ -59,33 +78,22 @@ export default function FeedPage() {
     return () => {
       cancelled = true;
     };
-  }, [debounced, type, sort, page]);
+  }, [debounced, type, sort, category, page]);
 
   const canLoadMore = items.length < total;
   const firstLoad = loading && page === 1;
 
   return (
     <div>
-      <section className="mb-7">
-        <p className="font-display text-sm font-semibold tracking-wide text-accent">CouponShare</p>
-        <h1 className="mt-1 text-3xl font-bold leading-tight tracking-tight text-ink sm:text-[40px]">
-          把用不到的優惠券
-          <br className="hidden sm:block" />
-          <span className="text-accent">送給</span>需要的人
-        </h1>
-        <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink-soft">
-          瀏覽社群分享的閒置票券，留言申請，由持有者親手送出。每一次贈出，都累積你的貢獻值。
+      <section className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">探索票券</h1>
+        <p className="mt-1.5 text-sm text-ink-soft">
+          歡迎回來，<span className="font-medium text-ink">{me?.display_name}</span>
+          　·　目前 <span className="font-medium text-accent">{me?.contribution_score}</span> 貢獻分
         </p>
-        {me && (
-          <p className="mt-3 text-sm text-ink-faint">
-            歡迎回來，<span className="font-medium text-ink">{me.display_name}</span>
-            　·　目前 <span className="font-medium text-accent">{me.contribution_score}</span> 貢獻分
-          </p>
-        )}
       </section>
 
-      {/* Filters */}
-      <div className="sticky top-16 z-30 -mx-4 mb-6 border-y border-line/70 bg-canvas/85 px-4 py-3 backdrop-blur-md sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+      <div className="sticky top-16 z-30 -mx-4 mb-6 space-y-3 border-y border-line/70 bg-canvas/85 px-4 py-3 backdrop-blur-md sm:mx-0 sm:rounded-2xl sm:border">
         <div className="relative">
           <Icon
             name="search"
@@ -99,13 +107,25 @@ export default function FeedPage() {
             className="pl-10"
           />
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+
+        {/* Category chips */}
+        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
+          <Chip active={category === "ALL"} onClick={() => setCategory("ALL")}>
+            全部分類
+          </Chip>
+          {CATEGORIES.map((c) => (
+            <Chip key={c.key} active={category === c.key} onClick={() => setCategory(c.key)}>
+              {c.label}
+            </Chip>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <FilterRow label="類型" options={TYPES} value={type} onChange={setType} />
           <FilterRow label="排序" options={SORTS} value={sort} onChange={setSort} />
         </div>
       </div>
 
-      {/* Grid */}
       {firstLoad ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -116,7 +136,7 @@ export default function FeedPage() {
         <EmptyState
           icon="ticket"
           title="目前沒有符合條件的票券"
-          hint="換個品牌或類型看看，或成為第一個分享的人。"
+          hint="換個分類或品牌看看，或成為第一個分享的人。"
           action={
             <Button href="/new" icon="plus">
               分享一張票券
@@ -143,6 +163,28 @@ export default function FeedPage() {
   );
 }
 
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+        active ? "bg-accent text-white" : "bg-paper text-ink-soft hover:bg-sand",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 function FilterRow<T extends string>({
   label,
   options,
@@ -164,7 +206,7 @@ function FilterRow<T extends string>({
             onClick={() => onChange(o.value)}
             className={cn(
               "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-              value === o.value ? "bg-ink text-canvas" : "text-ink-soft hover:bg-sand/70",
+              value === o.value ? "bg-ink text-canvas" : "text-ink-soft hover:bg-sand",
             )}
           >
             {o.label}

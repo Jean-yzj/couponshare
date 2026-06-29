@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { PrismaClient, type CouponStatus, type CouponType, type VisibilityLevel } from "@prisma/client";
+import {
+  PrismaClient,
+  type CouponCategory,
+  type CouponStatus,
+  type CouponType,
+  type VisibilityLevel,
+} from "@prisma/client";
 import { encryptBarcode, hashPassword } from "../lib/crypto";
 
 const prisma = new PrismaClient();
@@ -23,6 +29,18 @@ function barcodeSvg(code: string): Buffer {
 function barcodeFields() {
   const code = `CS-${randomUUID().slice(0, 8).toUpperCase()}`;
   return { barcodeEncryptedData: encryptBarcode(barcodeSvg(code)), barcodeMime: "image/svg+xml" };
+}
+
+function catFor(brand: string): CouponCategory {
+  const b = brand.toLowerCase();
+  if (/7-eleven|全家|familymart|萊爾富|ok超商/.test(b)) return "CONVENIENCE";
+  if (/starbucks|louisa|路易莎|cama|咖啡/.test(b)) return "COFFEE";
+  if (/清心|50嵐|可不可|迷客夏|手搖|comebuy/.test(b)) return "DRINK";
+  if (/mcdonald|麥當勞|mos|摩斯|kfc|肯德基|subway|漢堡/.test(b)) return "FASTFOOD";
+  if (/再睡5分鐘|義美|甜|蛋糕|冰/.test(b)) return "DESSERT";
+  if (/鼎泰豐|鬍鬚張|餐廳/.test(b)) return "RESTAURANT";
+  if (/uniqlo|誠品|book|蝦皮|momo/.test(b)) return "SHOPPING";
+  return "OTHER";
 }
 
 const hour = 3_600_000;
@@ -109,6 +127,7 @@ async function main() {
         ownerId: u[c.owner],
         title: c.title,
         brand: c.brand,
+        category: catFor(c.brand),
         description: c.description ?? null,
         type: c.type,
         exchangeTarget: c.exchangeTarget ?? null,
@@ -147,6 +166,7 @@ async function main() {
       ownerId: u["amy"],
       title: "清心福全 大杯飲品兌換券",
       brand: "清心福全",
+      category: "DRINK",
       type: "GIFT",
       status: "CLAIMED",
       expiryDate: inDays(5),
@@ -189,6 +209,64 @@ async function main() {
       tags: ["回覆速度快", "人很好", "票券有效"],
       comment: "超快就回覆，票券完全沒問題，謝謝 Amy！",
     },
+  });
+
+  // An in-progress exchange: Ken ⇄ Leo, coordinating via messages
+  const exchangeCoupon = await prisma.coupon.create({
+    data: {
+      ownerId: u["ken"],
+      title: "Uniqlo 100 元折價券（交換中）",
+      brand: "Uniqlo",
+      category: "SHOPPING",
+      type: "EXCHANGE",
+      exchangeTarget: "想換餐飲類折價券",
+      status: "CLAIMED",
+      expiryDate: inDays(8),
+      claimantId: u["leo"],
+      claimedAt: ago(0.3),
+      createdAt: ago(2),
+      claimRequestCount: 1,
+      viewCount: 19,
+      ...barcodeFields(),
+    },
+  });
+  const exReq = await prisma.claimRequest.create({
+    data: {
+      couponId: exchangeCoupon.id,
+      requesterId: u["leo"],
+      requestType: "EXCHANGE",
+      message: "我想用麥當勞大薯券跟你換，可以嗎？",
+      exchangeOfferText: "麥當勞 經典大薯兌換券一張",
+      status: "APPROVED",
+      approvedAt: ago(0.3),
+    },
+  });
+  const exTxn = await prisma.transaction.create({
+    data: {
+      couponId: exchangeCoupon.id,
+      ownerId: u["ken"],
+      claimantId: u["leo"],
+      claimRequestId: exReq.id,
+      transactionType: "EXCHANGE",
+      status: "CREATED",
+      createdAt: ago(0.3),
+    },
+  });
+  await prisma.transactionMessage.createMany({
+    data: [
+      {
+        transactionId: exTxn.id,
+        senderId: u["ken"],
+        message: "好啊！我把 Uniqlo 折價碼給你，你把大薯券給我～",
+        createdAt: ago(0.25),
+      },
+      {
+        transactionId: exTxn.id,
+        senderId: u["leo"],
+        message: "沒問題，今晚我截圖傳給你！",
+        createdAt: ago(0.2),
+      },
+    ],
   });
 
   // Score ledgers (story for the score page)

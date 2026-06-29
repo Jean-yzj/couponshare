@@ -14,10 +14,23 @@ export const loginSchema = z.object({
 export const createCouponSchema = z.object({
   title: z.string().min(1).max(80),
   brand: z.string().min(1).max(40),
+  category: z.enum([
+    "CONVENIENCE",
+    "COFFEE",
+    "DRINK",
+    "FASTFOOD",
+    "DESSERT",
+    "RESTAURANT",
+    "SHOPPING",
+    "ENTERTAINMENT",
+    "OTHER",
+  ]),
   description: z.string().max(1000).optional().nullable(),
   expiry_date: z.coerce.date(),
   type: z.enum(["GIFT", "EXCHANGE"]),
   exchange_target: z.string().max(200).optional().nullable(),
+  // Attestation: the coupon is directly redeemable (no add-friend / task gimmicks).
+  directly_redeemable: z.literal(true),
   unlock_policy: z.enum(["OWNER_APPROVAL", "AUTO_REVEAL_AFTER_MESSAGE"]).optional(),
   visibility_level: z.enum(["PUBLIC", "LEVEL_2_ONLY", "LEVEL_3_ONLY"]).optional(),
 });
@@ -57,3 +70,7 @@ export const reportSchema = z.object({
 });
 
 export const demoLoginSchema = z.object({ user_id: z.string().min(1) });
+
+export const transactionMessageSchema = z.object({
+  message: z.string().min(1).max(500),
+});

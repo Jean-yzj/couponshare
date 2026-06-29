@@ -1,8 +1,9 @@
-import type { Prisma, UserLevel, VisibilityLevel } from "@prisma/client";
+import type { CouponCategory, Prisma, UserLevel, VisibilityLevel } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { route, jsonOk } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import { feedCoupon } from "@/lib/serialize";
+import { CATEGORY_KEYS } from "@/lib/categories";
 
 function allowedVisibilities(level: UserLevel | null): VisibilityLevel[] {
   const arr: VisibilityLevel[] = ["PUBLIC"];
@@ -15,6 +16,7 @@ export const GET = route(async (req) => {
   const url = new URL(req.url);
   const brand = url.searchParams.get("brand")?.trim() || undefined;
   const type = url.searchParams.get("type");
+  const category = url.searchParams.get("category");
   const sort = url.searchParams.get("sort") || "latest";
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") || "20", 10) || 20));
@@ -29,6 +31,9 @@ export const GET = route(async (req) => {
   };
   if (brand) where.brand = { contains: brand, mode: "insensitive" };
   if (type === "GIFT" || type === "EXCHANGE") where.type = type;
+  if (category && (CATEGORY_KEYS as string[]).includes(category)) {
+    where.category = category as CouponCategory;
+  }
 
   const orderBy: Prisma.CouponOrderByWithRelationInput =
     sort === "expiry_soon"

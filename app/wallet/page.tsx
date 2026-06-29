@@ -1,25 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
+import { useApi, useMe } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
-import {
-  Button,
-  Card,
-  Field,
-  Textarea,
-  Banner,
-  Avatar,
-  Skeleton,
-  EmptyState,
-  NeedLogin,
-  Pill,
-} from "@/components/ui";
-import { Modal } from "@/components/Modal";
+import { Button, Card, Avatar, Skeleton, EmptyState, NeedLogin, Pill } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn, relativeTime } from "@/lib/display";
 
-type Owner = {
+type Party = {
   id: string;
   display_name: string;
   avatar_url: string | null;
@@ -38,13 +27,12 @@ type Applied = {
 type Txn = {
   id: string;
   coupon: { id: string; title: string; brand: string } | null;
-  owner: Owner | null;
-  claimant: Owner | null;
+  owner: Party | null;
+  claimant: Party | null;
   transaction_type: string;
   status: string;
   role?: string;
   rated_by_viewer?: boolean;
-  completed_at: string | null;
   created_at: string;
 };
 type Wallet = {
@@ -71,11 +59,17 @@ const CR_STATUS: Record<string, { label: string; cls: string }> = {
   CANCELLED: { label: "已取消", cls: "bg-sand text-ink-faint" },
 };
 
+const TX_STATUS: Record<string, { label: string; cls: string }> = {
+  CREATED: { label: "進行中", cls: "bg-gold-tint text-gold" },
+  COMPLETED: { label: "已完成", cls: "bg-pine-tint text-pine" },
+  DISPUTED: { label: "爭議中", cls: "bg-danger-tint text-danger" },
+  CANCELLED: { label: "已取消", cls: "bg-sand text-ink-faint" },
+};
+
 export default function WalletPage() {
   const { me, loading: meLoading } = useMe();
-  const { data, loading, refetch } = useApi<Wallet>(me ? "/api/v1/me/wallet" : null);
+  const { data, loading } = useApi<Wallet>(me ? "/api/v1/me/wallet" : null);
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("listed");
-  const [ratingTxn, setRatingTxn] = useState<Txn | null>(null);
 
   if (meLoading)
     return (
@@ -101,7 +95,7 @@ export default function WalletPage() {
             onClick={() => setTab(t.key)}
             className={cn(
               "shrink-0 rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
-              tab === t.key ? "bg-ink text-canvas" : "bg-paper text-ink-soft hover:bg-sand/70",
+              tab === t.key ? "bg-accent text-white" : "bg-paper text-ink-soft hover:bg-sand",
             )}
           >
             {t.label}
@@ -117,17 +111,12 @@ export default function WalletPage() {
             ))}
           </div>
         ) : tab === "listed" ? (
-          <CouponGrid
-            items={listedActive}
-            empty="你還沒有上架任何票券"
-            hint="把用不到的優惠券分享出去吧。"
-            cta
-          />
+          <CouponGrid items={listedActive} empty="你還沒有上架任何票券" hint="把用不到的優惠券分享出去吧。" cta />
         ) : tab === "applied" ? (
           data && data.applied.length > 0 ? (
             <div className="space-y-3">
               {data.applied.map((a) => (
-                <a key={a.id} href={`/coupons/${a.coupon.id}`} className="block">
+                <Link key={a.id} href={`/coupons/${a.coupon.id}`} className="block">
                   <Card className="flex items-center gap-3 p-4 transition-colors hover:border-sand-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -145,7 +134,7 @@ export default function WalletPage() {
                     </div>
                     <Icon name="chevronRight" size={18} className="shrink-0 text-ink-faint" />
                   </Card>
-                </a>
+                </Link>
               ))}
             </div>
           ) : (
@@ -158,22 +147,9 @@ export default function WalletPage() {
         ) : tab === "cancelled" ? (
           <CouponGrid items={cancelled} empty="沒有已取消的票券" />
         ) : (
-          <TransactionList
-            txns={data?.transactions ?? []}
-            meId={me.id}
-            onRate={(t) => setRatingTxn(t)}
-          />
+          <TransactionList txns={data?.transactions ?? []} />
         )}
       </div>
-
-      <RatingModal
-        txn={ratingTxn}
-        onClose={() => setRatingTxn(null)}
-        onDone={() => {
-          setRatingTxn(null);
-          refetch();
-        }}
-      />
     </div>
   );
 }
@@ -207,25 +183,18 @@ function CouponGrid({
   );
 }
 
-function TransactionList({
-  txns,
-  meId,
-  onRate,
-}: {
-  txns: Txn[];
-  meId: string;
-  onRate: (t: Txn) => void;
-}) {
+function TransactionList({ txns }: { txns: Txn[] }) {
   if (txns.length === 0)
     return <EmptyState icon="swap" title="還沒有交易紀錄" hint="完成第一筆贈送或交換後就會出現在這裡。" />;
   return (
     <div className="space-y-3">
       {txns.map((t) => {
         const counterpart = t.role === "owner" ? t.claimant : t.owner;
-        const completed = t.status === "COMPLETED";
+        const st = TX_STATUS[t.status] ?? { label: t.status, cls: "bg-sand text-ink-soft" };
+        const needsAction = t.status === "COMPLETED" && !t.rated_by_viewer;
         return (
-          <Card key={t.id} className="p-4">
-            <div className="flex items-center gap-3">
+          <Link key={t.id} href={`/transactions/${t.id}`} className="block">
+            <Card className="flex items-center gap-3 p-4 transition-colors hover:border-sand-2">
               {counterpart && <Avatar name={counterpart.display_name} url={counterpart.avatar_url} size={40} />}
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-ink">{t.coupon?.title ?? "票券"}</p>
@@ -235,171 +204,13 @@ function TransactionList({
                 </p>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1.5">
-                <StatusTxn status={t.status} />
-                {completed && !t.rated_by_viewer && counterpart && (
-                  <Button size="sm" variant="outline" icon="star" onClick={() => onRate(t)}>
-                    評價
-                  </Button>
-                )}
-                {completed && t.rated_by_viewer && (
-                  <span className="text-xs text-ink-faint">已評價</span>
-                )}
-                {!completed && t.role && (
-                  <CompleteButton txnId={t.id} />
-                )}
+                <Pill className={st.cls}>{st.label}</Pill>
+                {needsAction && <span className="text-xs font-medium text-accent">待評價</span>}
               </div>
-            </div>
-          </Card>
+            </Card>
+          </Link>
         );
       })}
     </div>
-  );
-}
-
-function StatusTxn({ status }: { status: string }) {
-  const map: Record<string, { label: string; cls: string }> = {
-    CREATED: { label: "進行中", cls: "bg-gold-tint text-gold" },
-    COMPLETED: { label: "已完成", cls: "bg-pine-tint text-pine" },
-    DISPUTED: { label: "爭議中", cls: "bg-accent-tint text-accent-press" },
-    CANCELLED: { label: "已取消", cls: "bg-sand text-ink-faint" },
-  };
-  const m = map[status] ?? { label: status, cls: "bg-sand text-ink-soft" };
-  return <Pill className={m.cls}>{m.label}</Pill>;
-}
-
-function CompleteButton({ txnId }: { txnId: string }) {
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-  async function complete() {
-    setBusy(true);
-    try {
-      await apiFetch(`/api/v1/transactions/${txnId}/complete`, { method: "POST" });
-      setDone(true);
-    } catch {
-      /* ignore */
-    } finally {
-      setBusy(false);
-    }
-  }
-  if (done) return <span className="text-xs text-pine">已確認</span>;
-  return (
-    <Button size="sm" variant="ghost" loading={busy} onClick={complete}>
-      確認完成
-    </Button>
-  );
-}
-
-const TAG_PRESETS = ["回覆速度快", "人很好", "票券有效", "乾脆爽快", "會再交易"];
-
-function RatingModal({
-  txn,
-  onClose,
-  onDone,
-}: {
-  txn: Txn | null;
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const [score, setScore] = useState(5);
-  const [tags, setTags] = useState<string[]>([]);
-  const [comment, setComment] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  if (!txn) return null;
-  const counterpart = txn.role === "owner" ? txn.claimant : txn.owner;
-
-  function toggleTag(t: string) {
-    setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
-  }
-
-  async function submit() {
-    if (!counterpart) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await apiFetch(`/api/v1/transactions/${txn!.id}/ratings`, {
-        method: "POST",
-        body: JSON.stringify({
-          to_user_id: counterpart.id,
-          rating_score: score,
-          tags,
-          comment: comment.trim() || null,
-        }),
-      });
-      onDone();
-    } catch (e) {
-      setError(e instanceof ApiErr ? e.message : "送出失敗");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Modal
-      open={!!txn}
-      onClose={onClose}
-      title={`評價 ${counterpart?.display_name ?? ""}`}
-      footer={
-        <Button full icon="star" loading={busy} onClick={submit}>
-          送出評價
-        </Button>
-      }
-    >
-      <div className="flex justify-center gap-1.5">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button key={n} onClick={() => setScore(n)} aria-label={`${n} 星`}>
-            <Icon
-              name="star"
-              size={34}
-              className={cn(
-                "transition-colors",
-                n <= score ? "fill-gold text-gold" : "text-line",
-              )}
-            />
-          </button>
-        ))}
-      </div>
-      <p className="mt-2 text-center text-sm text-ink-soft">
-        {score >= 4 ? "很棒的體驗！" : score === 3 ? "還不錯" : "可以更好"}
-      </p>
-
-      <div className="mt-4">
-        <p className="mb-2 text-sm font-medium text-ink">給個標籤（可複選）</p>
-        <div className="flex flex-wrap gap-2">
-          {TAG_PRESETS.map((t) => (
-            <button
-              key={t}
-              onClick={() => toggleTag(t)}
-              className={cn(
-                "rounded-full border px-3 py-1.5 text-sm transition-colors",
-                tags.includes(t)
-                  ? "border-accent bg-accent-tint text-accent-press"
-                  : "border-line bg-paper text-ink-soft hover:bg-canvas-2",
-              )}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <Field label="留言（選填）">
-          <Textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="謝謝分享，使用很順利！"
-          />
-        </Field>
-      </div>
-      {error && (
-        <div className="mt-3">
-          <Banner tone="warn" icon="info">
-            {error}
-          </Banner>
-        </div>
-      )}
-    </Modal>
   );
 }

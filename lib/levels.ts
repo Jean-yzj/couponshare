@@ -1,6 +1,8 @@
 import type { UserLevel } from "@prisma/client";
 
-// PRD §8.2 + §10.3
+// Promotion is reached by EITHER lifetime contribution score OR this-month's
+// successful gifts (whichever qualifies you for the higher tier). Activity path
+// lets active newcomers level up without grinding score. PRD §8.2 + user request.
 export const LEVELS: Record<
   UserLevel,
   {
@@ -9,6 +11,7 @@ export const LEVELS: Record<
     label: string;
     minScore: number;
     maxScore: number | null;
+    monthlyGifts: number; // gifts-this-month that also unlocks this tier
     dailyClaim: number;
     dailyPublish: number;
     perks: string[];
@@ -19,44 +22,61 @@ export const LEVELS: Record<
     name: "新手",
     label: "Newcomer",
     minScore: 0,
-    maxScore: 20,
+    maxScore: 49,
+    monthlyGifts: 0,
     dailyClaim: 5,
     dailyPublish: 3,
-    perks: ["瀏覽一般票券", "申請領取", "上傳與上架票券"],
+    perks: ["瀏覽並申請公開票券", "上傳與上架自己的票券", "每日上架 3 張、申請 5 張"],
   },
   LEVEL_2: {
     key: "LEVEL_2",
     name: "達人",
     label: "Pro",
-    minScore: 21,
-    maxScore: 100,
+    minScore: 50,
+    maxScore: 149,
+    monthlyGifts: 10,
     dailyClaim: 10,
     dailyPublish: 10,
-    perks: ["提前瀏覽熱門品牌票券", "收藏品牌篩選條件", "更高的每日上限"],
+    perks: [
+      "每日上架 10 張、申請 10 張",
+      "可申請「達人限定」票券",
+      "提前瀏覽熱門品牌票券",
+      "收藏品牌篩選條件",
+    ],
   },
   LEVEL_3: {
     key: "LEVEL_3",
     name: "傳奇",
     label: "Legend",
-    minScore: 101,
+    minScore: 150,
     maxScore: null,
+    monthlyGifts: 25,
     dailyClaim: 20,
     dailyPublish: 20,
-    perks: ["設定品牌提醒", "專屬傳奇徽章", "最高的每日上限"],
+    perks: ["每日上架 20 張、申請 20 張", "可申請「傳奇限定」票券", "品牌到貨提醒", "專屬傳奇徽章"],
   },
 };
 
 export const LEVEL_ORDER: UserLevel[] = ["LEVEL_1", "LEVEL_2", "LEVEL_3"];
 
-export function levelFromScore(score: number): UserLevel {
-  if (score >= 101) return "LEVEL_3";
-  if (score >= 21) return "LEVEL_2";
+export function computeLevel(score: number, monthlyGifts: number): UserLevel {
+  if (score >= LEVELS.LEVEL_3.minScore || monthlyGifts >= LEVELS.LEVEL_3.monthlyGifts) return "LEVEL_3";
+  if (score >= LEVELS.LEVEL_2.minScore || monthlyGifts >= LEVELS.LEVEL_2.monthlyGifts) return "LEVEL_2";
   return "LEVEL_1";
 }
 
-// Next level threshold, or null at max.
-export function nextLevelThreshold(score: number): { level: UserLevel; at: number } | null {
-  if (score < 21) return { level: "LEVEL_2", at: 21 };
-  if (score < 101) return { level: "LEVEL_3", at: 101 };
-  return null;
+// What it takes to reach the next tier (either path). Null at max level.
+export function nextLevelTarget(
+  score: number,
+  monthlyGifts: number,
+): { level: UserLevel; name: string; needScore: number; needGifts: number } | null {
+  const cur = computeLevel(score, monthlyGifts);
+  if (cur === "LEVEL_3") return null;
+  const target = cur === "LEVEL_1" ? LEVELS.LEVEL_2 : LEVELS.LEVEL_3;
+  return {
+    level: target.key,
+    name: target.name,
+    needScore: Math.max(0, target.minScore - score),
+    needGifts: Math.max(0, target.monthlyGifts - monthlyGifts),
+  };
 }

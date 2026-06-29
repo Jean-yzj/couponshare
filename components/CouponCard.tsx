@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cn, expiryText } from "@/lib/display";
 import { Avatar, TypePill } from "./ui";
 import { Icon } from "./icons";
+import { CATEGORY_LABEL } from "@/lib/categories";
 
 export type FeedOwner = {
   id: string;
@@ -16,6 +17,7 @@ export type FeedCoupon = {
   id: string;
   title: string;
   brand: string;
+  category?: string;
   type: string;
   expiry_date: string;
   status: string;
@@ -44,6 +46,9 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
             </span>
             <span className="truncate text-xs font-semibold uppercase tracking-wide text-ink-faint">
               {c.brand}
+              {c.category && CATEGORY_LABEL[c.category] ? (
+                <span className="font-medium normal-case"> · {CATEGORY_LABEL[c.category]}</span>
+              ) : null}
             </span>
           </div>
           <TypePill type={c.type} />

@@ -23,6 +23,7 @@ export function feedCoupon(c: Coupon & { owner?: OwnerRelation | null }) {
     id: c.id,
     title: c.title,
     brand: c.brand,
+    category: c.category,
     type: c.type,
     expiry_date: c.expiryDate,
     status: c.status,
@@ -48,6 +49,7 @@ export function couponDetail(
     id: c.id,
     title: c.title,
     brand: c.brand,
+    category: c.category,
     description: c.description,
     type: c.type,
     exchange_target: c.exchangeTarget,
@@ -106,6 +108,8 @@ export function transactionView(
     claimant: t.claimant ? publicUser(t.claimant) : null,
     transaction_type: t.transactionType,
     status: t.status,
+    owner_completed: t.ownerCompleted,
+    claimant_completed: t.claimantCompleted,
     role: viewerId
       ? viewerId === t.ownerId
         ? "owner"

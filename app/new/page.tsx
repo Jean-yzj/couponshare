@@ -16,6 +16,7 @@ import {
 } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/display";
+import { CATEGORIES } from "@/lib/categories";
 
 function defaultExpiry(): string {
   const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -30,11 +31,13 @@ export default function NewCouponPage() {
 
   const [title, setTitle] = useState("");
   const [brand, setBrand] = useState("");
+  const [category, setCategory] = useState("");
   const [expiry, setExpiry] = useState(defaultExpiry);
   const [type, setType] = useState<"GIFT" | "EXCHANGE">("GIFT");
   const [exchangeTarget, setExchangeTarget] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState("PUBLIC");
+  const [agreed, setAgreed] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
@@ -64,8 +67,10 @@ export default function NewCouponPage() {
     if (!file) return "請上傳條碼或 QR Code 圖片";
     if (!title.trim()) return "請填寫標題";
     if (!brand.trim()) return "請填寫品牌";
+    if (!category) return "請選擇分類";
     if (!expiry || new Date(expiry).getTime() <= Date.now()) return "到期日必須晚於現在";
     if (type === "EXCHANGE" && !exchangeTarget.trim()) return "交換類型必須填寫想交換的目標";
+    if (!agreed) return "請先勾選確認這是可直接兌換的票券";
     return null;
   }
 
@@ -79,7 +84,6 @@ export default function NewCouponPage() {
     setBusy(true);
     setError(null);
     try {
-      // 1. Draft
       if (!draftId.current) {
         setStepText("建立票券中…");
         const created = await apiFetch<{ id: string }>("/api/v1/coupons", {
@@ -87,16 +91,17 @@ export default function NewCouponPage() {
           body: JSON.stringify({
             title: title.trim(),
             brand: brand.trim(),
+            category,
             description: description.trim() || null,
             expiry_date: new Date(expiry).toISOString(),
             type,
             exchange_target: type === "EXCHANGE" ? exchangeTarget.trim() : null,
+            directly_redeemable: true,
             visibility_level: visibility,
           }),
         });
         draftId.current = created.id;
       }
-      // 2. Encrypted barcode upload
       if (file && !uploaded.current) {
         setStepText("加密上傳條碼中…");
         const fd = new FormData();
@@ -104,7 +109,6 @@ export default function NewCouponPage() {
         await apiFetch(`/api/v1/coupons/${draftId.current}/barcode`, { method: "POST", body: fd });
         uploaded.current = true;
       }
-      // 3. Publish
       setStepText("上架中…");
       await apiFetch(`/api/v1/coupons/${draftId.current}/publish`, { method: "POST" });
       router.push(`/coupons/${draftId.current}`);
@@ -130,7 +134,12 @@ export default function NewCouponPage() {
         條碼會經 AES-256 加密保存，只有你選定的領取者才看得到。
       </p>
 
-      <form onSubmit={submit} className="mt-6 space-y-5">
+      <form onSubmit={submit} className="mt-5 space-y-5">
+        <Banner tone="info" icon="shieldCheck">
+          請分享<span className="font-semibold">可以直接兌換</span>的實質票券，例如飲料兌換券、超商購物金。
+          請勿上架需要加好友或完成任務才能用的券，以及人人都有的通用折扣碼，讓好券不被淹沒。
+        </Banner>
+
         {/* Barcode upload */}
         <Card className="p-5">
           <p className="mb-2 flex items-center gap-1 text-sm font-medium text-ink">
@@ -179,14 +188,24 @@ export default function NewCouponPage() {
             <Field label="品牌" required>
               <Input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="例如：Starbucks" />
             </Field>
-            <Field label="到期日" required>
-              <Input
-                type="datetime-local"
-                value={expiry}
-                onChange={(e) => setExpiry(e.target.value)}
-              />
+            <Field label="分類" required>
+              <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <option value="">請選擇</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
             </Field>
           </div>
+          <Field label="到期日" required>
+            <Input
+              type="datetime-local"
+              value={expiry}
+              onChange={(e) => setExpiry(e.target.value)}
+            />
+          </Field>
 
           <div>
             <p className="mb-1.5 text-sm font-medium text-ink">分享類型</p>
@@ -236,6 +255,20 @@ export default function NewCouponPage() {
             </Select>
           </Field>
         </Card>
+
+        {/* Attestation */}
+        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-paper p-4 shadow-soft">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--color-accent)]"
+          />
+          <span className="text-sm leading-relaxed text-ink-soft">
+            我確認這是<span className="font-semibold text-ink">可以直接兌換</span>的票券，
+            不需要對方加好友或完成任何任務，且內容真實有效。
+          </span>
+        </label>
 
         {error && <Banner tone="warn" icon="info">{error}</Banner>}
 

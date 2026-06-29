@@ -38,6 +38,18 @@ enum CouponType {
   EXCHANGE
 }
 
+enum CouponCategory {
+  CONVENIENCE
+  COFFEE
+  DRINK
+  FASTFOOD
+  DESSERT
+  RESTAURANT
+  SHOPPING
+  ENTERTAINMENT
+  OTHER
+}
+
 enum CouponStatus {
   DRAFT
   AVAILABLE
@@ -116,6 +128,7 @@ enum NotificationType {
   COUPON_EXPIRING_SOON
   COUPON_EXPIRED
   TRANSACTION_COMPLETED
+  TRANSACTION_MESSAGE
   RATING_RECEIVED
   REPORT_UPDATED
 }
@@ -163,6 +176,7 @@ model Coupon {
   description          String?
   expiryDate           DateTime        @map("expiry_date")
   type                 CouponType
+  category             CouponCategory  @default(OTHER)
   exchangeTarget       String?         @map("exchange_target")
   status               CouponStatus    @default(DRAFT)
   claimantId           String?         @map("claimant_id")
@@ -190,6 +204,7 @@ model Coupon {
   @@index([status])
   @@index([brand])
   @@index([type])
+  @@index([category])
   @@index([expiryDate])
   @@index([createdAt])
   @@index([status, expiryDate])
@@ -230,9 +245,11 @@ model Transaction {
   ownerId         String            @map("owner_id")
   claimantId      String            @map("claimant_id")
   claimRequestId  String            @map("claim_request_id")
-  transactionType CouponType        @map("transaction_type")
-  status          TransactionStatus @default(CREATED)
-  completedAt     DateTime?         @map("completed_at")
+  transactionType   CouponType        @map("transaction_type")
+  status            TransactionStatus @default(CREATED)
+  ownerCompleted    Boolean           @default(false) @map("owner_completed")
+  claimantCompleted Boolean           @default(false) @map("claimant_completed")
+  completedAt       DateTime?         @map("completed_at")
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
