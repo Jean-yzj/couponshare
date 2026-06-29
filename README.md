@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CouponShare
 
-## Getting Started
+> 把用不到的優惠券，送給需要的人。
 
-First, run the development server:
+A gift / exchange platform for idle coupons and tickets, built around an
+invite-and-approve model with a contribution-score community loop. Implements
+the CouponShare PRD v1.1 MVP.
+
+## What it does
+
+- **Share** unused coupons (barcode / QR image), as a free gift or an exchange.
+- **Browse & apply** — leave a message to apply; the holder picks who receives it.
+- **Secure barcodes** — the barcode is never exposed in the feed and is only
+  revealed to the chosen claimant through a short-lived, authorised link.
+- **Contribution score & levels** drive fairer distribution and curb abuse.
+- Ratings, reports, notifications, daily rate limits, audit log, and background
+  expiry jobs.
+
+## Stack
+
+- **Next.js 16** (App Router) — UI + API routes in one deployable
+- **PostgreSQL + Prisma 6**
+- **Tailwind CSS v4** — warm beige design system
+- Sessions via signed cookies, passwords via scrypt, barcodes via AES-256-GCM
+  (all `node:crypto`, no extra deps)
+
+## Core model & guarantees
+
+The four state-consistent models are `Coupon → ClaimRequest → Transaction →
+ScoreLedger`. Approving an applicant runs inside a single DB transaction with a
+row-level lock on the coupon (re-checks status under lock, claims it, rejects the
+rest, creates the transaction, scores the giver, notifies, audits) — so a hot
+coupon can never be double-claimed and a score event can never double-count
+(idempotent ledger).
+
+Barcode safety: the feed serializer never emits barcode fields; the detail API
+exposes only `has_barcode` / `can_view_barcode`; the image is served from
+`/api/v1/coupons/:id/barcode/image` only with a valid 5-minute signed token AND a
+re-validated owner/claimant check, with `Cache-Control: no-store`.
+
+## Local development
 
 ```bash
+npm install
+cp .env.example .env        # fill in DATABASE_URL + secrets
+npx prisma db push          # create schema
+npx prisma db seed          # demo users + coupons
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Demo accounts (password `demo1234`, or one-click on the login page):
+`jean@demo.couponshare.app`, `amy@demo.couponshare.app`, … (6 personas).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+See [.env.example](.env.example). `BARCODE_KEY` must be identical wherever
+barcodes are encrypted (seeding) and decrypted (the running app).
 
-## Learn More
+## Background jobs (cron)
 
-To learn more about Next.js, take a look at the following resources:
+Point a scheduler at these (send `x-cron-secret: $CRON_SECRET`):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `POST /api/v1/cron/expire-coupons` — every ~10 min
+- `POST /api/v1/cron/expiring-soon` — hourly
+- `POST /api/v1/cron/pending-timeout` — hourly
