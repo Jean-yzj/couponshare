@@ -91,14 +91,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="ml-auto flex items-center gap-1.5">
             {me ? (
               <>
-                <Button
-                  href="/new"
-                  size="sm"
-                  icon="plus"
-                  className="hidden md:inline-flex"
-                >
-                  新增優惠券
-                </Button>
+                <span className="hidden md:inline-flex">
+                  <Button href="/new" size="sm" icon="plus">
+                    新增優惠券
+                  </Button>
+                </span>
                 <Link
                   href="/notifications"
                   aria-label="通知"
