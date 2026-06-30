@@ -134,18 +134,14 @@ export function Landing() {
       )}
 
       {/* Closing CTA */}
-      <section className="mx-auto max-w-2xl">
-        <Card className="bg-accent p-8 text-center">
-          <h2 className="text-2xl font-bold tracking-tight text-white">讓世界溫暖一點，從一張券開始</h2>
-          <p className="mt-2 text-sm leading-relaxed text-white/85">
-            你用不到的，也許正是別人今天需要的。
-          </p>
-          <div className="mt-6">
-            <Button href="/login" size="lg" variant="secondary" icon="heart">
-              加入 CouponShare
-            </Button>
-          </div>
-        </Card>
+      <section className="flex flex-col items-center pt-2 text-center">
+        <p className="text-lg font-semibold text-ink">讓世界溫暖一點，從一張券開始</p>
+        <p className="mt-1 text-sm text-ink-soft">你用不到的，也許正是別人今天需要的。</p>
+        <div className="mt-5">
+          <Button href="/login" size="lg" icon="heart">
+            加入 CouponShare
+          </Button>
+        </div>
       </section>
     </div>
   );
