@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
 import {
@@ -51,6 +52,7 @@ type Detail = {
   claimed_at: string | null;
   created_at: string;
   owner: Owner | null;
+  owner_rating?: { avg: number | null; count: number };
 };
 
 type CR = {
@@ -188,14 +190,29 @@ export default function CouponDetailPage() {
 
           {/* Owner */}
           {coupon.owner && (
-            <div className="flex items-center gap-3 rounded-xl bg-canvas/60 p-3">
+            <Link
+              href={`/users/${coupon.owner.id}`}
+              className="flex items-center gap-3 rounded-xl bg-canvas/60 p-3 transition-colors hover:bg-canvas-2"
+            >
               <Avatar name={coupon.owner.display_name} url={coupon.owner.avatar_url} size={42} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-ink">{coupon.owner.display_name}</p>
-                <p className="text-xs text-ink-faint">分享於 {formatDate(coupon.created_at)}</p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-faint">
+                  {coupon.owner_rating && coupon.owner_rating.count > 0 ? (
+                    <span className="inline-flex items-center gap-0.5 font-medium text-gold">
+                      <Icon name="star" size={12} className="fill-gold" />
+                      {coupon.owner_rating.avg?.toFixed(1)}
+                      <span className="font-normal text-ink-faint">（{coupon.owner_rating.count}）</span>
+                    </span>
+                  ) : (
+                    <span>尚無評價</span>
+                  )}
+                  · 分享於 {formatDate(coupon.created_at)}
+                </p>
               </div>
               <LevelBadge level={coupon.owner.user_level} />
-            </div>
+              <Icon name="chevronRight" size={16} className="text-ink-faint" />
+            </Link>
           )}
         </div>
       </Card>
@@ -343,10 +360,23 @@ function RequestRow({
   return (
     <Card className="p-4">
       <div className="flex items-start gap-3">
-        {r.requester && <Avatar name={r.requester.display_name} url={r.requester.avatar_url} size={40} />}
+        {r.requester && (
+          <Link href={`/users/${r.requester.id}`}>
+            <Avatar name={r.requester.display_name} url={r.requester.avatar_url} size={40} />
+          </Link>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="truncate font-medium text-ink">{r.requester?.display_name ?? "—"}</p>
+            {r.requester ? (
+              <Link
+                href={`/users/${r.requester.id}`}
+                className="truncate font-medium text-ink transition-colors hover:text-accent"
+              >
+                {r.requester.display_name}
+              </Link>
+            ) : (
+              <p className="truncate font-medium text-ink">—</p>
+            )}
             {r.requester && <LevelBadge level={r.requester.user_level} />}
             {!pending && (
               <span

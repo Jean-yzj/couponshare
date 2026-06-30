@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
 import {
@@ -136,7 +137,10 @@ export default function TransactionPage() {
           </Pill>
         </div>
         {counterpart && (
-          <div className="mt-4 flex items-center gap-3 rounded-xl bg-canvas/60 p-3">
+          <Link
+            href={`/users/${counterpart.id}`}
+            className="mt-4 flex items-center gap-3 rounded-xl bg-canvas/60 p-3 transition-colors hover:bg-canvas-2"
+          >
             <Avatar name={counterpart.display_name} url={counterpart.avatar_url} size={40} />
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium text-ink">
@@ -145,7 +149,8 @@ export default function TransactionPage() {
               <p className="text-xs text-ink-faint">{counterpart.contribution_score} 貢獻分</p>
             </div>
             <LevelBadge level={counterpart.user_level} />
-          </div>
+            <Icon name="chevronRight" size={16} className="text-ink-faint" />
+          </Link>
         )}
       </Card>
 

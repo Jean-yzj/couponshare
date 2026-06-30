@@ -3,6 +3,7 @@ import { route, jsonOk } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { getCurrentUser } from "@/lib/auth";
 import { couponDetail } from "@/lib/serialize";
+import { ratingSummary } from "@/lib/ratings";
 
 export const GET = route(async (req, ctx) => {
   const { id } = await ctx.params;
@@ -17,5 +18,6 @@ export const GET = route(async (req, ctx) => {
       .catch(() => {});
   }
 
-  return jsonOk(couponDetail(coupon, viewer));
+  const ownerRating = await ratingSummary(prisma, coupon.ownerId);
+  return jsonOk({ ...couponDetail(coupon, viewer), owner_rating: ownerRating });
 });
