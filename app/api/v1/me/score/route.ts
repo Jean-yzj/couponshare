@@ -13,6 +13,7 @@ const EARN_RULES = [
   { label: "領取後留下感謝訊息", delta: SCORE_RULES.THANK_YOU_MESSAGE, icon: "heart" },
 ];
 const PENALTY_RULES = [
+  { label: "下架已上架、但還沒送出的票券", delta: SCORE_RULES.COUPON_WITHDRAWN, icon: "ban" },
   { label: "被確認提供無效券", delta: SCORE_RULES.INVALID_COUPON_REPORT_CONFIRMED, icon: "flag" },
   { label: "被確認惡意放鳥", delta: SCORE_RULES.NO_SHOW_REPORT_CONFIRMED, icon: "flag" },
   { label: "被確認惡意訊息或騷擾", delta: SCORE_RULES.ABUSE_CONFIRMED, icon: "ban" },

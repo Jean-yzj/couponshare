@@ -60,6 +60,7 @@ export const reportSchema = z.object({
     "INVALID_COUPON",
     "EXPIRED_COUPON",
     "ALREADY_USED",
+    "UNREASONABLE_EXCHANGE",
     "NO_RESPONSE",
     "ABUSIVE_MESSAGE",
     "SCAM",

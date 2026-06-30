@@ -16,6 +16,7 @@ import {
   Pill,
 } from "@/components/ui";
 import { BarcodeModal } from "@/components/BarcodeModal";
+import { ReportModal } from "@/components/ReportModal";
 import { Icon } from "@/components/icons";
 import { cn, relativeTime } from "@/lib/display";
 
@@ -65,6 +66,7 @@ export default function TransactionPage() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [barcodeOpen, setBarcodeOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
 
   if (loading) return <Skeleton className="mx-auto h-72 max-w-2xl rounded-2xl" />;
@@ -272,7 +274,28 @@ export default function TransactionPage() {
         )}
       </Card>
 
+      {counterpart && (
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={() => setReportOpen(true)}
+            className="flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-danger"
+          >
+            <Icon name="flag" size={15} />
+            檢舉對方（無效券 / 放鳥 / 不合理交換）
+          </button>
+        </div>
+      )}
+
       <BarcodeModal couponId={t.coupon_id} open={barcodeOpen} onClose={() => setBarcodeOpen(false)} />
+      {counterpart && (
+        <ReportModal
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          reportedUserId={counterpart.id}
+          title={`檢舉 ${counterpart.display_name}`}
+          onDone={() => setReportOpen(false)}
+        />
+      )}
     </div>
   );
 }

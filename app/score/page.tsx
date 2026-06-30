@@ -42,6 +42,7 @@ const EVENT_ICON: Record<string, IconName> = {
   COUPON_EXCHANGED: "swap",
   THANK_YOU_MESSAGE: "heart",
   POSITIVE_RATING: "star",
+  COUPON_WITHDRAWN: "ban",
   INVALID_COUPON_REPORT_CONFIRMED: "flag",
   NO_SHOW_REPORT_CONFIRMED: "flag",
   ADMIN_ADJUSTMENT: "shield",

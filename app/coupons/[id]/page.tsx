@@ -19,6 +19,7 @@ import {
 } from "@/components/ui";
 import { Modal } from "@/components/Modal";
 import { BarcodeModal } from "@/components/BarcodeModal";
+import { ReportModal } from "@/components/ReportModal";
 import { Icon } from "@/components/icons";
 import { cn, expiryText, formatDate, relativeTime, STATUS_META } from "@/lib/display";
 
@@ -117,7 +118,11 @@ export default function CouponDetailPage() {
   }
 
   async function cancelCoupon() {
-    if (!confirm("確定要下架這張優惠券嗎？")) return;
+    const willPenalize = coupon?.status === "AVAILABLE" || coupon?.status === "PENDING";
+    const msg = willPenalize
+      ? "這張票券已上架但還沒送出，下架會扣 5 貢獻分。確定要下架嗎？"
+      : "確定要下架這張優惠券嗎？";
+    if (!confirm(msg)) return;
     setBusy(true);
     try {
       await apiFetch(`/api/v1/coupons/${id}/cancel`, { method: "POST" });
@@ -453,94 +458,6 @@ function ClaimModal({
           <Banner tone="warn" icon="info">
             {error}
           </Banner>
-        </div>
-      )}
-    </Modal>
-  );
-}
-
-const REPORT_REASONS = [
-  { value: "INVALID_COUPON", label: "無效券" },
-  { value: "EXPIRED_COUPON", label: "已過期" },
-  { value: "ALREADY_USED", label: "已被使用" },
-  { value: "NO_RESPONSE", label: "持有者無回應 / 放鳥" },
-  { value: "ABUSIVE_MESSAGE", label: "不當訊息" },
-  { value: "SCAM", label: "詐騙" },
-  { value: "OTHER", label: "其他" },
-];
-
-function ReportModal({
-  open,
-  onClose,
-  couponId,
-  onDone,
-}: {
-  open: boolean;
-  onClose: () => void;
-  couponId: string;
-  onDone: () => void;
-}) {
-  const [reason, setReason] = useState("INVALID_COUPON");
-  const [description, setDescription] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-
-  async function submit() {
-    setBusy(true);
-    setError(null);
-    try {
-      await apiFetch("/api/v1/reports", {
-        method: "POST",
-        body: JSON.stringify({ coupon_id: couponId, reason, description: description.trim() || null }),
-      });
-      setDone(true);
-      setTimeout(onDone, 1200);
-    } catch (e) {
-      setError(e instanceof ApiErr ? e.message : "檢舉失敗");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="檢舉票券"
-      footer={
-        !done && (
-          <Button full variant="danger" loading={busy} icon="flag" onClick={submit}>
-            送出檢舉
-          </Button>
-        )
-      }
-    >
-      {done ? (
-        <div className="py-6 text-center">
-          <Icon name="check" size={32} className="mx-auto text-pine" />
-          <p className="mt-2 font-medium text-ink">已收到你的檢舉</p>
-          <p className="text-sm text-ink-soft">我們會盡快處理，謝謝你維護社群。</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <Field label="檢舉原因" required>
-            <Select value={reason} onChange={(e) => setReason(e.target.value)}>
-              {REPORT_REASONS.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="補充說明">
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="例如：到店使用時顯示已被兌換"
-            />
-          </Field>
-          {error && <Banner tone="warn" icon="info">{error}</Banner>}
         </div>
       )}
     </Modal>
