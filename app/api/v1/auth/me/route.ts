@@ -3,6 +3,7 @@ import { route, jsonOk } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import { LEVELS, nextLevelTarget } from "@/lib/levels";
 import { monthlyGiftCount } from "@/lib/leveling";
+import { isAdmin } from "@/lib/admin";
 
 export const GET = route(async () => {
   const user = await getCurrentUser();
@@ -25,6 +26,7 @@ export const GET = route(async () => {
       monthly_gifts: gifts,
       risk_flag: user.riskFlag,
       status: user.status,
+      is_admin: isAdmin(user),
       daily_claim_limit: dailyClaim,
       daily_publish_limit: level.dailyPublish,
       next_level: nextLevelTarget(user.contributionScore, gifts),

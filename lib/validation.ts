@@ -83,3 +83,8 @@ export const brandSchema = z.object({
 export const appealSchema = z.object({
   message: z.string().min(5).max(1000),
 });
+
+export const adminResolveSchema = z.object({
+  decision: z.enum(["ACCEPT", "REJECT"]),
+  note: z.string().max(500).optional().nullable(),
+});

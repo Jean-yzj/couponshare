@@ -131,6 +131,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <MenuItem href="/wallet" icon="wallet" label="我的錢包" onClick={() => setMenuOpen(false)} />
                         <MenuItem href="/score" icon="medal" label="貢獻值與等級" onClick={() => setMenuOpen(false)} />
                         <MenuItem href="/notifications" icon="bell" label="通知中心" onClick={() => setMenuOpen(false)} />
+                        {me.is_admin && (
+                          <MenuItem
+                            href="/admin/appeals"
+                            icon="shield"
+                            label="管理後台"
+                            onClick={() => setMenuOpen(false)}
+                          />
+                        )}
                         <button
                           onClick={logout}
                           className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-ink-soft transition-colors hover:bg-sand/60"

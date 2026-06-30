@@ -60,7 +60,7 @@ export const POST = route(async (req) => {
     let userSuspended = false;
     if (reportedUserId) {
       const reporters = await prisma.report.findMany({
-        where: { reportedUserId },
+        where: { reportedUserId, status: { notIn: ["REJECTED", "RESOLVED"] } },
         select: { reporterId: true },
         distinct: ["reporterId"],
       });

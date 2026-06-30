@@ -59,6 +59,8 @@ async function main() {
   await prisma.scoreLedger.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.auditLog.deleteMany();
+  await prisma.brandFollow.deleteMany();
+  await prisma.appeal.deleteMany();
   await prisma.coupon.deleteMany();
   await prisma.user.deleteMany();
 
@@ -70,6 +72,7 @@ async function main() {
     { key: "ken", name: "Ken", score: 33, level: "LEVEL_2" },
     { key: "mia", name: "Mia", score: 14, level: "LEVEL_1" },
     { key: "leo", name: "Leo", score: 6, level: "LEVEL_1" },
+    { key: "sam", name: "Sam", score: -10, level: "LEVEL_1" },
   ] as const;
 
   const u: Record<string, string> = {};
@@ -318,6 +321,30 @@ async function main() {
       },
     });
   }
+
+  // A suspended account (Sam) reported by 3 people, with a pending appeal
+  // — so the admin review loop is demoable.
+  for (const reporter of ["amy", "ken", "mia"] as const) {
+    await prisma.report.create({
+      data: {
+        reporterId: u[reporter],
+        reportedUserId: u["sam"],
+        reason: "INVALID_COUPON",
+        description: "上架的券到店無法使用",
+        status: "PENDING",
+        createdAt: ago(1),
+      },
+    });
+  }
+  await prisma.user.update({ where: { id: u["sam"] }, data: { status: "SUSPENDED", riskFlag: true } });
+  await prisma.appeal.create({
+    data: {
+      userId: u["sam"],
+      message: "我上架的券都是真的，可能是店員操作或時間點的問題，希望能幫我複查，謝謝。",
+      status: "PENDING",
+      createdAt: ago(0.5),
+    },
+  });
 
   console.log("Seed complete.");
 }
