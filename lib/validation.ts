@@ -75,3 +75,11 @@ export const demoLoginSchema = z.object({ user_id: z.string().min(1) });
 export const transactionMessageSchema = z.object({
   message: z.string().min(1).max(500),
 });
+
+export const brandSchema = z.object({
+  brand: z.string().min(1).max(60),
+});
+
+export const appealSchema = z.object({
+  message: z.string().min(5).max(1000),
+});

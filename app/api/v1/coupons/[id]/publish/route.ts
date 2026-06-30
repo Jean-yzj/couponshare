@@ -5,6 +5,7 @@ import { requireActiveUser } from "@/lib/auth";
 import { assertTransition } from "@/lib/coupon-state";
 import { assertDailyPublishLimit } from "@/lib/ratelimit";
 import { writeAudit } from "@/lib/audit";
+import { notify } from "@/lib/notify";
 
 export const POST = route(async (req, ctx) => {
   const { id } = await ctx.params;
@@ -31,6 +32,22 @@ export const POST = route(async (req, ctx) => {
   assertTransition(coupon.status, "AVAILABLE");
 
   const updated = await prisma.coupon.update({ where: { id }, data: { status: "AVAILABLE" } });
+
+  // Notify followers of this brand (restock alert).
+  const followers = await prisma.brandFollow.findMany({
+    where: { brand: { equals: coupon.brand, mode: "insensitive" }, NOT: { userId: user.id } },
+    select: { userId: true },
+  });
+  for (const f of followers) {
+    await notify(prisma, {
+      userId: f.userId,
+      type: "BRAND_RESTOCK",
+      title: `${coupon.brand} 有新券！`,
+      body: `你追蹤的「${coupon.brand}」有人分享了「${coupon.title}」`,
+      referenceType: "coupon",
+      referenceId: id,
+    });
+  }
 
   const meta = clientMeta(req);
   await writeAudit(prisma, {

@@ -133,6 +133,14 @@ enum NotificationType {
   TRANSACTION_MESSAGE
   RATING_RECEIVED
   REPORT_UPDATED
+  BRAND_RESTOCK
+  APPEAL_UPDATED
+}
+
+enum AppealStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
 
 // ─────────────────────────── Models ───────────────────────────
@@ -166,6 +174,8 @@ model User {
   reportsAgainst       Report[]             @relation("ReportsAgainst")
   scoreLedgers         ScoreLedger[]
   notifications        Notification[]
+  brandFollows         BrandFollow[]
+  appeals              Appeal[]
 
   @@map("users")
 }
@@ -378,4 +388,33 @@ model AuditLog {
 
   @@index([targetType, targetId])
   @@map("audit_logs")
+}
+
+model BrandFollow {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  brand     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, brand])
+  @@index([brand])
+  @@map("brand_follows")
+}
+
+model Appeal {
+  id         String       @id @default(uuid())
+  userId     String       @map("user_id")
+  message    String
+  status     AppealStatus @default(PENDING)
+  adminNote  String?      @map("admin_note")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  resolvedAt DateTime?    @map("resolved_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("appeals")
 }

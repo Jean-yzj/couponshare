@@ -18,15 +18,20 @@ export const GET = route(async (req) => {
   const type = url.searchParams.get("type");
   const category = url.searchParams.get("category");
   const sort = url.searchParams.get("sort") || "latest";
+  const within = parseInt(url.searchParams.get("within_hours") || "", 10);
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") || "20", 10) || 20));
 
   const viewer = await getCurrentUser();
   const visibilities = allowedVisibilities(viewer?.userLevel ?? null);
 
+  const now = new Date();
+  const expiryFilter: Prisma.DateTimeFilter = { gt: now };
+  if (within > 0) expiryFilter.lt = new Date(now.getTime() + within * 3_600_000);
+
   const where: Prisma.CouponWhereInput = {
     status: "AVAILABLE",
-    expiryDate: { gt: new Date() },
+    expiryDate: expiryFilter,
     visibilityLevel: { in: visibilities },
   };
   if (brand) where.brand = { contains: brand, mode: "insensitive" };

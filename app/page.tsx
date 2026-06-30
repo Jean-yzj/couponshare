@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch, useMe } from "@/lib/client";
+import { apiFetch, useApi, useMe } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
 import { Landing } from "@/components/Landing";
 import { Button, Input, Skeleton, EmptyState } from "@/components/ui";
@@ -49,6 +49,11 @@ function FeedView() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const { data: brandsData } = useApi<{ brands: string[] }>(me ? "/api/v1/me/brands" : null);
+  const { data: expData } = useApi<{ data: FeedCoupon[] }>(
+    "/api/v1/coupons/feed?within_hours=48&sort=expiry_soon&limit=4",
+  );
+  const noFilters = category === "ALL" && type === "ALL" && !debounced;
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(brand.trim()), 350);
@@ -120,11 +125,44 @@ function FeedView() {
           ))}
         </div>
 
+        {me && brandsData && brandsData.brands.length > 0 && (
+          <div className="no-scrollbar -mx-1 flex items-center gap-1.5 overflow-x-auto px-1">
+            <span className="shrink-0 text-xs font-medium text-ink-faint">追蹤中</span>
+            {brandsData.brands.map((b) => (
+              <button
+                key={b}
+                onClick={() => setBrand(b)}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-accent-tint px-3 py-1.5 text-sm font-medium text-accent-press"
+              >
+                <Icon name="bell" size={12} />
+                {b}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <FilterRow label="類型" options={TYPES} value={type} onChange={setType} />
           <FilterRow label="排序" options={SORTS} value={sort} onChange={setSort} />
         </div>
       </div>
+
+      {noFilters && expData && expData.data.length > 0 && (
+        <section className="mb-6 rounded-2xl border border-danger/30 bg-danger-tint/40 p-4">
+          <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="flex items-center gap-1.5 font-semibold text-ink">
+              <Icon name="clock" size={18} className="text-danger" />
+              快過期了，幫忙領走
+            </span>
+            <span className="text-xs text-ink-soft">這些券即將過期，別讓它浪費掉</span>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {expData.data.map((c) => (
+              <CouponCard key={c.id} c={c} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {firstLoad ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

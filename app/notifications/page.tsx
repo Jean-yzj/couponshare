@@ -24,8 +24,11 @@ const NOTIF_ICON: Record<string, IconName> = {
   COUPON_EXPIRING_SOON: "clock",
   COUPON_EXPIRED: "clock",
   TRANSACTION_COMPLETED: "swap",
+  TRANSACTION_MESSAGE: "send",
   RATING_RECEIVED: "star",
   REPORT_UPDATED: "flag",
+  BRAND_RESTOCK: "bell",
+  APPEAL_UPDATED: "shield",
 };
 
 export default function NotificationsPage() {

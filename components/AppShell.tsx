@@ -153,6 +153,20 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 pt-6 sm:px-6 md:pb-12">
+        {me?.status === "SUSPENDED" && (
+          <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-danger/30 bg-danger-tint px-4 py-3">
+            <Icon name="ban" size={18} className="shrink-0 text-danger" />
+            <p className="flex-1 text-sm text-danger">
+              你的帳號已被停權，目前無法上架或申請票券。
+            </p>
+            <Link
+              href="/appeal"
+              className="shrink-0 rounded-full bg-danger px-3.5 py-1.5 text-sm font-medium text-white"
+            >
+              提出申訴
+            </Link>
+          </div>
+        )}
         {children}
       </main>
 

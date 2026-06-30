@@ -11,7 +11,8 @@ export const POST = route(async (req) => {
   if (!user || !verifyPassword(body.password, user.passwordHash)) {
     throw new ApiError("INVALID_CREDENTIALS");
   }
-  if (user.status === "SUSPENDED") throw new ApiError("USER_SUSPENDED");
+  if (user.status === "DELETED") throw new ApiError("INVALID_CREDENTIALS");
+  // Suspended accounts CAN log in (read-only) so they can submit an appeal.
 
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   await createSession(user.id);

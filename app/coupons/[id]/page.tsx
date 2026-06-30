@@ -88,6 +88,7 @@ export default function CouponDetailPage() {
   const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const brandsApi = useApi<{ brands: string[] }>(me ? "/api/v1/me/brands" : null);
 
   if (loading) return <DetailSkeleton />;
   if (!coupon) {
@@ -136,6 +137,18 @@ export default function CouponDetailPage() {
     }
   }
 
+  const isFollowing = !!brandsApi.data?.brands.some(
+    (b) => b.toLowerCase() === coupon.brand.toLowerCase(),
+  );
+  const brandName = coupon.brand;
+  async function toggleFollow() {
+    await apiFetch(`/api/v1/brands/${isFollowing ? "unfollow" : "follow"}`, {
+      method: "POST",
+      body: JSON.stringify({ brand: brandName }),
+    }).catch(() => {});
+    brandsApi.refetch();
+  }
+
   const headerTint = coupon.type === "GIFT" ? "bg-pine-tint/50" : "bg-teal-tint/50";
 
   return (
@@ -173,6 +186,20 @@ export default function CouponDetailPage() {
               <Icon name="eye" size={13} />
               {coupon.view_count} 次瀏覽
             </span>
+            {me && (
+              <button
+                onClick={toggleFollow}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                  isFollowing
+                    ? "bg-accent text-white"
+                    : "bg-paper/70 text-ink-soft hover:text-accent",
+                )}
+              >
+                <Icon name="bell" size={13} />
+                {isFollowing ? "已追蹤品牌" : `追蹤 ${coupon.brand}`}
+              </button>
+            )}
           </div>
         </div>
 
