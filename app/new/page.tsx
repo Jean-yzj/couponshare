@@ -140,9 +140,9 @@ export default function NewCouponPage() {
       <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-pine/25 bg-pine-tint/40 p-3.5">
         <Icon name="heart" size={18} className="mt-0.5 shrink-0 text-pine" />
         <p className="text-sm leading-relaxed text-ink-soft">
-          分享出你的第一張券，就能
-          <span className="font-bold text-ink">無限制繼續申請別人的券</span>
-          囉！給予讓好康流動，社群也因此運轉起來。
+          每成功分享一張券，當天就能
+          <span className="font-bold text-ink">多獲得 3 次申請機會</span>
+          ；第一次分享還會解鎖依等級計算的每日申請額度。給予讓好康流動起來。
         </p>
       </div>
 

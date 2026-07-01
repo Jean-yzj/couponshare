@@ -1,23 +1,57 @@
-import { prisma } from "@/lib/db";
+import type { User } from "@prisma/client";
+import { prisma } from "./db";
+import { LEVELS } from "./levels";
+import { startOfTodayTaipei } from "./time";
 
-// Number of applications a brand-new user may make before they must share.
+// Applications a brand-new user gets before they must share their first coupon.
 export const FREE_CLAIMS_BEFORE_SHARE = 3;
+// Extra applications granted for each coupon shared today.
+export const SHARE_BONUS = 3;
 
 /**
- * Goodwill gate — keeps the coupons flowing.
+ * Application quota — keeps the coupons flowing.
  *
- * A brand-new user who has never shared a coupon may apply a few times, then
- * must publish one coupon of their own before applying again. The moment they
- * have published even a single coupon, this gate lifts permanently (so it only
- * ever nudges people at the very beginning).
+ *  • Before a user has ever shared: they may apply {@link FREE_CLAIMS_BEFORE_SHARE}
+ *    times in total, then must publish a coupon to unlock the daily system.
+ *  • After sharing at least once: a daily limit based on their level
+ *    (新手 5 / 達人 8 / 傳奇 12), resetting each day (Taipei time).
+ *  • Every coupon they publish TODAY grants +{@link SHARE_BONUS} applications for
+ *    that day — so when the daily limit is full, sharing tops it up.
+ *
+ * Each submitted application counts (approved / rejected / pending alike).
  */
-export async function shareGate(userId: string) {
-  const [publishedCount, appliedCount] = await Promise.all([
-    // "Published" = any coupon that left DRAFT (they shared it with others).
-    prisma.coupon.count({ where: { ownerId: userId, status: { not: "DRAFT" } } }),
-    prisma.claimRequest.count({ where: { requesterId: userId } }),
+export async function applyQuota(user: User) {
+  const dayStart = startOfTodayTaipei();
+  const [publishedEver, publishedToday, totalApplied, appliedToday] = await Promise.all([
+    prisma.auditLog.count({ where: { actorId: user.id, action: "coupon.publish" } }),
+    prisma.auditLog.count({
+      where: { actorId: user.id, action: "coupon.publish", createdAt: { gte: dayStart } },
+    }),
+    prisma.claimRequest.count({ where: { requesterId: user.id } }),
+    prisma.claimRequest.count({ where: { requesterId: user.id, createdAt: { gte: dayStart } } }),
   ]);
-  const hasPublished = publishedCount > 0;
-  const mustShareFirst = !hasPublished && appliedCount >= FREE_CLAIMS_BEFORE_SHARE;
-  return { hasPublished, appliedCount, mustShareFirst };
+
+  const hasShared = publishedEver > 0;
+  const base = user.riskFlag
+    ? Math.max(1, Math.floor(LEVELS[user.userLevel].dailyClaim / 5))
+    : LEVELS[user.userLevel].dailyClaim;
+
+  if (!hasShared) {
+    // Onboarding phase: a lifetime allowance of 3 until the first share.
+    const remaining = Math.max(0, FREE_CLAIMS_BEFORE_SHARE - totalApplied);
+    return {
+      hasShared,
+      base,
+      limit: FREE_CLAIMS_BEFORE_SHARE,
+      used: totalApplied,
+      remaining,
+      bonusToday: 0,
+      mustShare: remaining === 0,
+    };
+  }
+
+  const bonusToday = SHARE_BONUS * publishedToday;
+  const limit = base + bonusToday;
+  const remaining = Math.max(0, limit - appliedToday);
+  return { hasShared, base, limit, used: appliedToday, remaining, bonusToday, mustShare: remaining === 0 };
 }

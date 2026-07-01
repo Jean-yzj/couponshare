@@ -139,7 +139,7 @@ export function Landing() {
           </span>
           <p className="text-sm leading-relaxed text-ink-soft">
             <span className="font-bold text-ink">給予，才能一直拿到好康。</span>{" "}
-            新加入可以先申請 3 次，之後只要分享一張自己用不到的券，就能繼續無限制申請；分享過一次就不再限制，讓好康在社群裡一直流動下去。
+            新加入可先申請 3 次；分享一張自己用不到的券後，就能依等級每天申請（新手每日 5 張）。之後每多分享一張，當天就再 +3 次——讓好康在社群裡一直流動下去。
           </p>
         </div>
       </section>

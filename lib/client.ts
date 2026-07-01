@@ -75,8 +75,10 @@ export type Me = {
   daily_claim_limit: number;
   daily_publish_limit: number;
   next_level: { level: string; name: string; needScore: number; needGifts: number } | null;
-  has_published?: boolean;
-  applied_count?: number;
+  has_shared?: boolean;
+  apply_remaining?: number;
+  apply_limit?: number;
+  apply_base?: number;
   must_share_first?: boolean;
 };
 

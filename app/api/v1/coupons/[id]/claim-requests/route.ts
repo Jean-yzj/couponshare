@@ -3,8 +3,7 @@ import { prisma } from "@/lib/db";
 import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireActiveUser, requireUser } from "@/lib/auth";
-import { assertDailyClaimLimit } from "@/lib/ratelimit";
-import { shareGate } from "@/lib/share-gate";
+import { applyQuota } from "@/lib/share-gate";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
 import { claimRequestView } from "@/lib/serialize";
@@ -33,10 +32,12 @@ export const POST = route(async (req, ctx) => {
     throw new ApiError("FORBIDDEN", { message: "此票券僅限傳奇會員申請" });
   }
 
-  // Goodwill gate: brand-new users must share a coupon after a few applications.
-  if ((await shareGate(user.id)).mustShareFirst) throw new ApiError("SHARE_FIRST");
-
-  await assertDailyClaimLimit(user);
+  // Application quota: 3 total before the first share, then a daily limit by level
+  // (+3 for each coupon shared today). PRD §8.2 + user request.
+  const quota = await applyQuota(user);
+  if (quota.remaining <= 0) {
+    throw new ApiError(quota.hasShared ? "DAILY_CLAIM_LIMIT_EXCEEDED" : "SHARE_FIRST");
+  }
 
   try {
     const created = await prisma.$transaction(async (tx) => {

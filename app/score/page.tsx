@@ -202,6 +202,29 @@ export default function ScorePage() {
         </div>
       </GradientPanel>
 
+      {/* Daily application quota */}
+      {me.apply_remaining !== undefined && (
+        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-line bg-paper p-4 shadow-soft">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-tint text-accent">
+            <Icon name="send" size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-ink">今日申請額度</p>
+            <p className="mt-0.5 text-sm text-ink-soft">
+              {me.has_shared
+                ? `每日 ${me.apply_base} 張，每分享一張券當天再 +3`
+                : `體驗期共 3 次，分享一張券後改為依等級每日 ${me.apply_base} 張`}
+            </p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="font-display text-3xl font-extrabold leading-none text-accent">
+              {me.apply_remaining}
+            </p>
+            <p className="mt-0.5 text-[11px] text-ink-faint">還可申請</p>
+          </div>
+        </div>
+      )}
+
       {/* Achievements */}
       <div className="mb-3 mt-7 flex items-center justify-between">
         <h2 className="font-semibold text-ink">我的徽章</h2>
