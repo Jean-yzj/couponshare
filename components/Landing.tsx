@@ -173,7 +173,7 @@ export function Landing() {
             <h2 className="text-2xl font-extrabold tracking-tight text-ink">現在有人正在分享</h2>
             <Link href="/login" className="text-sm font-medium text-accent hover:text-accent-press">全部票券</Link>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {featured.map((c) => <CouponCard key={c.id} c={c} />)}
           </div>
         </section>

@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { apiFetch, useApi, useMe } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
 import { Landing } from "@/components/Landing";
-import { Button, Input, Skeleton, EmptyState, GradientPanel } from "@/components/ui";
+import { Button, Input, Skeleton, EmptyState } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { Mascot, HeroSparkles } from "@/components/Mascot";
 import { cn } from "@/lib/display";
 import { CATEGORIES } from "@/lib/categories";
 
@@ -29,9 +27,9 @@ export default function HomePage() {
   const { me, loading } = useMe();
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-44 rounded-2xl" />
+          <Skeleton key={i} className="h-40 rounded-2xl" />
         ))}
       </div>
     );
@@ -92,32 +90,7 @@ function FeedView() {
 
   return (
     <div>
-      <GradientPanel className="mb-6 px-5 py-5 sm:px-7 sm:py-6">
-        <HeroSparkles />
-        <div className="relative flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">歡迎回來</p>
-            <h1 className="mt-1 font-display text-2xl font-extrabold leading-tight sm:text-[28px]">
-              {me?.display_name}，
-              <br className="sm:hidden" />
-              分享好券讓快樂加倍
-            </h1>
-            <div className="mt-3.5 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-sm font-semibold backdrop-blur-sm">
-                <Icon name="sparkles" size={14} /> {me?.contribution_score} 貢獻分
-              </span>
-              <Link
-                href="/score"
-                className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-sm font-medium text-white/90 transition-colors hover:bg-white/25"
-              >
-                {me?.level_name}
-                <Icon name="chevronRight" size={14} />
-              </Link>
-            </div>
-          </div>
-          <Mascot size={96} float className="hidden shrink-0 drop-shadow-xl sm:block" />
-        </div>
-      </GradientPanel>
+      <h1 className="mb-4 text-2xl font-extrabold tracking-tight text-ink">探索票券</h1>
 
       <div className="sticky top-16 z-30 -mx-4 mb-6 space-y-3 border-y border-line/70 bg-canvas/85 px-4 py-3 backdrop-blur-md sm:mx-0 sm:rounded-2xl sm:border">
         <div className="relative">
@@ -177,7 +150,7 @@ function FeedView() {
             </span>
             <span className="text-xs text-ink-soft">這些券即將過期，別讓它浪費掉</span>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {expData.data.map((c) => (
               <CouponCard key={c.id} c={c} />
             ))}
@@ -186,9 +159,9 @@ function FeedView() {
       )}
 
       {firstLoad ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-44 rounded-2xl" />
+            <Skeleton key={i} className="h-40 rounded-2xl" />
           ))}
         </div>
       ) : items.length === 0 ? (
@@ -217,7 +190,7 @@ function FeedView() {
         )
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {items.map((c) => (
               <CouponCard key={c.id} c={c} />
             ))}

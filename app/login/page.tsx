@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { apiFetch, ApiErr } from "@/lib/client";
 import { Button, Card, Field, Input, Banner } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -81,7 +82,7 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-md py-4">
       <div className="mb-6 text-center">
-        <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-white shadow-soft">
+        <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-grad-brand text-white shadow-glow">
           <Icon name="ticket" size={26} />
         </span>
         <h1 className="text-2xl font-bold tracking-tight text-ink">歡迎來到 CouponShare</h1>
@@ -190,7 +191,15 @@ export default function LoginPage() {
       </Card>
 
       <p className="mt-5 text-center text-xs leading-relaxed text-ink-faint">
-        登入即表示你願意以友善、互助的方式分享與領取票券。
+        繼續使用即表示你已閱讀並同意我們的{" "}
+        <Link href="/terms" className="font-medium text-accent hover:text-accent-press">
+          使用條款
+        </Link>{" "}
+        與{" "}
+        <Link href="/privacy" className="font-medium text-accent hover:text-accent-press">
+          隱私條款
+        </Link>
+        。
       </p>
     </div>
   );

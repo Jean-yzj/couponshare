@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cn, expiryText } from "@/lib/display";
-import { Avatar, TypePill } from "./ui";
+import { Avatar } from "./ui";
 import { Icon, type IconName } from "./icons";
 import { CATEGORY_LABEL } from "@/lib/categories";
 
@@ -28,10 +28,11 @@ export type FeedCoupon = {
 };
 
 const APPLIED_META: Record<string, { label: string; cls: string; icon: IconName }> = {
-  PENDING: { label: "已申請 · 等待選擇", cls: "bg-gold-tint text-gold-ink", icon: "hourglass" },
-  APPROVED: { label: "已獲得這張券", cls: "bg-pine-tint text-pine", icon: "checkCircle" },
+  PENDING: { label: "已申請", cls: "bg-gold-tint text-gold-ink", icon: "hourglass" },
+  APPROVED: { label: "已獲得", cls: "bg-pine-tint text-pine", icon: "checkCircle" },
 };
 
+// Compact trading-card style — small so many fit on screen at once.
 export function CouponCard({ c }: { c: FeedCoupon }) {
   const exp = expiryText(c.expiry_date);
   const isGift = c.type === "GIFT";
@@ -42,7 +43,7 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
     <Link href={`/coupons/${c.id}`} className="group block">
       <div
         className={cn(
-          "relative flex h-full flex-col rounded-[22px] border bg-paper p-4 shadow-soft transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-lift",
+          "relative flex h-full flex-col rounded-2xl border bg-paper p-3 shadow-soft transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lift",
           applied === APPLIED_META.PENDING
             ? "border-transparent ring-2 ring-gold/40"
             : applied === APPLIED_META.APPROVED
@@ -50,76 +51,65 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
               : "border-line group-hover:border-accent/40",
         )}
       >
-        {/* Brand row */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span
-              className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-base font-bold text-white shadow-soft",
-                brandGrad,
-              )}
-            >
-              {c.brand.trim()[0] ?? "?"}
-            </span>
-            <span className="min-w-0 truncate text-xs font-semibold uppercase tracking-wide text-ink-faint">
-              {c.brand}
-              {c.category && CATEGORY_LABEL[c.category] ? (
-                <span className="font-medium normal-case"> · {CATEGORY_LABEL[c.category]}</span>
-              ) : null}
-            </span>
-          </div>
-          <TypePill type={c.type} />
+        <div className="flex items-start justify-between gap-1.5">
+          <span
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-soft",
+              brandGrad,
+            )}
+          >
+            {c.brand.trim()[0] ?? "?"}
+          </span>
+          <span
+            className={cn(
+              "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold",
+              isGift ? "bg-pine-tint text-pine" : "bg-teal-tint text-teal",
+            )}
+          >
+            {isGift ? "免費" : "交換"}
+          </span>
         </div>
 
-        <h3 className="mt-3 line-clamp-2 min-h-[2.6em] text-[17px] font-semibold leading-snug text-ink">
+        <p className="mt-2 truncate text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
+          {c.brand}
+          {c.category && CATEGORY_LABEL[c.category] ? ` · ${CATEGORY_LABEL[c.category]}` : ""}
+        </p>
+        <h3 className="mt-0.5 line-clamp-2 min-h-[2.5em] text-[13.5px] font-bold leading-snug text-ink">
           {c.title}
         </h3>
 
-        {/* Ticket perforation with punched notches at each edge */}
-        <div className="relative my-3 -mx-4 flex items-center">
-          <span className="h-3 w-3 shrink-0 -translate-x-1/2 rounded-full bg-canvas" />
+        <div className="relative my-2 -mx-3 flex items-center">
+          <span className="h-2.5 w-2.5 shrink-0 -translate-x-1/2 rounded-full bg-canvas" />
           <span className="flex-1 border-t border-dashed border-line" />
-          <span className="h-3 w-3 shrink-0 translate-x-1/2 rounded-full bg-canvas" />
+          <span className="h-2.5 w-2.5 shrink-0 translate-x-1/2 rounded-full bg-canvas" />
         </div>
 
-        <div className="mt-auto flex items-end justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            {c.owner && <Avatar name={c.owner.display_name} url={c.owner.avatar_url} size={28} />}
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate text-xs font-medium text-ink">
-                {c.owner?.display_name ?? "—"}
-              </span>
-              {c.owner && (
-                <span className="truncate text-[11px] text-ink-faint">
-                  {c.owner.level_name} · {c.owner.contribution_score} 分
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
-                exp.urgent ? "bg-danger-tint text-danger" : "bg-sand text-ink-soft",
-              )}
-            >
-              <Icon name="clock" size={12} />
-              {exp.text}
+        <div className="mt-auto flex items-center justify-between gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
+            {c.owner && <Avatar name={c.owner.display_name} url={c.owner.avatar_url} size={18} />}
+            <span className="truncate text-[11px] font-medium text-ink">
+              {c.owner?.display_name ?? "—"}
             </span>
-            {c.claim_request_count > 0 && (
-              <span className="text-[11px] text-ink-faint">{c.claim_request_count} 人想要</span>
-            )}
           </div>
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium",
+              exp.urgent ? "text-danger" : "text-ink-faint",
+            )}
+          >
+            <Icon name="clock" size={10} />
+            {exp.text}
+          </span>
         </div>
 
         {applied && (
           <div
             className={cn(
-              "mt-3 flex items-center justify-center gap-1.5 rounded-xl py-1.5 text-xs font-semibold",
+              "mt-2 flex items-center justify-center gap-1 rounded-lg py-1 text-[10px] font-bold",
               applied.cls,
             )}
           >
-            <Icon name={applied.icon} size={13} /> {applied.label}
+            <Icon name={applied.icon} size={11} /> {applied.label}
           </div>
         )}
       </div>

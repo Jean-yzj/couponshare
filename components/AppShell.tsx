@@ -185,6 +185,25 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         )}
         {children}
+
+        <footer className="mt-12 border-t border-line/70 pt-6 text-center text-xs text-ink-faint">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
+            <Link href="/terms" className="transition-colors hover:text-ink">
+              使用條款
+            </Link>
+            <span className="text-line">·</span>
+            <Link href="/privacy" className="transition-colors hover:text-ink">
+              隱私條款
+            </Link>
+            <span className="text-line">·</span>
+            <a href="mailto:iamlazybear2023@gmail.com" className="transition-colors hover:text-ink">
+              聯絡我們
+            </a>
+          </div>
+          <p className="mx-auto mt-3 max-w-md leading-relaxed">
+            CouponShare 是個人架設的票券分享社群，非任何品牌官方平台；票券由使用者自行上傳，兌換前請自行評估可信度。
+          </p>
+        </footer>
       </main>
 
       {/* Mobile bottom navigation — only when signed in */}
