@@ -1,43 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Icon, type IconName } from "@/components/icons";
+import { Icon } from "@/components/icons";
 
 export const metadata: Metadata = {
-  title: "隱私條款 — CouponShare",
-  description: "CouponShare 隱私條款：我們蒐集哪些資訊、用途，以及如何保護你的資料。",
+  title: "隱私權政策 — CouponShare",
+  description:
+    "CouponShare 隱私權政策。說明本平台如何蒐集、處理、利用及保護您的個人資料，並依個人資料保護法辦理。",
 };
 
-function Section({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
+function Clause({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-7">
-      <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-accent-tint text-xs font-bold text-accent">
-          {n}
-        </span>
-        {title}
+    <section>
+      <h2 className="text-base font-bold text-ink">
+        {n}、{title}
       </h2>
-      <div className="mt-2 space-y-2 pl-8 text-[15px] leading-relaxed text-ink-soft">{children}</div>
+      <div className="mt-2 space-y-2 text-[15px] leading-relaxed text-ink-soft">{children}</div>
     </section>
-  );
-}
-
-function Item({ icon, label, children }: { icon: IconName; label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex gap-3 rounded-xl border border-line bg-paper p-3">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-tint text-accent">
-        <Icon name={icon} size={16} />
-      </span>
-      <div>
-        <p className="text-sm font-bold text-ink">{label}</p>
-        <p className="mt-0.5 text-sm leading-relaxed text-ink-soft">{children}</p>
-      </div>
-    </div>
   );
 }
 
 export default function PrivacyPage() {
   return (
-    <div className="mx-auto max-w-2xl pb-10">
+    <div className="mx-auto max-w-2xl pb-12">
       <Link
         href="/"
         className="mb-5 inline-flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
@@ -45,96 +29,115 @@ export default function PrivacyPage() {
         <Icon name="arrowLeft" size={16} /> 回到首頁
       </Link>
 
-      <h1 className="text-3xl font-extrabold tracking-tight text-ink">隱私條款</h1>
-      <p className="mt-2 text-sm text-ink-faint">最後更新：2026 年 7 月</p>
+      <h1 className="text-3xl font-extrabold tracking-tight text-ink">隱私權政策</h1>
+      <p className="mt-1.5 text-sm text-ink-faint">生效日期：2026 年 7 月 1 日</p>
 
-      <div className="mt-5 rounded-2xl bg-accent-tint/60 p-4 text-[15px] leading-relaxed text-ink">
-        CouponShare 是個人架設的小專案。我們只蒐集「提供服務所必要」的資訊，並盡力保護你的資料。
-        這份說明會告訴你：我們蒐集什麼、用來做什麼、以及我們不會做什麼。
-      </div>
+      <p className="mt-6 text-[15px] leading-relaxed text-ink-soft">
+        本隱私權政策（下稱「本政策」）說明 CouponShare（下稱「本平台」）於您使用本平台服務（下稱「本服務」）時，
+        如何蒐集、處理、利用及保護您的個人資料。本平台重視您的隱私，並依中華民國個人資料保護法及相關法令辦理。
+        當您使用本服務，即表示您已閱讀並同意本政策之內容。
+      </p>
 
-      <Section n="1" title="我們蒐集哪些資訊">
-        <p className="font-semibold text-ink">你主動提供的：</p>
-        <div className="space-y-2">
-          <Item icon="login" label="登入資訊">
-            使用 Google 登入時，我們會取得你的{" "}
-            <span className="font-medium text-ink">電子郵件、顯示名稱與頭像</span>；
-            若以 Email 註冊，則是你的 Email 與密碼（密碼經雜湊處理，我們無法還原成明碼）。
-          </Item>
-          <Item icon="ticket" label="你上傳的票券">
-            你分享的<span className="font-medium text-ink">票券圖片／條碼</span>（以 AES-256 加密儲存）、
-            標題、品牌、有效期限與說明。
-          </Item>
-          <Item icon="send" label="你填寫的內容">
-            申請留言、交換提案、評價、檢舉與申訴等你主動輸入的文字。
-          </Item>
-        </div>
-        <p className="mt-3 font-semibold text-ink">系統自動蒐集的：</p>
-        <div className="space-y-2">
-          <Item icon="shield" label="IP 與裝置資訊">
-            你的 IP 位址、瀏覽器與裝置類型，用於<span className="font-medium text-ink">防止濫用、洗票與資安防護</span>。
-          </Item>
-          <Item icon="clock" label="使用紀錄">
-            你的瀏覽、申請、交易與登入時間等操作紀錄。
-          </Item>
-          <Item icon="lock" label="Cookie">
-            僅用於維持你的<span className="font-medium text-ink">登入狀態</span>，沒有第三方廣告追蹤 Cookie。
-          </Item>
-        </div>
-      </Section>
+      <div className="mt-7 space-y-6">
+        <Clause n="一" title="蒐集之個人資料類別">
+          <p>1.1 您主動提供之資料：</p>
+          <p className="pl-4">
+            (a) 帳戶資料：當您以第三方帳號（如 Google）登入時，本平台將取得您的電子郵件地址、顯示名稱及大頭貼影像；
+            當您以電子郵件註冊時，將取得您的電子郵件及密碼（密碼經雜湊處理儲存，本平台無從還原為明文）。
+          </p>
+          <p className="pl-4">
+            (b) 內容資料：您上傳之票券圖像及條碼（以 AES-256 加密儲存）、票券標題、品牌、有效期限、說明，
+            以及您於申請、交換、評價、檢舉或申訴時所填寫之文字。
+          </p>
+          <p>1.2 系統自動蒐集之資料：</p>
+          <p className="pl-4">(a) 技術與連線資料：您的 IP 位址、瀏覽器類型、裝置資訊及作業系統。</p>
+          <p className="pl-4">(b) 使用紀錄：您於本服務之瀏覽、申請、交易及登入等操作紀錄與時間。</p>
+          <p className="pl-4">
+            (c) Cookie：本平台使用必要性 Cookie 以維持您的登入狀態；本平台不使用第三方廣告追蹤 Cookie。
+          </p>
+        </Clause>
 
-      <Section n="2" title="我們如何使用這些資訊">
-        <ul className="list-disc space-y-1.5 pl-5">
-          <li>提供並維運服務：媒合票券、顯示你的分享、計算貢獻值與等級。</li>
-          <li>建立與識別你的帳號、讓你登入。</li>
-          <li>發送與服務相關的通知（例如有人申請你的票券、你被選中領取）。</li>
-          <li>防止詐騙、濫用與洗票，維護社群安全。</li>
-          <li>處理檢舉、申訴與使用者之間的爭議。</li>
-        </ul>
-      </Section>
+        <Clause n="二" title="蒐集目的與利用方式">
+          <p>本平台基於下列目的蒐集及利用您的個人資料：</p>
+          <p className="pl-4">(a) 提供、維運及改善本服務，包括票券媒合、內容顯示及貢獻值與等級之計算；</p>
+          <p className="pl-4">(b) 建立、驗證及管理您的帳戶並提供登入功能；</p>
+          <p className="pl-4">(c) 傳送與本服務相關之通知；</p>
+          <p className="pl-4">(d) 偵測、預防及處理詐欺、濫用、洗票及其他違規或資安事件；</p>
+          <p className="pl-4">(e) 處理檢舉、申訴及使用者間之爭議；</p>
+          <p className="pl-4">(f) 履行法令所要求之義務。</p>
+        </Clause>
 
-      <Section n="3" title="我們不會做的事">
-        <ul className="list-disc space-y-1.5 pl-5">
-          <li>
-            <span className="font-semibold text-ink">不販售、不出租</span>你的個人資料給任何第三方。
-          </li>
-          <li>除非法律要求，或為保護平台與使用者安全所必要，不會任意將你的資料提供給他人。</li>
-          <li>票券條碼以加密方式儲存，只有你選定的領取者在兌換當下才看得到。</li>
-        </ul>
-      </Section>
+        <Clause n="三" title="個人資料之提供與揭露">
+          <p>3.1 本平台不會販售或出租您的個人資料。</p>
+          <p>3.2 除下列情形外，本平台不會將您的個人資料揭露予第三人：</p>
+          <p className="pl-4">(a) 經您同意；</p>
+          <p className="pl-4">(b) 為提供本服務所必要（例如委由雲端服務業者代為儲存及處理）；</p>
+          <p className="pl-4">(c) 為配合司法機關或主管機關依法所為之要求；</p>
+          <p className="pl-4">(d) 為保護本平台、使用者或公眾之權利、財產或安全所必要。</p>
+          <p>
+            3.3 部分票券資訊（如票券標題、品牌，及分享者之顯示名稱與信譽資訊）將於本服務中公開顯示，以達媒合之目的；
+            票券條碼則以加密方式儲存，僅於兌換之必要範圍內，向您所選定之領取者揭露。
+          </p>
+        </Clause>
 
-      <Section n="4" title="第三方服務">
-        <p>
-          本平台使用 <span className="font-medium text-ink">Google 登入</span>（受 Google 隱私權政策規範）
-          與雲端主機服務 <span className="font-medium text-ink">Zeabur</span> 來運作，你的資料會儲存在該雲端主機上。
-        </p>
-      </Section>
+        <Clause n="四" title="第三方服務">
+          <p>
+            本服務使用 Google 帳號登入服務及 Zeabur 雲端主機服務。您的個人資料於前述服務範圍內之處理，
+            另受各該服務提供者之隱私權政策規範。
+          </p>
+        </Clause>
 
-      <Section n="5" title="資料保存與你的權利">
-        <p>
-          你的資料會保存到你刪除帳號或我們停止營運為止。你可以隨時來信要求
-          <span className="font-semibold text-ink">查詢或刪除</span>你的帳號與相關資料。
-        </p>
-      </Section>
+        <Clause n="五" title="個人資料之保存期間">
+          <p>
+            本平台於達成蒐集目的所必要之期間內保存您的個人資料，或至您刪除帳戶為止；法令另有規定者，從其規定。
+          </p>
+        </Clause>
 
-      <div className="mt-8 rounded-2xl border border-line bg-paper p-5 text-[15px] text-ink-soft shadow-soft">
-        <p className="font-semibold text-ink">聯絡我們</p>
-        <p className="mt-1">
-          有任何隱私相關的問題或要求，請來信：{" "}
-          <a
-            href="mailto:iamlazybear2023@gmail.com"
-            className="font-semibold text-accent hover:text-accent-press"
-          >
-            iamlazybear2023@gmail.com
-          </a>
-        </p>
-        <p className="mt-3 text-sm text-ink-faint">
-          另請參閱我們的{" "}
-          <Link href="/terms" className="font-medium text-accent hover:text-accent-press">
-            使用條款
-          </Link>
-          。
-        </p>
+        <Clause n="六" title="您的權利">
+          <p>
+            依個人資料保護法，您就本平台保有之個人資料，得行使查詢、請求閱覽、請求製給複本、請求補充或更正、
+            請求停止蒐集處理利用及請求刪除等權利。如欲行使前述權利，請來信{" "}
+            <a
+              href="mailto:iamlazybear2023@gmail.com"
+              className="font-medium text-accent hover:text-accent-press"
+            >
+              iamlazybear2023@gmail.com
+            </a>
+            。
+          </p>
+        </Clause>
+
+        <Clause n="七" title="資料安全">
+          <p>
+            本平台採取合理之技術與管理措施保護您的個人資料，包括票券條碼之加密儲存及密碼之雜湊處理。
+            惟網際網路之傳輸與儲存無法保證絕對安全，本平台無法就此為絕對之擔保。
+          </p>
+        </Clause>
+
+        <Clause n="八" title="本政策之修訂">
+          <p>
+            本平台得隨時修訂本政策，並於本平台公告修訂後之版本；修訂後之政策於公告時生效。
+          </p>
+        </Clause>
+
+        <Clause n="九" title="聯絡方式">
+          <p>
+            如對本政策或您的個人資料有任何疑問或請求，請來信：{" "}
+            <a
+              href="mailto:iamlazybear2023@gmail.com"
+              className="font-medium text-accent hover:text-accent-press"
+            >
+              iamlazybear2023@gmail.com
+            </a>
+          </p>
+          <p className="text-sm text-ink-faint">
+            另請一併參閱本平台之{" "}
+            <Link href="/terms" className="font-medium text-accent hover:text-accent-press">
+              使用條款
+            </Link>
+            。
+          </p>
+        </Clause>
       </div>
     </div>
   );

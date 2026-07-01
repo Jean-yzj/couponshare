@@ -6,7 +6,6 @@ import { apiFetch } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "./CouponCard";
 import { Button, Card, Eyebrow } from "./ui";
 import { Icon, type IconName } from "./icons";
-import { Mascot } from "./Mascot";
 import { CATEGORIES } from "@/lib/categories";
 import { cn } from "@/lib/display";
 
@@ -75,9 +74,6 @@ export function Landing() {
       {/* Hero */}
       <section className="grid items-center gap-12 pt-4 md:grid-cols-[1.05fr_0.95fr] md:pt-12">
         <div className="text-center md:text-left">
-          <div className="mb-4 flex justify-center md:justify-start">
-            <Mascot size={76} float />
-          </div>
           <Eyebrow>
             <Icon name="heart" size={13} /> Share what you don&apos;t use
           </Eyebrow>

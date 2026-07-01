@@ -193,7 +193,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
             <span className="text-line">·</span>
             <Link href="/privacy" className="transition-colors hover:text-ink">
-              隱私條款
+              隱私權政策
             </Link>
             <span className="text-line">·</span>
             <a href="mailto:iamlazybear2023@gmail.com" className="transition-colors hover:text-ink">
@@ -201,8 +201,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             </a>
           </div>
           <p className="mx-auto mt-3 max-w-md leading-relaxed">
-            CouponShare 是個人架設的票券分享社群，非任何品牌官方平台；票券由使用者自行上傳，兌換前請自行評估可信度。
+            CouponShare 為使用者間之票券媒合服務，並非品牌官方平台；票券由使用者自行上傳，兌換前請自行評估可信度。
           </p>
+          <p className="mt-2 text-ink-faint/80">© 2026 CouponShare · 歡迎品牌合作</p>
         </footer>
       </main>
 

@@ -197,7 +197,7 @@ export default function LoginPage() {
         </Link>{" "}
         與{" "}
         <Link href="/privacy" className="font-medium text-accent hover:text-accent-press">
-          隱私條款
+          隱私權政策
         </Link>
         。
       </p>
