@@ -5,6 +5,7 @@ import { requireActiveUser, requireUser } from "@/lib/auth";
 import { encryptBarcode } from "@/lib/crypto";
 import { issueBarcodeToken } from "@/lib/barcode-token";
 import { writeAudit } from "@/lib/audit";
+import { sniffImageType } from "@/lib/image";
 
 export const runtime = "nodejs";
 
@@ -22,19 +23,23 @@ export const POST = route(async (req, ctx) => {
   const form = await req.formData();
   const file = form.get("file");
   if (!(file instanceof File)) throw new ApiError("VALIDATION_ERROR", { field: "file" });
-  if (!file.type.startsWith("image/")) {
-    throw new ApiError("VALIDATION_ERROR", { field: "file", message: "僅接受圖片檔" });
-  }
   if (file.size > MAX_BYTES) {
     throw new ApiError("VALIDATION_ERROR", { field: "file", message: "圖片不可超過 5MB" });
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
+  const mime = sniffImageType(bytes);
+  if (!mime) {
+    throw new ApiError("VALIDATION_ERROR", {
+      field: "file",
+      message: "僅接受 PNG / JPG / WebP / GIF 圖片",
+    });
+  }
   const encrypted = encryptBarcode(bytes);
 
   await prisma.coupon.update({
     where: { id },
-    data: { barcodeEncryptedData: encrypted, barcodeMime: file.type },
+    data: { barcodeEncryptedData: encrypted, barcodeMime: mime },
   });
 
   const meta = clientMeta(req);
@@ -62,6 +67,16 @@ export const GET = route(async (req, ctx) => {
   const isOwner = coupon.ownerId === user.id;
   const isClaimant = coupon.claimantId === user.id && coupon.status === "CLAIMED";
   if (!isOwner && !isClaimant) throw new ApiError("BARCODE_ACCESS_DENIED");
+
+  // Exchange: the claimant only sees the owner's barcode AFTER both sides commit
+  // (simultaneous reveal) — prevents see-the-code-then-bail.
+  if (isClaimant && coupon.type === "EXCHANGE") {
+    const txn = await prisma.transaction.findUnique({
+      where: { couponId: coupon.id },
+      select: { revealedAt: true },
+    });
+    if (!txn?.revealedAt) throw new ApiError("BARCODE_ACCESS_DENIED");
+  }
 
   const { token, expiresIn } = issueBarcodeToken(id, user.id);
 

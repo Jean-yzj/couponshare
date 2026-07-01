@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
-import { route } from "@/lib/api";
+import { route, publicOrigin } from "@/lib/api";
 import { googleConfigured, googleAuthUrl } from "@/lib/google";
 
 export const runtime = "nodejs";
 
 export const GET = route(async (req) => {
-  const origin = new URL(req.url).origin;
+  const origin = publicOrigin(req);
   if (!googleConfigured()) {
     return NextResponse.redirect(`${origin}/login?error=google_not_configured`);
   }

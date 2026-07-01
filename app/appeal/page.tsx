@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
-import { Button, Card, Field, Textarea, Banner, NeedLogin, Skeleton } from "@/components/ui";
+import { Button, Card, Field, Textarea, Banner, NeedLogin, Skeleton, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { formatDate } from "@/lib/display";
 
@@ -54,7 +54,7 @@ export default function AppealPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="text-2xl font-bold tracking-tight text-ink">帳號申訴</h1>
+      <PageHeader eyebrow="Appeal" title="帳號申訴" />
 
       {!data.suspended ? (
         <Card className="mt-5 p-6 text-center">

@@ -39,6 +39,32 @@ export function clientMeta(req: NextRequest): { ip: string | null; ua: string | 
   return { ip: ip ?? null, ua: req.headers.get("user-agent") };
 }
 
+// Behind Zeabur's reverse proxy, `new URL(req.url).origin` is the internal
+// container address (e.g. https://localhost:8080). Use the proxy's forwarded
+// headers so OAuth redirect URIs match the public domain the user is on.
+// Only trust these hosts from the proxy-set x-forwarded-host header when building
+// absolute URLs / OAuth redirect URIs, so a forged Host can't point auth flows at
+// an attacker domain. Anything else falls back to APP_ORIGIN.
+function isTrustedHost(host: string): boolean {
+  const h = host.split(":")[0];
+  return (
+    h === "localhost" ||
+    h === "couponshare.lazybearlife.com" ||
+    h.endsWith(".zeabur.app") ||
+    h.endsWith(".lazybearlife.com")
+  );
+}
+
+export function publicOrigin(req: NextRequest): string {
+  const host = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  if (host && isTrustedHost(host)) {
+    const proto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || "https";
+    return `${proto}://${host}`;
+  }
+  if (process.env.APP_ORIGIN) return process.env.APP_ORIGIN.replace(/\/+$/, "");
+  return new URL(req.url).origin;
+}
+
 export function jsonOk(data: unknown, status = 200): NextResponse {
   return NextResponse.json(data, { status });
 }

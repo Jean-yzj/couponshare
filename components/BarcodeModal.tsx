@@ -1,89 +1,128 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch, ApiErr } from "@/lib/client";
+import { cn } from "@/lib/display";
 import { Modal } from "./Modal";
 import { Button, Spinner, Banner } from "./ui";
+import { Icon } from "./icons";
 
 export function BarcodeModal({
   couponId,
+  endpoint,
+  title,
+  owned = false,
   open,
   onClose,
 }: {
-  couponId: string;
+  couponId?: string;
+  endpoint?: string;
+  title?: string;
+  // The viewer owns this coupon outright (a received gift, or their own coupon).
+  // Show it as a plain, keepable ticket instead of a self-destructing barcode.
+  owned?: boolean;
   open: boolean;
   onClose: () => void;
 }) {
+  // Single-hop, cookie-authenticated image when we have a couponId — the browser
+  // starts downloading the instant the modal opens (no "issue signed URL" pre-fetch),
+  // so a received ticket shows up immediately instead of lagging behind two requests.
+  const directSrc = couponId ? `/api/v1/coupons/${couponId}/barcode/image` : null;
+
   const [url, setUrl] = useState<string | null>(null);
-  const [expiresIn, setExpiresIn] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nonce, setNonce] = useState(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // Exchange offer-barcode path (transactions) still resolves a signed URL first,
+  // and silently re-issues it ~20s before expiry so it never blanks at the till.
+  const loadViaToken = useCallback(async () => {
+    if (!endpoint) return;
     setError(null);
-    setUrl(null);
     try {
-      const r = await apiFetch<{ barcode_url: string; expires_in_seconds: number }>(
-        `/api/v1/coupons/${couponId}/barcode`,
-      );
+      const r = await apiFetch<{ barcode_url: string; expires_in_seconds: number }>(endpoint);
       setUrl(r.barcode_url);
-      setExpiresIn(r.expires_in_seconds);
+      if (timer.current) clearTimeout(timer.current);
+      const refreshMs = Math.max(15, (r.expires_in_seconds || 300) - 20) * 1000;
+      timer.current = setTimeout(() => void loadViaToken(), refreshMs);
     } catch (e) {
-      setError(e instanceof ApiErr ? e.message : "無法取得條碼");
-    } finally {
       setLoading(false);
+      setError(e instanceof ApiErr ? e.message : "無法取得票券圖片");
     }
-  }, [couponId]);
+  }, [endpoint]);
 
   useEffect(() => {
-    if (open) load();
-    else {
+    if (!open) return;
+    setError(null);
+    setLoading(true);
+    if (directSrc) {
+      setUrl(nonce ? `${directSrc}?r=${nonce}` : directSrc);
+    } else if (endpoint) {
       setUrl(null);
-      setExpiresIn(0);
+      void loadViaToken();
     }
-  }, [open, load]);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [open, directSrc, endpoint, loadViaToken, nonce]);
 
-  useEffect(() => {
-    if (!open || !url) return;
-    const t = setInterval(() => setExpiresIn((s) => (s <= 1 ? 0 : s - 1)), 1000);
-    return () => clearInterval(t);
-  }, [open, url]);
+  function retry() {
+    setError(null);
+    setLoading(true);
+    if (directSrc) setNonce((n) => n + 1);
+    else void loadViaToken();
+  }
 
-  const expired = !!url && expiresIn <= 0;
+  const heading = title ?? (owned ? "你的票券" : "票券條碼");
 
   return (
-    <Modal open={open} onClose={onClose} title="票券條碼" size="sm">
-      <Banner tone="warn" icon="shield">
-        此條碼僅供你本次兌換使用，請勿截圖或轉傳給他人。
-      </Banner>
+    <Modal open={open} onClose={onClose} title={heading} size="sm">
+      {owned ? (
+        <Banner tone="success" icon="checkCircle">
+          這張券已經是你的了！結帳時把畫面出示給店員即可，也可以直接截圖保存。
+        </Banner>
+      ) : (
+        <Banner tone="warn" icon="shield">
+          此條碼僅供你本次兌換使用，請勿截圖或轉傳給他人。
+        </Banner>
+      )}
 
-      <div className="mt-4 flex min-h-56 items-center justify-center rounded-2xl border border-line bg-white p-4">
-        {loading ? (
-          <Spinner size={28} className="text-accent" />
-        ) : error ? (
+      <div className="relative mt-4 flex min-h-60 items-center justify-center overflow-hidden rounded-2xl border border-accent/15 bg-white p-4 ring-4 ring-accent/5">
+        {url && !error && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={url}
+            alt="票券圖片"
+            className={cn("max-h-72 w-auto rounded-lg transition-opacity duration-200", loading && "opacity-0")}
+            onLoad={() => setLoading(false)}
+            onError={() => {
+              setLoading(false);
+              setError("無法載入票券圖片");
+            }}
+          />
+        )}
+        {loading && !error && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Spinner size={28} className="text-accent" />
+          </div>
+        )}
+        {error && (
           <div className="text-center">
             <p className="text-sm text-accent-press">{error}</p>
-            <Button size="sm" variant="outline" className="mt-3" onClick={load}>
+            <Button size="sm" variant="outline" className="mt-3" onClick={retry}>
               重試
             </Button>
           </div>
-        ) : url && !expired ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt="票券條碼" className="max-h-64 w-auto" />
-        ) : expired ? (
-          <div className="text-center">
-            <p className="text-sm text-ink-soft">安全連結已過期</p>
-            <Button size="sm" variant="outline" className="mt-3" icon="lock" onClick={load}>
-              重新取得
-            </Button>
-          </div>
-        ) : null}
+        )}
       </div>
 
-      {url && !expired && (
-        <p className="mt-3 text-center text-xs text-ink-faint">
-          安全連結將在 <span className="font-semibold text-ink-soft">{expiresIn}s</span> 後失效
+      {url && !error && !loading && (
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-ink-faint">
+          <Icon name={owned ? "heart" : "shield"} size={13} />
+          {owned
+            ? "兌換後別忘了回來給對方留下評價與感謝。"
+            : "畫面會自動保持有效，安心兌換即可。"}
         </p>
       )}
     </Modal>

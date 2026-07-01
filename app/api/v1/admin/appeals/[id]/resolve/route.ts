@@ -32,7 +32,11 @@ export const POST = route(async (req, ctx) => {
       // Restore the account, re-list its still-valid coupons, dismiss the reports.
       await tx.user.update({ where: { id: appeal.userId }, data: { status: "ACTIVE" } });
       await tx.coupon.updateMany({
-        where: { ownerId: appeal.userId, status: "SUSPENDED", expiryDate: { gt: new Date() } },
+        where: {
+          ownerId: appeal.userId,
+          status: "SUSPENDED",
+          OR: [{ expiryDate: null }, { expiryDate: { gt: new Date() } }],
+        },
         data: { status: "AVAILABLE" },
       });
       await tx.report.updateMany({

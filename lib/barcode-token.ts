@@ -3,7 +3,12 @@ import { sign, safeEqual } from "./crypto";
 const TTL_S = 300; // 5-minute signed access — PRD §8.1
 
 function secret(): string {
-  return process.env.SESSION_SECRET ?? "insecure-dev-secret";
+  const s = process.env.SESSION_SECRET;
+  if (s) return s;
+  // Fail closed in production (see lib/session.ts) — a fallback secret would let
+  // an attacker forge barcode-access tokens.
+  if (process.env.NODE_ENV === "production") throw new Error("SESSION_SECRET is not set");
+  return "insecure-dev-secret";
 }
 
 export function issueBarcodeToken(

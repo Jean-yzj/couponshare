@@ -26,7 +26,7 @@ export const createCouponSchema = z.object({
     "OTHER",
   ]),
   description: z.string().max(1000).optional().nullable(),
-  expiry_date: z.coerce.date(),
+  expiry_date: z.coerce.date().nullable().optional(),
   type: z.enum(["GIFT", "EXCHANGE"]),
   exchange_target: z.string().max(200).optional().nullable(),
   // Attestation: the coupon is directly redeemable (no add-friend / task gimmicks).
@@ -71,6 +71,19 @@ export const reportSchema = z.object({
 });
 
 export const demoLoginSchema = z.object({ user_id: z.string().min(1) });
+
+export const disputeSchema = z.object({
+  reason: z.enum([
+    "INVALID_COUPON",
+    "ALREADY_USED",
+    "EXPIRED_COUPON",
+    "NO_RESPONSE",
+    "SCAM",
+    "OTHER",
+  ]),
+  description: z.string().max(1000).optional().nullable(),
+  evidence_image_url: z.string().url().optional().nullable(),
+});
 
 export const transactionMessageSchema = z.object({
   message: z.string().min(1).max(500),

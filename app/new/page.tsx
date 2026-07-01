@@ -13,6 +13,7 @@ import {
   Banner,
   NeedLogin,
   Spinner,
+  PageHeader,
 } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/display";
@@ -33,6 +34,7 @@ export default function NewCouponPage() {
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("");
   const [expiry, setExpiry] = useState(defaultExpiry);
+  const [noExpiry, setNoExpiry] = useState(false);
   const [type, setType] = useState<"GIFT" | "EXCHANGE">("GIFT");
   const [exchangeTarget, setExchangeTarget] = useState("");
   const [description, setDescription] = useState("");
@@ -68,7 +70,7 @@ export default function NewCouponPage() {
     if (!title.trim()) return "請填寫標題";
     if (!brand.trim()) return "請填寫品牌";
     if (!category) return "請選擇分類";
-    if (!expiry || new Date(expiry).getTime() <= Date.now()) return "到期日必須晚於現在";
+    if (!noExpiry && (!expiry || new Date(expiry).getTime() <= Date.now())) return "到期日必須晚於現在";
     if (type === "EXCHANGE" && !exchangeTarget.trim()) return "交換類型必須填寫想交換的目標";
     if (!agreed) return "請先勾選確認這是可直接兌換的票券";
     return null;
@@ -93,7 +95,7 @@ export default function NewCouponPage() {
             brand: brand.trim(),
             category,
             description: description.trim() || null,
-            expiry_date: new Date(expiry).toISOString(),
+            expiry_date: noExpiry ? null : new Date(expiry).toISOString(),
             type,
             exchange_target: type === "EXCHANGE" ? exchangeTarget.trim() : null,
             directly_redeemable: true,
@@ -129,10 +131,11 @@ export default function NewCouponPage() {
         返回
       </button>
 
-      <h1 className="text-2xl font-bold tracking-tight text-ink">新增優惠券</h1>
-      <p className="mt-1.5 text-sm text-ink-soft">
-        條碼會經 AES-256 加密保存，只有你選定的領取者才看得到。
-      </p>
+      <PageHeader
+        eyebrow="New coupon"
+        title="新增優惠券"
+        subtitle="條碼會經 AES-256 加密保存，只有你選定的領取者才看得到。"
+      />
 
       <form onSubmit={submit} className="mt-5 space-y-5">
         <Banner tone="info" icon="shieldCheck">
@@ -199,12 +202,23 @@ export default function NewCouponPage() {
               </Select>
             </Field>
           </div>
-          <Field label="到期日" required>
+          <Field label="到期日">
             <Input
               type="datetime-local"
               value={expiry}
               onChange={(e) => setExpiry(e.target.value)}
+              disabled={noExpiry}
+              className={cn(noExpiry && "opacity-50")}
             />
+            <label className="mt-2.5 flex cursor-pointer items-center gap-2 text-sm text-ink-soft">
+              <input
+                type="checkbox"
+                checked={noExpiry}
+                onChange={(e) => setNoExpiry(e.target.checked)}
+                className="h-4 w-4 accent-[var(--color-accent)]"
+              />
+              這張券沒有使用期限
+            </label>
           </Field>
 
           <div>
@@ -216,9 +230,9 @@ export default function NewCouponPage() {
                   type="button"
                   onClick={() => setType(t)}
                   className={cn(
-                    "flex items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-medium transition-colors",
+                    "flex items-center justify-center gap-2 rounded-xl border py-3 text-sm font-semibold transition-all",
                     type === t
-                      ? "border-accent bg-accent-tint text-accent-press"
+                      ? "border-transparent bg-grad-brand text-white shadow-glow"
                       : "border-line bg-paper text-ink-soft hover:bg-canvas-2",
                   )}
                 >

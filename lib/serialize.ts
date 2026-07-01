@@ -1,4 +1,12 @@
-import type { Coupon, ClaimRequest, Notification, Rating, Transaction, User } from "@prisma/client";
+import type {
+  Coupon,
+  ClaimRequest,
+  ClaimRequestStatus,
+  Notification,
+  Rating,
+  Transaction,
+  User,
+} from "@prisma/client";
 import { LEVELS } from "./levels";
 
 type OwnerRelation = Pick<
@@ -18,7 +26,11 @@ export function publicUser(u: OwnerRelation) {
 }
 
 // Feed card. NEVER includes barcode_* fields (PRD §8.1, AC §17.2).
-export function feedCoupon(c: Coupon & { owner?: OwnerRelation | null }) {
+// `myRequestStatus` (when a viewer is signed in) surfaces "已申請 / 已獲得" on the card.
+export function feedCoupon(
+  c: Coupon & { owner?: OwnerRelation | null },
+  myRequestStatus?: ClaimRequestStatus | null,
+) {
   return {
     id: c.id,
     title: c.title,
@@ -30,6 +42,7 @@ export function feedCoupon(c: Coupon & { owner?: OwnerRelation | null }) {
     visibility_level: c.visibilityLevel,
     view_count: c.viewCount,
     claim_request_count: c.claimRequestCount,
+    my_request_status: myRequestStatus ?? null,
     created_at: c.createdAt,
     owner: c.owner ? publicUser(c.owner) : null,
   };
@@ -40,12 +53,14 @@ export function feedCoupon(c: Coupon & { owner?: OwnerRelation | null }) {
 export function couponDetail(
   c: Coupon & { owner?: OwnerRelation | null },
   viewer: { id: string } | null,
+  myRequestStatus?: ClaimRequestStatus | null,
 ) {
   const isOwner = !!viewer && c.ownerId === viewer.id;
   const isClaimant = !!viewer && c.claimantId === viewer.id;
   const hasBarcode = !!c.barcodeEncryptedData;
   const canViewBarcode = (isOwner || (isClaimant && c.status === "CLAIMED")) && hasBarcode;
   return {
+    my_request_status: myRequestStatus ?? null,
     id: c.id,
     title: c.title,
     brand: c.brand,
@@ -110,6 +125,11 @@ export function transactionView(
     status: t.status,
     owner_completed: t.ownerCompleted,
     claimant_completed: t.claimantCompleted,
+    owner_ready: t.ownerReady,
+    claimant_ready: t.claimantReady,
+    revealed: !!t.revealedAt,
+    has_offer_barcode: !!t.offerBarcodeEncryptedData,
+    disputed_at: t.disputedAt,
     role: viewerId
       ? viewerId === t.ownerId
         ? "owner"

@@ -19,7 +19,7 @@ export const POST = route(async (req, ctx) => {
   if (!coupon) throw new ApiError("COUPON_NOT_FOUND");
   if (coupon.ownerId === user.id) throw new ApiError("CANNOT_CLAIM_OWN_COUPON");
   if (coupon.status !== "AVAILABLE") throw new ApiError("COUPON_NOT_AVAILABLE");
-  if (coupon.expiryDate <= new Date()) throw new ApiError("COUPON_EXPIRED");
+  if (coupon.expiryDate && coupon.expiryDate <= new Date()) throw new ApiError("COUPON_EXPIRED");
   if (body.request_type === "EXCHANGE" && !body.exchange_offer_text) {
     throw new ApiError("VALIDATION_ERROR", { message: "交換申請必須填寫交換內容" });
   }

@@ -26,7 +26,7 @@ export const LEVELS: Record<
     monthlyGifts: 0,
     dailyClaim: 5,
     dailyPublish: 3,
-    perks: ["瀏覽並申請公開票券", "上傳與上架自己的票券", "每日上架 3 張、申請 5 張"],
+    perks: ["瀏覽並申請公開票券", "自由上架你的票券，不限張數", "每日可申請 5 張"],
   },
   LEVEL_2: {
     key: "LEVEL_2",
@@ -38,7 +38,7 @@ export const LEVELS: Record<
     dailyClaim: 8,
     dailyPublish: 5,
     perks: [
-      "每日上架 5 張、申請 8 張",
+      "每日可申請 8 張",
       "可申請「達人限定」票券",
       "提前瀏覽熱門品牌票券",
       "收藏品牌篩選條件",
@@ -53,7 +53,7 @@ export const LEVELS: Record<
     monthlyGifts: 20,
     dailyClaim: 12,
     dailyPublish: 8,
-    perks: ["每日上架 8 張、申請 12 張", "可申請「傳奇限定」票券", "品牌到貨提醒", "專屬傳奇徽章"],
+    perks: ["每日可申請 12 張", "可申請「傳奇限定」票券", "品牌到貨提醒", "專屬傳奇徽章"],
   },
 };
 

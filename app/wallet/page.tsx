@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useApi, useMe } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
-import { Button, Card, Avatar, Skeleton, EmptyState, NeedLogin, Pill } from "@/components/ui";
+import { Button, Card, Avatar, Skeleton, EmptyState, NeedLogin, Pill, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn, relativeTime } from "@/lib/display";
 
@@ -85,8 +85,7 @@ export default function WalletPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight text-ink">我的錢包</h1>
-      <p className="mt-1.5 text-sm text-ink-soft">管理你分享、申請與領取的所有票券。</p>
+      <PageHeader eyebrow="My wallet" title="我的錢包" subtitle="管理你分享、申請與領取的所有票券。" />
 
       <div className="no-scrollbar -mx-4 mt-5 flex gap-1.5 overflow-x-auto px-4 pb-1">
         {TABS.map((t) => (

@@ -11,10 +11,10 @@ import { Avatar, Button } from "./ui";
 function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-white shadow-soft">
+      <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-grad-brand text-white shadow-glow">
         <Icon name="ticket" size={20} />
       </span>
-      <span className="font-display text-[19px] font-semibold tracking-tight text-ink">
+      <span className="font-display text-[22px] font-extrabold tracking-tight text-ink">
         CouponShare
       </span>
     </Link>
@@ -50,11 +50,18 @@ function Tab({
     <Link
       href={href}
       className={cn(
-        "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors",
+        "flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium transition-colors",
         active ? "text-accent" : "text-ink-soft",
       )}
     >
-      <Icon name={icon} size={22} strokeWidth={active ? 2.1 : 1.75} />
+      <span
+        className={cn(
+          "flex h-8 w-12 items-center justify-center rounded-full transition-colors",
+          active && "bg-accent-tint",
+        )}
+      >
+        <Icon name={icon} size={21} strokeWidth={active ? 2.2 : 1.75} />
+      </span>
       {label}
     </Link>
   );
@@ -82,11 +89,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4 sm:px-6">
           <Logo />
 
-          <nav className="ml-4 hidden items-center gap-1 md:flex">
-            <NavLink href="/" label="探索" active={isActive("/") && pathname === "/"} />
-            <NavLink href="/wallet" label="我的錢包" active={isActive("/wallet")} />
-            <NavLink href="/score" label="貢獻值" active={isActive("/score")} />
-          </nav>
+          {me && (
+            <nav className="ml-4 hidden items-center gap-1 md:flex">
+              <NavLink href="/" label="探索" active={isActive("/") && pathname === "/"} />
+              <NavLink href="/wallet" label="我的錢包" active={isActive("/wallet")} />
+              <NavLink href="/score" label="貢獻值" active={isActive("/score")} />
+            </nav>
+          )}
 
           <div className="ml-auto flex items-center gap-1.5">
             {me ? (
@@ -133,7 +142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <MenuItem href="/notifications" icon="bell" label="通知中心" onClick={() => setMenuOpen(false)} />
                         {me.is_admin && (
                           <MenuItem
-                            href="/admin/appeals"
+                            href="/admin"
                             icon="shield"
                             label="管理後台"
                             onClick={() => setMenuOpen(false)}
@@ -160,7 +169,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 pt-6 sm:px-6 md:pb-12">
+      <main className={cn("mx-auto w-full max-w-6xl flex-1 px-4 pt-6 sm:px-6", me ? "pb-24 md:pb-12" : "pb-12")}>
         {me?.status === "SUSPENDED" && (
           <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-danger/30 bg-danger-tint px-4 py-3">
             <Icon name="ban" size={18} className="shrink-0 text-danger" />
@@ -178,7 +187,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      {/* Mobile bottom navigation */}
+      {/* Mobile bottom navigation — only when signed in */}
+      {me && (
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 backdrop-blur-md md:hidden">
         <div className="mx-auto flex max-w-md items-stretch px-2">
           <Tab href="/" icon="compass" label="探索" active={pathname === "/"} />
@@ -187,8 +197,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link
               href="/new"
               aria-label="新增優惠券"
-              className="-mt-6 flex h-13 w-13 items-center justify-center rounded-2xl bg-accent text-white shadow-lift transition-transform active:scale-95"
-              style={{ height: 52, width: 52 }}
+              className="-mt-7 flex items-center justify-center rounded-2xl bg-grad-brand text-white shadow-glow transition-transform active:scale-95"
+              style={{ height: 54, width: 54 }}
             >
               <Icon name="plus" size={26} strokeWidth={2.2} />
             </Link>
@@ -197,6 +207,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Tab href="/notifications" icon="bell" label="通知" active={isActive("/notifications")} />
         </div>
       </nav>
+      )}
     </div>
   );
 }

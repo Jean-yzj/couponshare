@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
@@ -9,7 +9,6 @@ import {
   Card,
   Field,
   Textarea,
-  Select,
   Banner,
   Avatar,
   StatusPill,
@@ -40,7 +39,7 @@ type Detail = {
   description: string | null;
   type: string;
   exchange_target: string | null;
-  expiry_date: string;
+  expiry_date: string | null;
   status: string;
   visibility_level: string;
   view_count: number;
@@ -49,6 +48,7 @@ type Detail = {
   can_view_barcode: boolean;
   is_owner: boolean;
   is_claimant: boolean;
+  my_request_status: string | null;
   claimed_at: string | null;
   created_at: string;
   owner: Owner | null;
@@ -90,6 +90,17 @@ export default function CouponDetailPage() {
   const [busy, setBusy] = useState(false);
   const brandsApi = useApi<{ brands: string[] }>(me ? "/api/v1/me/brands" : null);
 
+  // Warm the barcode image cache the moment the page loads so "出示我的票券"
+  // opens with no wait (the image route serves it in a single cookie-auth hop).
+  const canViewBarcode = coupon?.can_view_barcode;
+  const couponId = coupon?.id;
+  useEffect(() => {
+    if (canViewBarcode && couponId) {
+      const img = new window.Image();
+      img.src = `/api/v1/coupons/${couponId}/barcode/image`;
+    }
+  }, [canViewBarcode, couponId]);
+
   if (loading) return <DetailSkeleton />;
   if (!coupon) {
     return (
@@ -100,8 +111,9 @@ export default function CouponDetailPage() {
   }
 
   const exp = expiryText(coupon.expiry_date);
-  const isExpired = new Date(coupon.expiry_date).getTime() <= Date.now();
+  const isExpired = !!coupon.expiry_date && new Date(coupon.expiry_date).getTime() <= Date.now();
   const canClaim = !coupon.is_owner && coupon.status === "AVAILABLE" && !isExpired;
+  const hasPendingRequest = coupon.my_request_status === "PENDING";
   const canCancel =
     coupon.is_owner && ["DRAFT", "AVAILABLE", "PENDING", "REPORTED", "SUSPENDED"].includes(coupon.status);
 
@@ -165,9 +177,21 @@ export default function CouponDetailPage() {
       <Card className="overflow-hidden">
         <div className={cn("border-b border-line px-5 pt-5 pb-4", headerTint)}>
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">{coupon.brand}</p>
-              <h1 className="mt-1 text-2xl font-bold leading-snug tracking-tight text-ink">{coupon.title}</h1>
+            <div className="flex min-w-0 items-start gap-3">
+              <span
+                className={cn(
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg font-bold text-white shadow-soft",
+                  coupon.type === "GIFT" ? "bg-[image:var(--grad-pine)]" : "bg-[image:var(--grad-teal)]",
+                )}
+              >
+                {coupon.brand.trim()[0] ?? "?"}
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wide text-accent">{coupon.brand}</p>
+                <h1 className="mt-0.5 text-2xl font-extrabold leading-snug tracking-tight text-ink">
+                  {coupon.title}
+                </h1>
+              </div>
             </div>
             <StatusPill status={coupon.status} />
           </div>
@@ -251,10 +275,14 @@ export default function CouponDetailPage() {
             <Icon name="shieldCheck" size={20} />
             <p className="font-semibold">你已成功領取這張票券</p>
           </div>
-          <p className="mt-1 text-sm text-ink-soft">條碼僅供你本人兌換，請勿轉傳。</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            {coupon.type === "GIFT"
+              ? "這張券已經是你的了，結帳時出示畫面即可，也可以截圖保存。"
+              : "條碼僅供你本人兌換，請勿轉傳。"}
+          </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button icon="ticket" onClick={() => setBarcodeOpen(true)}>
-              查看條碼
+              {coupon.type === "GIFT" ? "出示我的票券" : "查看條碼"}
             </Button>
             <Button variant="outline" href="/wallet" icon="wallet">
               前往我的錢包評價
@@ -309,7 +337,25 @@ export default function CouponDetailPage() {
       ) : (
         /* Visitor / claimant actions */
         <div className="mt-4">
-          {canClaim ? (
+          {hasPendingRequest ? (
+            <Card className="p-5">
+              <div className="flex items-center gap-2 text-gold-ink">
+                <Icon name="hourglass" size={20} />
+                <p className="font-semibold">已送出申請，等待持有者選擇</p>
+              </div>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+                持有者會親手挑選領取者。被選中後你會收到通知，票券也會出現在「我的錢包 · 我領取的」。
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button variant="outline" href="/wallet" icon="wallet">
+                  查看我的申請
+                </Button>
+                <Button variant="ghost" href="/" icon="compass">
+                  繼續探索
+                </Button>
+              </div>
+            </Card>
+          ) : canClaim ? (
             <Card className="p-4">
               {me ? (
                 <Button
@@ -365,7 +411,12 @@ export default function CouponDetailPage() {
         couponId={coupon.id}
         onDone={() => setReportOpen(false)}
       />
-      <BarcodeModal couponId={coupon.id} open={barcodeOpen} onClose={() => setBarcodeOpen(false)} />
+      <BarcodeModal
+        couponId={coupon.id}
+        owned={coupon.is_owner || coupon.type === "GIFT"}
+        open={barcodeOpen}
+        onClose={() => setBarcodeOpen(false)}
+      />
     </div>
   );
 }

@@ -19,19 +19,54 @@ export function Spinner({ size = 18, className }: { size?: number; className?: s
   );
 }
 
+export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <span className={cn("eyebrow inline-flex items-center gap-1.5 text-accent", className)}>
+      {children}
+    </span>
+  );
+}
+
+export function PageHeader({
+  eyebrow,
+  title,
+  subtitle,
+  action,
+}: {
+  eyebrow: string;
+  title: string;
+  subtitle?: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink">{title}</h1>
+        {subtitle && <p className="mt-1.5 text-sm text-ink-soft">{subtitle}</p>}
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  );
+}
+
+// Glossy gradient pills with a soft coloured glow (premium "cute fintech" look).
 const BTN_VARIANTS = {
-  primary: "bg-accent text-white hover:bg-accent-press shadow-soft",
-  secondary: "bg-sand text-ink hover:bg-sand-2",
-  outline: "border border-line bg-paper text-ink hover:bg-canvas-2",
-  ghost: "text-ink-soft hover:bg-sand/60",
+  primary:
+    "bg-grad-brand text-white shadow-glow hover:brightness-[1.05] active:brightness-95",
+  secondary:
+    "bg-white text-ink ring-1 ring-line shadow-soft hover:bg-sand/60",
+  outline:
+    "border border-line bg-white/70 text-ink hover:border-accent/40 hover:bg-white",
+  ghost: "text-ink-soft hover:bg-sand/70",
   danger: "bg-danger-tint text-danger hover:brightness-95",
-  gold: "bg-gold text-white hover:brightness-95 shadow-soft",
+  gold: "bg-grad-gold text-white shadow-glow-gold hover:brightness-[1.05] active:brightness-95",
 } as const;
 
 const BTN_SIZES = {
-  sm: "h-9 px-3.5 text-sm gap-1.5",
+  sm: "h-9 px-4 text-sm gap-1.5",
   md: "h-11 px-5 text-[15px] gap-2",
-  lg: "h-12 px-6 text-base gap-2",
+  lg: "h-13 px-7 text-base gap-2",
 } as const;
 
 type ButtonProps = {
@@ -58,7 +93,7 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const cls = cn(
-    "inline-flex items-center justify-center rounded-full font-medium transition-colors select-none disabled:opacity-50 disabled:pointer-events-none",
+    "inline-flex select-none items-center justify-center rounded-full font-semibold transition-[transform,box-shadow,background-color,filter] duration-150 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",
     BTN_VARIANTS[variant],
     BTN_SIZES[size],
     full && "w-full",
@@ -149,6 +184,7 @@ export function LevelBadge({ level }: { level: string }) {
   return (
     <Pill className={m.cls} icon="medal">
       {m.name}
+      <span className="ml-0.5 text-[10px] leading-none tracking-tight">{"★".repeat(m.stars)}</span>
     </Pill>
   );
 }
@@ -315,6 +351,128 @@ export function Banner({
     <div className={cn("flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-sm", tones[tone])}>
       {icon && <Icon name={icon} size={18} className="mt-0.5 shrink-0" />}
       <div className="leading-relaxed">{children}</div>
+    </div>
+  );
+}
+
+// ── Gradient hero panel: azure (default) or gold, rounded with a soft glow. ──
+export function GradientPanel({
+  tone = "brand",
+  className,
+  children,
+  ...rest
+}: { tone?: "brand" | "gold"; className?: string; children: ReactNode } & React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-[26px] text-white",
+        tone === "gold" ? "bg-grad-gold shadow-glow-gold" : "bg-grad-brand-deep shadow-glow",
+        className,
+      )}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ── Progress bar. onDark sits on a gradient hero (white fill, translucent track). ──
+export function ProgressBar({
+  value,
+  onDark,
+  className,
+}: {
+  value: number;
+  onDark?: boolean;
+  className?: string;
+}) {
+  const pct = Math.min(100, Math.max(0, value));
+  return (
+    <div
+      className={cn(
+        "h-3 w-full overflow-hidden rounded-full",
+        onDark ? "bg-white/25" : "bg-sand",
+        className,
+      )}
+    >
+      <div
+        className={cn("h-full rounded-full transition-all duration-700", onDark ? "bg-white" : "bg-grad-brand")}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
+// ── Gamified achievement disc. Locked = muted with a lock badge. ──
+const BADGE_TONE: Record<string, string> = {
+  blue: "bg-grad-brand",
+  gold: "bg-grad-gold",
+  pine: "bg-[image:var(--grad-pine)]",
+  teal: "bg-[image:var(--grad-teal)]",
+  grape: "bg-[image:var(--grad-grape)]",
+  rose: "bg-[image:var(--grad-rose)]",
+};
+
+export function AchievementBadge({
+  icon,
+  label,
+  tone = "blue",
+  unlocked = true,
+}: {
+  icon: IconName;
+  label: string;
+  tone?: keyof typeof BADGE_TONE;
+  unlocked?: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2 text-center">
+      <div className="relative">
+        <div
+          className={cn(
+            "flex h-16 w-16 items-center justify-center rounded-[20px] text-white transition-transform",
+            unlocked ? cn(BADGE_TONE[tone], "shadow-soft") : "bg-sand text-ink-faint",
+          )}
+        >
+          <Icon name={icon} size={28} strokeWidth={2} />
+        </div>
+        {!unlocked && (
+          <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-paper bg-ink-faint text-white">
+            <Icon name="lock" size={11} />
+          </span>
+        )}
+      </div>
+      <span className={cn("text-xs font-medium leading-tight", unlocked ? "text-ink" : "text-ink-faint")}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// ── Compact stat tile for dashboards. ──
+export function StatTile({
+  icon,
+  label,
+  value,
+  tone = "accent",
+}: {
+  icon: IconName;
+  label: string;
+  value: ReactNode;
+  tone?: "accent" | "gold" | "pine" | "teal";
+}) {
+  const tones = {
+    accent: "bg-accent-tint text-accent",
+    gold: "bg-gold-tint text-gold-ink",
+    pine: "bg-pine-tint text-pine",
+    teal: "bg-teal-tint text-teal",
+  } as const;
+  return (
+    <div className="rounded-2xl border border-line bg-paper p-4 shadow-soft">
+      <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl", tones[tone])}>
+        <Icon name={icon} size={18} />
+      </span>
+      <p className="mt-3 font-display text-2xl font-extrabold leading-none text-ink">{value}</p>
+      <p className="mt-1 text-xs text-ink-soft">{label}</p>
     </div>
   );
 }

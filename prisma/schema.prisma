@@ -186,7 +186,7 @@ model Coupon {
   title                String
   brand                String
   description          String?
-  expiryDate           DateTime        @map("expiry_date")
+  expiryDate           DateTime?       @map("expiry_date")
   type                 CouponType
   category             CouponCategory  @default(OTHER)
   exchangeTarget       String?         @map("exchange_target")
@@ -262,6 +262,13 @@ model Transaction {
   ownerCompleted    Boolean           @default(false) @map("owner_completed")
   claimantCompleted Boolean           @default(false) @map("claimant_completed")
   completedAt       DateTime?         @map("completed_at")
+  // Exchange escrow: claimant's offered barcode + simultaneous-reveal gate.
+  offerBarcodeEncryptedData String?  @map("offer_barcode_encrypted_data")
+  offerBarcodeMime          String?  @map("offer_barcode_mime")
+  ownerReady                Boolean   @default(false) @map("owner_ready")
+  claimantReady             Boolean   @default(false) @map("claimant_ready")
+  revealedAt                DateTime? @map("revealed_at")
+  disputedAt                DateTime? @map("disputed_at")
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 

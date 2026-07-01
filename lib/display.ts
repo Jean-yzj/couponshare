@@ -4,10 +4,13 @@ export function cn(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
 }
 
-export const LEVEL_META: Record<string, { name: string; en: string; cls: string }> = {
-  LEVEL_1: { name: "新手", en: "Newcomer", cls: "bg-sand text-ink-soft" },
-  LEVEL_2: { name: "達人", en: "Pro", cls: "bg-teal-tint text-teal" },
-  LEVEL_3: { name: "傳奇", en: "Legend", cls: "bg-gold-tint text-gold" },
+export const LEVEL_META: Record<
+  string,
+  { name: string; en: string; cls: string; stars: number; emblem: string; emblemEdge: string }
+> = {
+  LEVEL_1: { name: "新手", en: "Newcomer", cls: "bg-sand text-ink-soft", stars: 1, emblem: "bg-accent", emblemEdge: "shadow-[0_4px_0_0_var(--color-accent-press)]" },
+  LEVEL_2: { name: "達人", en: "Pro", cls: "bg-teal-tint text-teal", stars: 2, emblem: "bg-teal", emblemEdge: "shadow-[0_4px_0_0_#14697c]" },
+  LEVEL_3: { name: "傳奇", en: "Legend", cls: "bg-gold-tint text-gold", stars: 3, emblem: "bg-gold", emblemEdge: "shadow-[0_4px_0_0_#9c7419]" },
 };
 
 export const STATUS_META: Record<string, { label: string; cls: string }> = {
@@ -32,7 +35,8 @@ export function formatDate(d: string | Date): string {
   return date.toLocaleDateString("zh-TW", { year: "numeric", month: "long", day: "numeric" });
 }
 
-export function expiryText(d: string | Date): { text: string; urgent: boolean } {
+export function expiryText(d: string | Date | null | undefined): { text: string; urgent: boolean } {
+  if (!d) return { text: "無使用期限", urgent: false };
   const date = typeof d === "string" ? new Date(d) : d;
   const ms = date.getTime() - Date.now();
   if (ms <= 0) return { text: "已過期", urgent: true };

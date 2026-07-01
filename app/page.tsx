@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { apiFetch, useApi, useMe } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
 import { Landing } from "@/components/Landing";
-import { Button, Input, Skeleton, EmptyState } from "@/components/ui";
+import { Button, Input, Skeleton, EmptyState, GradientPanel } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { Mascot, HeroSparkles } from "@/components/Mascot";
 import { cn } from "@/lib/display";
 import { CATEGORIES } from "@/lib/categories";
 
@@ -90,13 +92,32 @@ function FeedView() {
 
   return (
     <div>
-      <section className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">探索票券</h1>
-        <p className="mt-1.5 text-sm text-ink-soft">
-          歡迎回來，<span className="font-medium text-ink">{me?.display_name}</span>
-          　·　目前 <span className="font-medium text-accent">{me?.contribution_score}</span> 貢獻分
-        </p>
-      </section>
+      <GradientPanel className="mb-6 px-5 py-5 sm:px-7 sm:py-6">
+        <HeroSparkles />
+        <div className="relative flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">歡迎回來</p>
+            <h1 className="mt-1 font-display text-2xl font-extrabold leading-tight sm:text-[28px]">
+              {me?.display_name}，
+              <br className="sm:hidden" />
+              分享好券讓快樂加倍
+            </h1>
+            <div className="mt-3.5 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-sm font-semibold backdrop-blur-sm">
+                <Icon name="sparkles" size={14} /> {me?.contribution_score} 貢獻分
+              </span>
+              <Link
+                href="/score"
+                className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-sm font-medium text-white/90 transition-colors hover:bg-white/25"
+              >
+                {me?.level_name}
+                <Icon name="chevronRight" size={14} />
+              </Link>
+            </div>
+          </div>
+          <Mascot size={96} float className="hidden shrink-0 drop-shadow-xl sm:block" />
+        </div>
+      </GradientPanel>
 
       <div className="sticky top-16 z-30 -mx-4 mb-6 space-y-3 border-y border-line/70 bg-canvas/85 px-4 py-3 backdrop-blur-md sm:mx-0 sm:rounded-2xl sm:border">
         <div className="relative">
@@ -108,7 +129,7 @@ function FeedView() {
           <Input
             value={brand}
             onChange={(e) => setBrand(e.target.value)}
-            placeholder="搜尋品牌，例如 星巴克、全家、麥當勞"
+            placeholder="搜尋品牌，例如 星巴克、全家、摩斯"
             className="pl-10"
           />
         </div>
@@ -171,16 +192,29 @@ function FeedView() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <EmptyState
-          icon="ticket"
-          title="目前沒有符合條件的票券"
-          hint="換個分類或品牌看看，或成為第一個分享的人。"
-          action={
-            <Button href="/new" icon="plus">
-              分享一張票券
-            </Button>
-          }
-        />
+        noFilters && total === 0 ? (
+          <EmptyState
+            icon="gift"
+            title="這裡還空空的，等你來開張"
+            hint="目前還沒有人分享票券。把你用不到的券放上來，成為第一個讓善意流動的人。"
+            action={
+              <Button href="/new" icon="plus">
+                分享第一張票券
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon="search"
+            title="找不到符合條件的票券"
+            hint="換個分類、品牌或排序看看，或自己分享一張。"
+            action={
+              <Button href="/new" icon="plus">
+                分享一張票券
+              </Button>
+            }
+          />
+        )
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -214,8 +248,10 @@ function Chip({
     <button
       onClick={onClick}
       className={cn(
-        "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-        active ? "bg-accent text-white" : "bg-paper text-ink-soft hover:bg-sand",
+        "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all",
+        active
+          ? "bg-grad-brand text-white shadow-glow"
+          : "border border-line bg-paper text-ink-soft hover:bg-sand",
       )}
     >
       {children}

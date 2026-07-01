@@ -3,7 +3,6 @@ import { route, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireActiveUser } from "@/lib/auth";
 import { assertTransition } from "@/lib/coupon-state";
-import { assertDailyPublishLimit } from "@/lib/ratelimit";
 import { writeAudit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 
@@ -22,13 +21,13 @@ export const POST = route(async (req, ctx) => {
   if (!coupon.title.trim() || !coupon.brand.trim()) {
     throw new ApiError("VALIDATION_ERROR", { message: "標題與品牌不可為空" });
   }
-  if (coupon.expiryDate <= new Date()) throw new ApiError("COUPON_EXPIRED");
+  if (coupon.expiryDate && coupon.expiryDate <= new Date()) throw new ApiError("COUPON_EXPIRED");
   if (!coupon.barcodeEncryptedData) throw new ApiError("BARCODE_NOT_READY");
   if (coupon.type === "EXCHANGE" && !coupon.exchangeTarget) {
     throw new ApiError("VALIDATION_ERROR", { message: "交換類型必須填寫交換目標" });
   }
 
-  await assertDailyPublishLimit(user);
+  // Uploading/sharing coupons is unlimited — giving is good. Only claims are capped.
   assertTransition(coupon.status, "AVAILABLE");
 
   const updated = await prisma.coupon.update({ where: { id }, data: { status: "AVAILABLE" } });

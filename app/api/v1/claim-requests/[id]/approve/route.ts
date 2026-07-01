@@ -69,16 +69,19 @@ export const POST = route(async (req, ctx) => {
       },
     });
 
-    // Contribution score to the giver (idempotent on the transaction id).
-    const isGift = coupon.type === "GIFT";
-    await applyScore(tx, {
-      userId: coupon.ownerId,
-      eventType: isGift ? "COUPON_GIFTED" : "COUPON_EXCHANGED",
-      delta: isGift ? SCORE_RULES.COUPON_GIFTED : SCORE_RULES.COUPON_EXCHANGED,
-      referenceType: "TRANSACTION",
-      referenceId: txn.id,
-      description: isGift ? "成功贈出票券" : "成功交換票券",
-    });
+    // Gifts credit the giver on approval. Exchanges credit BOTH sides only on a
+    // clean completion (see transactions/[id]/complete) — so a scammer whose swap
+    // gets disputed earns nothing.
+    if (coupon.type === "GIFT") {
+      await applyScore(tx, {
+        userId: coupon.ownerId,
+        eventType: "COUPON_GIFTED",
+        delta: SCORE_RULES.COUPON_GIFTED,
+        referenceType: "TRANSACTION",
+        referenceId: txn.id,
+        description: "成功贈出票券",
+      });
+    }
 
     await notify(tx, {
       userId: cr.requesterId,

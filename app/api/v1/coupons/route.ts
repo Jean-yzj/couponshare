@@ -15,7 +15,7 @@ export const POST = route(async (req) => {
       brand: body.brand,
       category: body.category,
       description: body.description ?? null,
-      expiryDate: body.expiry_date,
+      expiryDate: body.expiry_date ?? null,
       type: body.type,
       exchangeTarget: body.exchange_target ?? null,
       unlockPolicy: body.unlock_policy ?? "OWNER_APPROVAL",

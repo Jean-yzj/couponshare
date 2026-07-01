@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { apiFetch, useApi, useMe } from "@/lib/client";
-import { Card, Button, Skeleton, EmptyState, NeedLogin } from "@/components/ui";
+import { Card, Button, Skeleton, EmptyState, NeedLogin, PageHeader } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { cn, relativeTime } from "@/lib/display";
 
@@ -62,14 +62,17 @@ export default function NotificationsPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-ink">通知中心</h1>
-        {(data?.unread_count ?? 0) > 0 && (
-          <Button size="sm" variant="ghost" icon="check" onClick={markAll}>
-            全部已讀
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        eyebrow="Notifications"
+        title="通知中心"
+        action={
+          (data?.unread_count ?? 0) > 0 ? (
+            <Button size="sm" variant="ghost" icon="check" onClick={markAll}>
+              全部已讀
+            </Button>
+          ) : null
+        }
+      />
 
       <div className="mt-5 space-y-2.5">
         {loading ? (

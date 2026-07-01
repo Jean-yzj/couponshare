@@ -16,10 +16,13 @@ export async function assertDailyClaimLimit(user: User): Promise<void> {
 
 export async function assertDailyPublishLimit(user: User): Promise<void> {
   const limit = LEVELS[user.userLevel].dailyPublish;
-  const count = await prisma.coupon.count({
+  // Count actual publish events today (audit log), not coupon creation — otherwise
+  // a user could pre-create a pile of drafts and bulk-publish them tomorrow to slip
+  // past the daily cap (their createdAt is "yesterday", so it wouldn't be counted).
+  const count = await prisma.auditLog.count({
     where: {
-      ownerId: user.id,
-      status: { not: "DRAFT" },
+      actorId: user.id,
+      action: "coupon.publish",
       createdAt: { gte: startOfTodayTaipei() },
     },
   });

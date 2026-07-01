@@ -1,44 +1,65 @@
 @import "tailwindcss";
 
 @theme {
-  /* Cool-gray canvas + neutrals (KnowMe-style, flat) */
-  --color-canvas: #f3f5f9;
-  --color-canvas-2: #e9edf4;
+  /* ── Surfaces: cool blue-white canvas, crisp white paper ── */
+  --color-canvas: #f2f7ff;
+  --color-canvas-2: #e6effe;
   --color-paper: #ffffff;
-  --color-sand: #eef1f6;
-  --color-sand-2: #e2e8f1;
-  --color-ink: #16243d;
-  --color-ink-soft: #56657f;
-  --color-ink-faint: #93a0b5;
-  --color-line: #e5eaf1;
+  --color-sand: #eef3fd;
+  --color-sand-2: #dfe8f8;
+  --color-ink: #142140;
+  --color-ink-soft: #566388;
+  --color-ink-faint: #93a0bd;
+  --color-line: #e6ecf8;
 
-  /* Royal-blue primary (token name kept as "accent") */
-  --color-accent: #2867e0;
-  --color-accent-press: #1f51bd;
-  --color-accent-tint: #e9f1fd;
+  /* ── Vivid azure primary (token name kept as "accent") ── */
+  --color-accent: #1f7bff;
+  --color-accent-press: #0e60e6;
+  --color-accent-tint: #e7f0ff;
+  --color-sky: #5aa6ff;
+  --color-sky-tint: #eaf3ff;
 
-  /* Deep navy + semantic categoricals */
-  --color-navy: #1d5089;
-  --color-gold: #c2901f;
-  --color-gold-tint: #f6edd2;
-  --color-pine: #159357;
-  --color-pine-tint: #e2f3ea;
-  --color-teal: #1c89a0;
-  --color-teal-tint: #e0f1f4;
-  --color-danger: #d94b46;
-  --color-danger-tint: #fdecea;
+  /* ── Semantic categoricals (brightened) ── */
+  --color-navy: #1c4fa0;
+  --color-gold: #e6a325;
+  --color-gold-ink: #b27d12;
+  --color-gold-tint: #fdf1d6;
+  --color-pine: #10a05e;
+  --color-pine-tint: #e2f6ec;
+  --color-teal: #0d97b1;
+  --color-teal-tint: #ddf3f7;
+  --color-grape: #7a5cf0;
+  --color-grape-tint: #ece7fe;
+  --color-rose: #f0567f;
+  --color-rose-tint: #fde7ee;
+  --color-danger: #e5484d;
+  --color-danger-tint: #fdecec;
 
-  --font-sans: var(--font-geist-sans), "PingFang TC", "Noto Sans TC", "Microsoft JhengHei",
+  --font-sans: var(--font-round), "PingFang TC", "Noto Sans TC", "Microsoft JhengHei",
     system-ui, sans-serif;
-  --font-display: var(--font-geist-sans), "PingFang TC", "Noto Sans TC", "Microsoft JhengHei",
+  --font-display: var(--font-round), "PingFang TC", "Noto Sans TC", "Microsoft JhengHei",
     system-ui, sans-serif;
 
-  --radius: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.375rem;
+  --radius: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
 
-  --shadow-soft: 0 1px 2px rgba(23, 40, 80, 0.04), 0 8px 24px -12px rgba(23, 50, 110, 0.12);
-  --shadow-lift: 0 2px 6px rgba(23, 40, 80, 0.06), 0 20px 44px -18px rgba(23, 50, 110, 0.2);
+  --shadow-soft: 0 1px 2px rgba(20, 33, 64, 0.04), 0 12px 30px -18px rgba(24, 60, 140, 0.22);
+  --shadow-lift: 0 4px 10px rgba(20, 33, 64, 0.06), 0 30px 55px -26px rgba(24, 60, 140, 0.32);
+  --shadow-glow: 0 14px 34px -12px rgba(31, 123, 255, 0.55);
+  --shadow-glow-gold: 0 14px 30px -12px rgba(230, 163, 37, 0.5);
+}
+
+/* ── Brand gradients (used via inline style or the utilities below) ── */
+:root {
+  --grad-brand: linear-gradient(135deg, #3b93ff 0%, #0e60e6 100%);
+  --grad-brand-deep: linear-gradient(150deg, #3a90ff 0%, #0d5ce0 52%, #0b4ec6 100%);
+  --grad-sky: linear-gradient(135deg, #6cb2ff 0%, #2f86ff 100%);
+  --grad-gold: linear-gradient(135deg, #ffd166 0%, #e6a325 100%);
+  --grad-pine: linear-gradient(135deg, #34d888 0%, #10a05e 100%);
+  --grad-teal: linear-gradient(135deg, #38c6de 0%, #0d97b1 100%);
+  --grad-grape: linear-gradient(135deg, #a58bff 0%, #7a5cf0 100%);
+  --grad-rose: linear-gradient(135deg, #ff87a6 0%, #f0567f 100%);
 }
 
 @layer base {
@@ -47,10 +68,18 @@
   }
   body {
     background-color: var(--color-canvas);
+    background-image: radial-gradient(120% 80% at 100% 0%, rgba(90, 166, 255, 0.1) 0%, transparent 55%),
+      radial-gradient(90% 60% at 0% 0%, rgba(122, 92, 240, 0.06) 0%, transparent 50%);
+    background-attachment: fixed;
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
   }
   ::selection {
     background: var(--color-accent-tint);
@@ -62,11 +91,43 @@
   .font-display {
     font-family: var(--font-display);
   }
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+  .eyebrow {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
   .shadow-soft {
     box-shadow: var(--shadow-soft);
   }
   .shadow-lift {
     box-shadow: var(--shadow-lift);
+  }
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  .shadow-glow-gold {
+    box-shadow: var(--shadow-glow-gold);
+  }
+  /* Brand gradient fills */
+  .bg-grad-brand {
+    background-image: var(--grad-brand);
+  }
+  .bg-grad-brand-deep {
+    background-image: var(--grad-brand-deep);
+  }
+  .bg-grad-gold {
+    background-image: var(--grad-gold);
+  }
+  .text-grad-brand {
+    background-image: var(--grad-brand);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -76,7 +137,7 @@
     scrollbar-width: none;
   }
   .shimmer {
-    background: linear-gradient(100deg, var(--color-sand) 28%, #f4f7fb 50%, var(--color-sand) 72%);
+    background: linear-gradient(100deg, var(--color-sand) 28%, #f4f8ff 50%, var(--color-sand) 72%);
     background-size: 200% 100%;
     animation: shimmer 1.5s ease-in-out infinite;
   }
@@ -108,9 +169,41 @@
     opacity: 1;
   }
 }
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
 .animate-pop {
   animation: pop-in 0.22s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 .animate-fade {
   animation: fade-in 0.3s ease both;
+}
+.animate-float {
+  animation: float-y 3.6s ease-in-out infinite;
+}
+.animate-twinkle {
+  animation: twinkle 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-twinkle {
+    animation: none;
+  }
 }

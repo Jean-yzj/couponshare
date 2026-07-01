@@ -23,8 +23,8 @@ export const GET = route(async (req, ctx) => {
       where: {
         ownerId: id,
         status: "AVAILABLE",
-        expiryDate: { gt: new Date() },
         visibilityLevel: "PUBLIC",
+        OR: [{ expiryDate: null }, { expiryDate: { gt: new Date() } }],
       },
       include: { owner: true },
       orderBy: { createdAt: "desc" },
@@ -58,6 +58,6 @@ export const GET = route(async (req, ctx) => {
       })),
     },
     gifts_given: giftsGiven,
-    coupons: coupons.map(feedCoupon),
+    coupons: coupons.map((c) => feedCoupon(c)),
   });
 });

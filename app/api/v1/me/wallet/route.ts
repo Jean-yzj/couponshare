@@ -31,7 +31,7 @@ export const GET = route(async () => {
   ]);
 
   return jsonOk({
-    listed: listed.map(feedCoupon),
+    listed: listed.map((c) => feedCoupon(c)),
     applied: applied.map((cr) => ({
       id: cr.id,
       status: cr.status,
@@ -40,7 +40,7 @@ export const GET = route(async () => {
       created_at: cr.createdAt,
       coupon: feedCoupon(cr.coupon),
     })),
-    received: received.map(feedCoupon),
+    received: received.map((c) => feedCoupon(c)),
     transactions: transactions.map((t) => transactionView(t, user.id)),
   });
 });

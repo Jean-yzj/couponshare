@@ -1,19 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch, useApi, ApiErr } from "@/lib/client";
-import { Button, Card, Field, Input, Avatar, Banner, Spinner } from "@/components/ui";
+import { apiFetch, ApiErr } from "@/lib/client";
+import { Button, Card, Field, Input, Banner } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/display";
-
-type DemoUser = {
-  id: string;
-  display_name: string;
-  avatar_url: string | null;
-  level_name: string;
-  contribution_score: number;
-  email: string;
-};
 
 function GoogleG({ size = 18 }: { size?: number }) {
   return (
@@ -26,6 +17,17 @@ function GoogleG({ size = 18 }: { size?: number }) {
   );
 }
 
+// Google's OAuth blocks embedded in-app browsers (disallowed_useragent). Detect
+// the common ones so we can nudge the user into Safari / Chrome.
+function isInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  if (/FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|Messenger|Twitter|TikTok|musical_ly|KAKAOTALK|Snapchat|Threads|LinkedInApp/i.test(ua)) return true;
+  if (/iPhone|iPad|iPod/i.test(ua) && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua)) return true;
+  if (/Android/i.test(ua) && /; wv\)/i.test(ua)) return true;
+  return false;
+}
+
 export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -33,13 +35,25 @@ export default function LoginPage() {
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { data: demo } = useApi<{ data: DemoUser[] }>("/api/v1/auth/demo");
+  const [inApp, setInApp] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    setInApp(isInAppBrowser());
     const err = new URLSearchParams(window.location.search).get("error");
-    if (err === "google_not_configured") setError("Google 登入尚未設定，請改用 Email 或 Demo 帳號");
+    if (err === "google_not_configured") setError("Google 登入尚未設定，請改用 Email 註冊或登入");
     else if (err === "google_failed") setError("Google 登入失敗，請再試一次");
   }, []);
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.origin + "/login");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,18 +78,6 @@ export default function LoginPage() {
     }
   }
 
-  async function demoLogin(id: string) {
-    setBusy(true);
-    setError(null);
-    try {
-      await apiFetch("/api/v1/auth/demo", { method: "POST", body: JSON.stringify({ user_id: id }) });
-      window.location.href = "/";
-    } catch {
-      setError("登入失敗，請稍後再試");
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="mx-auto max-w-md py-4">
       <div className="mb-6 text-center">
@@ -89,6 +91,32 @@ export default function LoginPage() {
       </div>
 
       <Card className="p-5">
+        {inApp && (
+          <div className="mb-4">
+            <Banner tone="warn" icon="info">
+              <div className="space-y-2">
+                <p>
+                  你正在 App 的內建瀏覽器，Google 會擋下登入。請改用
+                  <span className="font-semibold"> Safari </span>或
+                  <span className="font-semibold"> Chrome </span>
+                  開啟（右上角「⋯」→ 用瀏覽器開啟），或複製網址貼到瀏覽器：
+                </p>
+                <button
+                  onClick={copyLink}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-danger px-3 py-1.5 text-xs font-medium text-white"
+                >
+                  {copied ? (
+                    <>
+                      <Icon name="check" size={13} /> 已複製
+                    </>
+                  ) : (
+                    "複製網址"
+                  )}
+                </button>
+              </div>
+            </Banner>
+          </div>
+        )}
         <button
           onClick={() => {
             window.location.href = "/api/v1/auth/google";
@@ -161,40 +189,9 @@ export default function LoginPage() {
         </form>
       </Card>
 
-      {/* Demo personas */}
-      <div className="mt-7">
-        <div className="mb-3 flex items-center gap-3">
-          <span className="h-px flex-1 bg-line" />
-          <span className="text-xs font-medium text-ink-faint">或一鍵體驗 Demo 帳號</span>
-          <span className="h-px flex-1 bg-line" />
-        </div>
-
-        {!demo ? (
-          <div className="flex justify-center py-4">
-            <Spinner className="text-ink-faint" />
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {demo.data.map((u) => (
-              <button
-                key={u.id}
-                onClick={() => demoLogin(u.id)}
-                disabled={busy}
-                className="flex w-full items-center gap-3 rounded-2xl border border-line bg-paper px-4 py-3 text-left shadow-soft transition-colors hover:border-accent/40 hover:bg-canvas-2 disabled:opacity-50"
-              >
-                <Avatar name={u.display_name} url={u.avatar_url} size={40} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-ink">{u.display_name}</p>
-                  <p className="truncate text-xs text-ink-faint">
-                    {u.level_name} · {u.contribution_score} 貢獻分
-                  </p>
-                </div>
-                <Icon name="chevronRight" size={18} className="text-ink-faint" />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <p className="mt-5 text-center text-xs leading-relaxed text-ink-faint">
+        登入即表示你願意以友善、互助的方式分享與領取票券。
+      </p>
     </div>
   );
 }

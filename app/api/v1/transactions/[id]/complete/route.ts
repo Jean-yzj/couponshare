@@ -2,11 +2,13 @@ import { prisma } from "@/lib/db";
 import { route, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireUser } from "@/lib/auth";
+import { applyScore, SCORE_RULES } from "@/lib/score";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
 
-// GIFT: either party confirming completes it. EXCHANGE: BOTH must confirm
-// (each side gives something). PRD §7.3.
+// GIFT: either party confirming completes it. EXCHANGE: codes must have been
+// revealed (both committed) first, then BOTH must confirm. A clean exchange
+// completion credits BOTH sides +5; a disputed one credits nobody. PRD §7.3.
 export const POST = route(async (req, ctx) => {
   const { id } = await ctx.params;
   const user = await requireUser();
@@ -18,6 +20,12 @@ export const POST = route(async (req, ctx) => {
   if (!isOwner && !isClaimant) throw new ApiError("FORBIDDEN");
   if (t.status === "COMPLETED") {
     return jsonOk({ transaction_id: id, status: "COMPLETED" });
+  }
+  if (t.status === "DISPUTED") {
+    throw new ApiError("VALIDATION_ERROR", { message: "此交易已回報問題，複核中" });
+  }
+  if (t.transactionType === "EXCHANGE" && !t.revealedAt) {
+    throw new ApiError("VALIDATION_ERROR", { message: "請先雙方確認亮碼後再完成" });
   }
 
   const updated = await prisma.transaction.update({
@@ -31,10 +39,26 @@ export const POST = route(async (req, ctx) => {
       : updated.ownerCompleted || updated.claimantCompleted;
 
   if (done) {
-    await prisma.transaction.update({
-      where: { id },
-      data: { status: "COMPLETED", completedAt: new Date() },
+    await prisma.$transaction(async (tx) => {
+      await tx.transaction.update({
+        where: { id },
+        data: { status: "COMPLETED", completedAt: new Date() },
+      });
+      // Exchange: both sides gave a coupon → both earn the exchange credit (only now).
+      if (updated.transactionType === "EXCHANGE") {
+        for (const uid of [t.ownerId, t.claimantId]) {
+          await applyScore(tx, {
+            userId: uid,
+            eventType: "COUPON_EXCHANGED",
+            delta: SCORE_RULES.COUPON_EXCHANGED,
+            referenceType: "TRANSACTION",
+            referenceId: id,
+            description: "成功完成交換",
+          });
+        }
+      }
     });
+
     const other = isOwner ? t.claimantId : t.ownerId;
     await notify(prisma, {
       userId: other,
@@ -57,7 +81,6 @@ export const POST = route(async (req, ctx) => {
     return jsonOk({ transaction_id: id, status: "COMPLETED" });
   }
 
-  // Exchange: waiting for the other side to also confirm.
   return jsonOk({
     transaction_id: id,
     status: "CREATED",

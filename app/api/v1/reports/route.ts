@@ -7,11 +7,13 @@ import { canTransition } from "@/lib/coupon-state";
 import { writeAudit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 import { reportSchema } from "@/lib/validation";
+import { throttle } from "@/lib/throttle";
 
 const COUPON_REPORT_THRESHOLD = 3; // distinct-ish reports flag a coupon
 const USER_SUSPEND_THRESHOLD = 3; // 3 distinct reporters suspend the account
 
 export const POST = route(async (req) => {
+  throttle(req, "report", 20, 60 * 60_000);
   const user = await requireActiveUser();
   const body = await readBody(req, reportSchema);
 
@@ -59,8 +61,16 @@ export const POST = route(async (req) => {
     // Account-level: 3+ DISTINCT reporters → auto-suspend the account.
     let userSuspended = false;
     if (reportedUserId) {
+      // Only count reporters whose account is at least 24h old. This blocks the
+      // throwaway-account brigade where one attacker registers 3 fresh accounts to
+      // auto-suspend an innocent user. Every report is still recorded for admins.
+      const establishedBefore = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const reporters = await prisma.report.findMany({
-        where: { reportedUserId, status: { notIn: ["REJECTED", "RESOLVED"] } },
+        where: {
+          reportedUserId,
+          status: { notIn: ["REJECTED", "RESOLVED"] },
+          reporter: { createdAt: { lt: establishedBefore } },
+        },
         select: { reporterId: true },
         distinct: ["reporterId"],
       });

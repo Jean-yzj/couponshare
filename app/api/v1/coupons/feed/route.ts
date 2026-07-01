@@ -1,4 +1,10 @@
-import type { CouponCategory, Prisma, UserLevel, VisibilityLevel } from "@prisma/client";
+import type {
+  ClaimRequestStatus,
+  CouponCategory,
+  Prisma,
+  UserLevel,
+  VisibilityLevel,
+} from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { route, jsonOk } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
@@ -26,14 +32,17 @@ export const GET = route(async (req) => {
   const visibilities = allowedVisibilities(viewer?.userLevel ?? null);
 
   const now = new Date();
-  const expiryFilter: Prisma.DateTimeFilter = { gt: now };
-  if (within > 0) expiryFilter.lt = new Date(now.getTime() + within * 3_600_000);
-
   const where: Prisma.CouponWhereInput = {
     status: "AVAILABLE",
-    expiryDate: expiryFilter,
     visibilityLevel: { in: visibilities },
   };
+  if (within > 0) {
+    // "Expiring soon" section: only dated coupons inside the window.
+    where.expiryDate = { gt: now, lt: new Date(now.getTime() + within * 3_600_000) };
+  } else {
+    // Normal feed: hide already-expired, but keep coupons with no expiry date.
+    where.OR = [{ expiryDate: null }, { expiryDate: { gt: now } }];
+  }
   if (brand) where.brand = { contains: brand, mode: "insensitive" };
   if (type === "GIFT" || type === "EXCHANGE") where.type = type;
   if (category && (CATEGORY_KEYS as string[]).includes(category)) {
@@ -58,5 +67,18 @@ export const GET = route(async (req) => {
     prisma.coupon.count({ where }),
   ]);
 
-  return jsonOk({ data: rows.map(feedCoupon), pagination: { page, limit, total } });
+  // Annotate each card with the viewer's own request status (已申請 / 已獲得).
+  const myReq = new Map<string, ClaimRequestStatus>();
+  if (viewer && rows.length) {
+    const crs = await prisma.claimRequest.findMany({
+      where: { requesterId: viewer.id, couponId: { in: rows.map((r) => r.id) } },
+      select: { couponId: true, status: true },
+    });
+    for (const cr of crs) myReq.set(cr.couponId, cr.status);
+  }
+
+  return jsonOk({
+    data: rows.map((c) => feedCoupon(c, myReq.get(c.id) ?? null)),
+    pagination: { page, limit, total },
+  });
 });

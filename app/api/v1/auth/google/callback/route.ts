@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { route, clientMeta } from "@/lib/api";
+import { route, clientMeta, publicOrigin } from "@/lib/api";
 import { createSession } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
 import { exchangeCode, fetchGoogleProfile } from "@/lib/google";
@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 export const GET = route(async (req) => {
   const url = new URL(req.url);
-  const origin = url.origin;
+  const origin = publicOrigin(req);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
 
