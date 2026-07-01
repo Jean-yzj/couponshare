@@ -45,6 +45,7 @@ function FeedView() {
   const [category, setCategory] = useState<string>("ALL");
   const [type, setType] = useState<"ALL" | "GIFT" | "EXCHANGE">("ALL");
   const [sort, setSort] = useState<"latest" | "expiry_soon" | "popular">("latest");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [items, setItems] = useState<FeedCoupon[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -54,6 +55,8 @@ function FeedView() {
     "/api/v1/coupons/feed?within_hours=48&sort=expiry_soon&limit=4",
   );
   const noFilters = category === "ALL" && type === "ALL" && !debounced;
+  const typeLabel = TYPES.find((t) => t.value === type)?.label ?? "全部";
+  const sortLabel = SORTS.find((s) => s.value === sort)?.label ?? "最新";
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(brand.trim()), 350);
@@ -135,7 +138,31 @@ function FeedView() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        {/* Type + sort — collapsed on mobile so cards sit higher; always open on desktop */}
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((o) => !o)}
+          className="flex w-full items-center justify-between rounded-full border border-line bg-paper px-3.5 py-2 text-sm sm:hidden"
+        >
+          <span className="flex items-center gap-1.5">
+            <Icon name="filter" size={14} className="text-ink-faint" />
+            <span className="font-semibold text-ink">篩選與排序</span>
+            <span className="text-ink-faint">
+              · {typeLabel} · {sortLabel}
+            </span>
+          </span>
+          <Icon
+            name="chevronDown"
+            size={16}
+            className={cn("text-ink-faint transition-transform", filtersOpen && "rotate-180")}
+          />
+        </button>
+        <div
+          className={cn(
+            "flex-wrap items-center gap-x-5 gap-y-2 sm:flex",
+            filtersOpen ? "flex" : "hidden",
+          )}
+        >
           <FilterRow label="類型" options={TYPES} value={type} onChange={setType} />
           <FilterRow label="排序" options={SORTS} value={sort} onChange={setSort} />
         </div>
