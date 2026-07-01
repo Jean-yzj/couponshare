@@ -79,7 +79,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatCard icon="user" label="總會員" value={o.users.total} sub={`今日 +${o.users.new_24h}　7 日 +${o.users.new_7d}`} />
         <StatCard icon="ticket" label="總票券" value={o.coupons.total} sub={`今日 +${o.coupons.new_24h}　7 日 +${o.coupons.new_7d}`} />
-        <StatCard icon="heart" label="成功媒合" value={o.transactions.completed} sub={`贈送 ${o.transactions.gift}　交換 ${o.transactions.exchange}`} />
+        <StatCard icon="heart" label="成功媒合" value={o.transactions.total} sub={`贈送 ${o.transactions.gift}　交換 ${o.transactions.exchange}　已完成 ${o.transactions.completed}`} />
         <StatCard icon="send" label="進行中申請" value={o.claims.pending} sub={`累計 ${o.claims.total} 筆`} />
         <StatCard icon="flag" label="待處理檢舉" value={o.reports.pending} tone={o.reports.pending > 0 ? "danger" : undefined} sub={`累計 ${o.reports.total} 筆`} />
         <StatCard icon="shield" label="待處理申訴" value={o.appeals.pending} tone={o.appeals.pending > 0 ? "accent" : undefined} sub={`累計 ${o.appeals.total} 筆`} />
