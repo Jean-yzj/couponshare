@@ -86,22 +86,33 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
 
           <div className="my-2 border-t border-dashed border-line" />
 
-          <div className="mt-auto flex items-center justify-between gap-1.5">
+          <div className="mt-auto flex items-end justify-between gap-1.5">
             <div className="flex min-w-0 items-center gap-1.5">
               {c.owner && <Avatar name={c.owner.display_name} url={c.owner.avatar_url} size={18} />}
               <span className="truncate text-[11px] font-medium text-ink-soft">
                 {c.owner?.display_name ?? "—"}
               </span>
             </div>
-            <span
-              className={cn(
-                "inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium",
-                exp.urgent ? "text-danger" : "text-ink-faint",
-              )}
-            >
-              <Icon name="clock" size={10} />
-              {exp.text}
-            </span>
+            <div className="flex shrink-0 flex-col items-end gap-0.5">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-0.5 text-[10px] font-bold",
+                  c.claim_request_count > 0 ? "text-accent" : "text-ink-faint",
+                )}
+              >
+                <Icon name="users" size={10} />
+                {c.claim_request_count > 0 ? `${c.claim_request_count} 人申請` : "還沒人申請"}
+              </span>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-0.5 text-[10px] font-medium",
+                  exp.urgent ? "text-danger" : "text-ink-faint",
+                )}
+              >
+                <Icon name="clock" size={10} />
+                {exp.text}
+              </span>
+            </div>
           </div>
         </div>
 

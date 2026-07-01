@@ -226,6 +226,10 @@ export default function CouponDetailPage() {
               <Icon name="eye" size={13} />
               {coupon.view_count} 次瀏覽
             </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-paper/70 px-2.5 py-1 text-xs font-medium text-ink-soft">
+              <Icon name="users" size={13} />
+              {coupon.claim_request_count} 人申請
+            </span>
             {me && (
               <button
                 onClick={toggleFollow}
