@@ -51,6 +51,7 @@ type Detail = {
   is_owner: boolean;
   is_claimant: boolean;
   my_request_status: string | null;
+  my_request_id: string | null;
   claimed_at: string | null;
   created_at: string;
   owner: Owner | null;
@@ -90,6 +91,7 @@ export default function CouponDetailPage() {
   const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const brandsApi = useApi<{ brands: string[] }>(me ? "/api/v1/me/brands" : null);
 
   // Warm the barcode image cache the moment the page loads so "出示我的票券"
@@ -148,6 +150,20 @@ export default function CouponDetailPage() {
       alert(e instanceof ApiErr ? e.message : "操作失敗");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function cancelMyRequest() {
+    if (!coupon?.my_request_id) return;
+    if (!confirm("確定要取消這筆申請嗎？取消後這張券會回到可申請狀態。")) return;
+    setCancelling(true);
+    try {
+      await apiFetch(`/api/v1/claim-requests/${coupon.my_request_id}/cancel`, { method: "POST" });
+      await Promise.all([refetch(), refetchMe()]);
+    } catch (e) {
+      alert(e instanceof ApiErr ? e.message : "取消失敗");
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -347,11 +363,11 @@ export default function CouponDetailPage() {
                 持有者會親手挑選領取者。被選中後你會收到通知，票券也會出現在「我的錢包 · 我領取的」。
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
+                <Button variant="ghost" icon="ban" loading={cancelling} onClick={cancelMyRequest}>
+                  取消申請
+                </Button>
                 <Button variant="outline" href="/wallet" icon="wallet">
                   查看我的申請
-                </Button>
-                <Button variant="ghost" href="/" icon="compass">
-                  繼續探索
                 </Button>
               </div>
             </Card>

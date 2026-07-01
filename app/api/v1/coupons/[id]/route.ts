@@ -21,17 +21,20 @@ export const GET = route(async (req, ctx) => {
   // Surface the viewer's own claim-request status so the page can show
   // "已送出申請 / 已獲得" instead of the apply button. PRD §7.2.
   let myRequestStatus = null;
+  let myRequestId: string | null = null;
   if (viewer && viewer.id !== coupon.ownerId) {
     const cr = await prisma.claimRequest.findUnique({
       where: { couponId_requesterId: { couponId: id, requesterId: viewer.id } },
-      select: { status: true },
+      select: { id: true, status: true },
     });
     myRequestStatus = cr?.status ?? null;
+    myRequestId = cr?.id ?? null;
   }
 
   const ownerRating = await ratingSummary(prisma, coupon.ownerId);
   return jsonOk({
     ...couponDetail(coupon, viewer, myRequestStatus),
     owner_rating: ownerRating,
+    my_request_id: myRequestId,
   });
 });

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useApi, useMe } from "@/lib/client";
+import { apiFetch, ApiErr, useApi, useMe } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
 import { Button, Card, Avatar, Skeleton, EmptyState, NeedLogin, Pill, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -68,8 +68,22 @@ const TX_STATUS: Record<string, { label: string; cls: string }> = {
 
 export default function WalletPage() {
   const { me, loading: meLoading } = useMe();
-  const { data, loading } = useApi<Wallet>(me ? "/api/v1/me/wallet" : null);
+  const { data, loading, refetch } = useApi<Wallet>(me ? "/api/v1/me/wallet" : null);
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("listed");
+  const [cancelling, setCancelling] = useState<string | null>(null);
+
+  async function cancelApplication(id: string) {
+    if (!confirm("確定要取消這筆申請嗎？")) return;
+    setCancelling(id);
+    try {
+      await apiFetch(`/api/v1/claim-requests/${id}/cancel`, { method: "POST" });
+      refetch();
+    } catch (e) {
+      alert(e instanceof ApiErr ? e.message : "取消失敗");
+    } finally {
+      setCancelling(null);
+    }
+  }
 
   if (meLoading)
     return (
@@ -131,7 +145,21 @@ export default function WalletPage() {
                         {relativeTime(a.created_at)} 申請
                       </p>
                     </div>
-                    <Icon name="chevronRight" size={18} className="shrink-0 text-ink-faint" />
+                    {a.status === "PENDING" ? (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          cancelApplication(a.id);
+                        }}
+                        disabled={cancelling === a.id}
+                        className="shrink-0 rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-danger/40 hover:text-danger disabled:opacity-50"
+                      >
+                        {cancelling === a.id ? "取消中…" : "取消申請"}
+                      </button>
+                    ) : (
+                      <Icon name="chevronRight" size={18} className="shrink-0 text-ink-faint" />
+                    )}
                   </Card>
                 </Link>
               ))}
