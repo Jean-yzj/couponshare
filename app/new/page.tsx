@@ -137,6 +137,15 @@ export default function NewCouponPage() {
         subtitle="條碼會經 AES-256 加密保存，只有你選定的領取者才看得到。"
       />
 
+      <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-pine/25 bg-pine-tint/40 p-3.5">
+        <Icon name="heart" size={18} className="mt-0.5 shrink-0 text-pine" />
+        <p className="text-sm leading-relaxed text-ink-soft">
+          分享出你的第一張券，就能
+          <span className="font-bold text-ink">無限制繼續申請別人的券</span>
+          囉！給予讓好康流動，社群也因此運轉起來。
+        </p>
+      </div>
+
       <form onSubmit={submit} className="mt-5 space-y-5">
         <Banner tone="info" icon="shieldCheck">
           請分享<span className="font-semibold">可以直接兌換</span>的實質票券，例如飲料兌換券、超商購物金。

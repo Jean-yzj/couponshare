@@ -133,6 +133,15 @@ export function Landing() {
             </Card>
           ))}
         </div>
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-accent/20 bg-accent-tint/40 p-4">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-grad-brand text-white shadow-glow">
+            <Icon name="gift" size={18} />
+          </span>
+          <p className="text-sm leading-relaxed text-ink-soft">
+            <span className="font-bold text-ink">給予，才能一直拿到好康。</span>{" "}
+            新加入可以先申請 3 次，之後只要分享一張自己用不到的券，就能繼續無限制申請；分享過一次就不再限制，讓好康在社群裡一直流動下去。
+          </p>
+        </div>
       </section>
 
       {/* Platform features — tinted zone, each card with a mini demo */}
