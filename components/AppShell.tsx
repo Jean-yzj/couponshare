@@ -139,6 +139,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         </div>
                         <MenuItem href="/wallet" icon="wallet" label="我的錢包" onClick={() => setMenuOpen(false)} />
                         <MenuItem href="/score" icon="medal" label="貢獻值與等級" onClick={() => setMenuOpen(false)} />
+                        <MenuItem href="/settings" icon="cog" label="個人設定" onClick={() => setMenuOpen(false)} />
                         <MenuItem href="/notifications" icon="bell" label="通知中心" onClick={() => setMenuOpen(false)} />
                         <a
                           href="https://www.instagram.com/lazybearlife_"
