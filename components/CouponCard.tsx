@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cn, expiryText } from "@/lib/display";
 import { Avatar } from "./ui";
 import { Icon, type IconName } from "./icons";
-import { CATEGORY_LABEL } from "@/lib/categories";
+import { CATEGORY_LABEL, categoryStyle } from "@/lib/categories";
 
 export type FeedOwner = {
   id: string;
@@ -32,13 +32,12 @@ const APPLIED_META: Record<string, { label: string; cls: string; icon: IconName 
   APPROVED: { label: "已獲得", cls: "bg-pine-tint text-pine", icon: "checkCircle" },
 };
 
-// Compact branded-coupon card — a tinted header + white body so many fit per screen.
+// Compact branded-coupon card. Colour theme follows the CATEGORY
+// (速食紅 / 咖啡棕 / 飲料黃 / 超商綠 …) so cards are scannable at a glance.
 export function CouponCard({ c }: { c: FeedCoupon }) {
   const exp = expiryText(c.expiry_date);
   const isGift = c.type === "GIFT";
-  const brandGrad = isGift ? "bg-[image:var(--grad-pine)]" : "bg-[image:var(--grad-teal)]";
-  const headerTint = isGift ? "bg-pine-tint/60" : "bg-teal-tint/60";
-  const typePill = isGift ? "bg-pine text-white" : "bg-teal text-white";
+  const cs = categoryStyle(c.category);
   const category = c.category ? CATEGORY_LABEL[c.category] : undefined;
   const applied = c.my_request_status ? APPLIED_META[c.my_request_status] : null;
 
@@ -54,18 +53,19 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
               : "border-line group-hover:border-accent/40",
         )}
       >
-        {/* Tinted brand header */}
-        <div className={cn("flex items-center gap-2 px-3 py-2.5", headerTint)}>
+        {/* Category-tinted brand header */}
+        <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: cs.tint }}>
           <span
-            className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-soft ring-2 ring-white/60",
-              brandGrad,
-            )}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-soft ring-2 ring-white/60"
+            style={{ backgroundImage: cs.grad, textShadow: "0 1px 1px rgba(0,0,0,.22)" }}
           >
             {c.brand.trim()[0] ?? "?"}
           </span>
           <span className="min-w-0 flex-1 truncate text-xs font-bold text-ink">{c.brand}</span>
-          <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold", typePill)}>
+          <span
+            className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
+            style={{ backgroundColor: cs.solid }}
+          >
             {isGift ? "贈送" : "交換"}
           </span>
         </div>
@@ -73,7 +73,10 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
         {/* Body */}
         <div className="flex flex-1 flex-col px-3 pb-3 pt-2.5">
           {category && (
-            <p className="mb-1 truncate text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
+            <p
+              className="mb-1 truncate text-[10px] font-bold uppercase tracking-wide"
+              style={{ color: cs.text }}
+            >
               {category}
             </p>
           )}

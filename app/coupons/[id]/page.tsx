@@ -22,6 +22,7 @@ import { BarcodeModal } from "@/components/BarcodeModal";
 import { ReportModal } from "@/components/ReportModal";
 import { Icon } from "@/components/icons";
 import { cn, expiryText, formatDate, relativeTime, STATUS_META } from "@/lib/display";
+import { categoryStyle } from "@/lib/categories";
 
 type Owner = {
   id: string;
@@ -36,6 +37,7 @@ type Detail = {
   id: string;
   title: string;
   brand: string;
+  category?: string | null;
   description: string | null;
   type: string;
   exchange_target: string | null;
@@ -161,7 +163,7 @@ export default function CouponDetailPage() {
     brandsApi.refetch();
   }
 
-  const headerTint = coupon.type === "GIFT" ? "bg-pine-tint/50" : "bg-teal-tint/50";
+  const cs = categoryStyle(coupon.category);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -175,14 +177,12 @@ export default function CouponDetailPage() {
 
       {/* Header */}
       <Card className="overflow-hidden">
-        <div className={cn("border-b border-line px-5 pt-5 pb-4", headerTint)}>
+        <div className="border-b border-line px-5 pt-5 pb-4" style={{ backgroundColor: cs.tint }}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
               <span
-                className={cn(
-                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg font-bold text-white shadow-soft",
-                  coupon.type === "GIFT" ? "bg-[image:var(--grad-pine)]" : "bg-[image:var(--grad-teal)]",
-                )}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg font-bold text-white shadow-soft"
+                style={{ backgroundImage: cs.grad, textShadow: "0 1px 1px rgba(0,0,0,.22)" }}
               >
                 {coupon.brand.trim()[0] ?? "?"}
               </span>
