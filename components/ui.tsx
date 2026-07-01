@@ -403,14 +403,15 @@ export function ProgressBar({
   );
 }
 
-// ── Gamified achievement disc. Locked = muted with a lock badge. ──
-const BADGE_TONE: Record<string, string> = {
-  blue: "bg-grad-brand",
-  gold: "bg-grad-gold",
-  pine: "bg-[image:var(--grad-pine)]",
-  teal: "bg-[image:var(--grad-teal)]",
-  grape: "bg-[image:var(--grad-grape)]",
-  rose: "bg-[image:var(--grad-rose)]",
+// ── Gamified achievement medal: a shiny gradient medallion with a coloured glow,
+//    specular gloss and a sparkle. Locked = sunken muted disc with a lock. ──
+const BADGE_TONE: Record<string, { grad: string; glow: string }> = {
+  blue: { grad: "var(--grad-brand)", glow: "rgba(31,123,255,.5)" },
+  gold: { grad: "var(--grad-gold)", glow: "rgba(230,163,37,.55)" },
+  pine: { grad: "var(--grad-pine)", glow: "rgba(16,160,94,.5)" },
+  teal: { grad: "var(--grad-teal)", glow: "rgba(13,151,177,.5)" },
+  grape: { grad: "var(--grad-grape)", glow: "rgba(122,92,240,.5)" },
+  rose: { grad: "var(--grad-rose)", glow: "rgba(240,86,127,.5)" },
 };
 
 export function AchievementBadge({
@@ -424,24 +425,52 @@ export function AchievementBadge({
   tone?: keyof typeof BADGE_TONE;
   unlocked?: boolean;
 }) {
+  const t = BADGE_TONE[tone];
   return (
     <div className="flex flex-col items-center gap-2 text-center">
-      <div className="relative">
-        <div
-          className={cn(
-            "flex h-16 w-16 items-center justify-center rounded-[20px] text-white transition-transform",
-            unlocked ? cn(BADGE_TONE[tone], "shadow-soft") : "bg-sand text-ink-faint",
-          )}
-        >
-          <Icon name={icon} size={28} strokeWidth={2} />
-        </div>
-        {!unlocked && (
-          <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-paper bg-ink-faint text-white">
-            <Icon name="lock" size={11} />
-          </span>
+      <div className="relative h-[68px] w-[68px]">
+        {unlocked ? (
+          <>
+            <span
+              className="absolute inset-1 rounded-full opacity-40 blur-md"
+              style={{ backgroundImage: t.grad }}
+            />
+            <div
+              className="relative flex h-[68px] w-[68px] items-center justify-center rounded-full text-white"
+              style={{
+                backgroundImage: t.grad,
+                boxShadow: `0 9px 20px -6px ${t.glow}, inset 0 2px 4px rgba(255,255,255,.55), inset 0 -5px 9px rgba(0,0,0,.16), inset 0 0 0 2px rgba(255,255,255,.35)`,
+              }}
+            >
+              <span className="absolute left-3.5 top-2.5 h-3 w-5 -rotate-12 rounded-full bg-white/50 blur-[1.5px]" />
+              <Icon
+                name={icon}
+                size={29}
+                strokeWidth={2.1}
+                className="relative drop-shadow-[0_1px_1px_rgba(0,0,0,.25)]"
+              />
+              <svg
+                className="absolute -right-0.5 -top-0.5 text-white"
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden
+              >
+                <path d="M12 2c.5 4.4 3.1 7 7.5 7.5C15.1 10 12.5 12.6 12 17c-.5-4.4-3.1-7-7.5-7.5C8.9 9 11.5 6.4 12 2z" />
+              </svg>
+            </div>
+          </>
+        ) : (
+          <div className="flex h-[68px] w-[68px] items-center justify-center rounded-full bg-sand text-ink-faint shadow-[inset_0_2px_5px_rgba(20,33,64,.08)] ring-1 ring-inset ring-line">
+            <Icon name={icon} size={26} strokeWidth={1.9} />
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-paper bg-ink-faint text-white">
+              <Icon name="lock" size={11} />
+            </span>
+          </div>
         )}
       </div>
-      <span className={cn("text-xs font-medium leading-tight", unlocked ? "text-ink" : "text-ink-faint")}>
+      <span className={cn("text-xs font-bold leading-tight", unlocked ? "text-ink" : "text-ink-faint")}>
         {label}
       </span>
     </div>

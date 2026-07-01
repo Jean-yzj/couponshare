@@ -2,10 +2,10 @@ import { useId } from "react";
 import { cn } from "@/lib/display";
 
 /**
- * "Coupy" — the CouponShare mascot. A friendly azure buddy with a % belly badge.
- * Pure SVG so it renders crisply on any background (gradient hero or white card)
- * and needs no raster asset. Gradient ids are scoped via useId to stay unique
- * when several mascots render on one page.
+ * "Coupy" — the CouponShare mascot. A round, big-eyed azure buddy hugging a
+ * little gold coupon, with a tiny sprout on top (sharing = growing kindness).
+ * Pure SVG so it renders crisply on any background and needs no raster asset.
+ * Gradient ids are scoped via useId to stay unique across multiple mascots.
  */
 export function Mascot({
   size = 96,
@@ -17,8 +17,9 @@ export function Mascot({
   float?: boolean;
 }) {
   const uid = useId().replace(/[:]/g, "");
-  const body = `body-${uid}`;
-  const star = `star-${uid}`;
+  const body = `b-${uid}`;
+  const coup = `c-${uid}`;
+  const leaf = `l-${uid}`;
   return (
     <svg
       width={size}
@@ -29,66 +30,69 @@ export function Mascot({
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id={body} x1="24" y1="30" x2="104" y2="108" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#57a6ff" />
+        <linearGradient id={body} x1="30" y1="24" x2="100" y2="104" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#5fa8ff" />
           <stop offset="1" stopColor="#0d5ce0" />
         </linearGradient>
-        <linearGradient id={star} x1="56" y1="2" x2="72" y2="20" gradientUnits="userSpaceOnUse">
+        <linearGradient id={coup} x1="42" y1="84" x2="86" y2="112" gradientUnits="userSpaceOnUse">
           <stop stopColor="#ffe08a" />
-          <stop offset="1" stopColor="#e6a325" />
+          <stop offset="1" stopColor="#eaa61f" />
+        </linearGradient>
+        <linearGradient id={leaf} x1="56" y1="6" x2="72" y2="26" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#4fd58c" />
+          <stop offset="1" stopColor="#12a05e" />
         </linearGradient>
       </defs>
 
-      {/* antenna + sparkle */}
-      <path d="M64 32V20" stroke="#0d5ce0" strokeWidth="3.5" strokeLinecap="round" />
-      <path
-        d="M64 3l2.6 6.1 6.1 2.6-6.1 2.6L64 20.4l-2.6-6.1-6.1-2.6 6.1-2.6L64 3z"
-        fill={`url(#${star})`}
-      />
+      {/* soft ground shadow */}
+      <ellipse cx="64" cy="117" rx="29" ry="4.5" fill="#0d5ce0" opacity="0.12" />
 
-      {/* side "ears" */}
-      <circle cx="22" cy="68" r="7.5" fill="#0f61e6" />
-      <circle cx="106" cy="68" r="7.5" fill="#0f61e6" />
+      {/* sprout */}
+      <path d="M64 28c-1-6-3-9-4-13" stroke="#12a05e" strokeWidth="3" strokeLinecap="round" />
+      <path d="M60 15c-5-2-9-1-11 2 3 3 8 3 11-2z" fill={`url(#${leaf})`} />
+      <path d="M61 13c1-5 4-8 8-8-0 4-3 8-8 8z" fill={`url(#${leaf})`} />
 
       {/* body */}
-      <rect x="22" y="32" width="84" height="76" rx="28" fill={`url(#${body})`} />
-      <ellipse cx="52" cy="52" rx="23" ry="14" fill="#ffffff" opacity="0.18" />
+      <rect x="26" y="26" width="76" height="72" rx="34" fill={`url(#${body})`} />
+      <ellipse cx="52" cy="45" rx="18" ry="11" fill="#ffffff" opacity="0.22" />
 
-      {/* eyes */}
-      <ellipse cx="50" cy="60" rx="9.5" ry="11.5" fill="#ffffff" />
-      <ellipse cx="78" cy="60" rx="9.5" ry="11.5" fill="#ffffff" />
-      <circle cx="51.5" cy="62" r="5.2" fill="#14213d" />
-      <circle cx="79.5" cy="62" r="5.2" fill="#14213d" />
-      <circle cx="53.6" cy="59.4" r="1.9" fill="#ffffff" />
-      <circle cx="81.6" cy="59.4" r="1.9" fill="#ffffff" />
+      {/* big glossy eyes */}
+      <ellipse cx="51" cy="57" rx="8" ry="10" fill="#12203c" />
+      <ellipse cx="77" cy="57" rx="8" ry="10" fill="#12203c" />
+      <circle cx="54" cy="53" r="3.1" fill="#ffffff" />
+      <circle cx="80" cy="53" r="3.1" fill="#ffffff" />
+      <circle cx="49" cy="60" r="1.5" fill="#ffffff" />
+      <circle cx="75" cy="60" r="1.5" fill="#ffffff" />
 
       {/* blush */}
-      <ellipse cx="39" cy="72" rx="6" ry="3.4" fill="#ff8aa8" opacity="0.55" />
-      <ellipse cx="89" cy="72" rx="6" ry="3.4" fill="#ff8aa8" opacity="0.55" />
+      <ellipse cx="38" cy="68" rx="6" ry="3.6" fill="#ff8fac" opacity="0.6" />
+      <ellipse cx="90" cy="68" rx="6" ry="3.6" fill="#ff8fac" opacity="0.6" />
 
-      {/* smile */}
+      {/* happy mouth */}
+      <path d="M57 69c3 5.5 11 5.5 14 0" stroke="#12203c" strokeWidth="3" strokeLinecap="round" fill="none" />
+
+      {/* little coupon hugged in front */}
+      <g transform="rotate(-7 64 98)">
+        <rect x="42" y="86" width="44" height="26" rx="7" fill={`url(#${coup})`} />
+        <circle cx="42" cy="99" r="3.2" fill={`url(#${body})`} />
+        <circle cx="86" cy="99" r="3.2" fill={`url(#${body})`} />
+        <path
+          d="M55 91l1.6 3.4 3.7.5-2.7 2.6.6 3.7L55 104l-3.3 1.7.6-3.7-2.7-2.6 3.7-.5z"
+          fill="#ffffff"
+        />
+        <rect x="63" y="94" width="16" height="2.6" rx="1.3" fill="#ffffff" opacity="0.85" />
+        <rect x="63" y="100" width="11" height="2.6" rx="1.3" fill="#ffffff" opacity="0.7" />
+      </g>
+
+      {/* hands gripping the coupon */}
+      <circle cx="41" cy="94" r="6.5" fill={`url(#${body})`} />
+      <circle cx="87" cy="92" r="6.5" fill={`url(#${body})`} />
+
+      {/* sparkle */}
       <path
-        d="M55 75c3.4 4 14.6 4 18 0"
-        stroke="#14213d"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-        fill="none"
+        d="M104 28l1.5 3.6 3.6 1.5-3.6 1.5L104 40l-1.5-3.6-3.6-1.5 3.6-1.5z"
+        fill="#ffd166"
       />
-
-      {/* % belly badge */}
-      <circle cx="64" cy="95" r="13" fill="#ffffff" />
-      <circle cx="64" cy="95" r="13" stroke="#ffd166" strokeWidth="2.6" />
-      <text
-        x="64"
-        y="100.5"
-        textAnchor="middle"
-        fontSize="14"
-        fontWeight="800"
-        fill="#0d5ce0"
-        fontFamily="var(--font-display)"
-      >
-        %
-      </text>
     </svg>
   );
 }

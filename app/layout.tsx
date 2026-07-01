@@ -3,14 +3,15 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 
-// jf open 粉圓 (open-huninn 2.0) — a rounded, friendly Traditional-Chinese font,
-// self-hosted so it works under the CSP (font-src 'self'). This is what gives the
-// whole UI its cute / game-like character.
-const huninn = localFont({
-  src: "./fonts/jf-openhuninn.woff2",
+// GenSenRounded 2 TW (源泉圓體, Bold) — a chunky, rounded Traditional-Chinese
+// font, self-hosted so it works under the CSP (font-src 'self'). The bold weight
+// is declared across a 400–800 range so every UI weight uses these round, heavy
+// glyphs with no thin fallback — that's what gives the whole UI its cute, bubbly feel.
+const round = localFont({
+  src: "./fonts/gensen-rounded-bold.woff2",
   variable: "--font-round",
   display: "swap",
-  weight: "400",
+  weight: "400 800",
 });
 
 export const metadata: Metadata = {
@@ -27,7 +28,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="zh-Hant" className={`${huninn.variable} h-full antialiased`}>
+    <html lang="zh-Hant" className={`${round.variable} h-full antialiased`}>
       <body className="min-h-full">
         <AppShell>{children}</AppShell>
       </body>
