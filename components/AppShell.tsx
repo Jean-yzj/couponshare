@@ -140,6 +140,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <MenuItem href="/wallet" icon="wallet" label="我的錢包" onClick={() => setMenuOpen(false)} />
                         <MenuItem href="/score" icon="medal" label="貢獻值與等級" onClick={() => setMenuOpen(false)} />
                         <MenuItem href="/notifications" icon="bell" label="通知中心" onClick={() => setMenuOpen(false)} />
+                        <a
+                          href="https://www.instagram.com/lazybearlife_"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink transition-colors hover:bg-sand/60"
+                        >
+                          <Icon name="instagram" size={17} />
+                          聯絡創作者
+                        </a>
                         {me.is_admin && (
                           <MenuItem
                             href="/admin"
@@ -199,11 +209,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             <a href="mailto:iamlazybear2023@gmail.com" className="transition-colors hover:text-ink">
               聯絡我們
             </a>
+            <span className="text-line">·</span>
+            <a
+              href="https://www.instagram.com/lazybearlife_"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 transition-colors hover:text-ink"
+            >
+              <Icon name="instagram" size={13} /> 聯絡創作者
+            </a>
           </div>
-          <p className="mx-auto mt-3 max-w-md leading-relaxed">
-            CouponShare 為使用者間之票券媒合服務，並非品牌官方平台；票券由使用者自行上傳，兌換前請自行評估可信度。
-          </p>
-          <p className="mt-2 text-ink-faint/80">© 2026 CouponShare · 歡迎品牌合作</p>
+          <p className="mt-2.5 text-ink-faint/80">© 2026 CouponShare · 歡迎品牌合作</p>
         </footer>
       </main>
 
