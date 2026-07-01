@@ -18,6 +18,7 @@ export const ERROR_REGISTRY = {
   CLAIM_REQUEST_NOT_FOUND: { status: 404, message: "找不到申請紀錄" },
   INVALID_STATUS_TRANSITION: { status: 409, message: "不允許的狀態轉換" },
   DAILY_CLAIM_LIMIT_EXCEEDED: { status: 429, message: "已超過今日申請上限" },
+  SHARE_FIRST: { status: 403, message: "為了讓好康流動，先分享一張你用不到的券給大家，就能繼續申請囉！" },
   DAILY_PUBLISH_LIMIT_EXCEEDED: { status: 429, message: "已超過今日上架上限" },
   RATE_LIMITED: { status: 429, message: "操作太頻繁，請稍後再試" },
   BARCODE_ACCESS_DENIED: { status: 403, message: "無權查看條碼" },

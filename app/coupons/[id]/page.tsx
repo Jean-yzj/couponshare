@@ -81,7 +81,7 @@ const UNAVAILABLE_MSG: Record<string, string> = {
 export default function CouponDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { me } = useMe();
+  const { me, refetch: refetchMe } = useMe();
   const { data: coupon, loading, refetch } = useApi<Detail>(`/api/v1/coupons/${id}`);
   const reqs = useApi<{ data: CR[] }>(coupon?.is_owner ? `/api/v1/coupons/${id}/claim-requests` : null);
 
@@ -357,23 +357,46 @@ export default function CouponDetailPage() {
             </Card>
           ) : canClaim ? (
             <Card className="p-4">
-              {me ? (
-                <Button
-                  full
-                  size="lg"
-                  icon={coupon.type === "GIFT" ? "gift" : "swap"}
-                  onClick={() => setClaimOpen(true)}
-                >
-                  {coupon.type === "GIFT" ? "我要領取" : "我要交換"}
-                </Button>
-              ) : (
+              {!me ? (
                 <Button full size="lg" icon="login" href="/login">
                   登入後申請領取
                 </Button>
+              ) : me.must_share_first ? (
+                <div className="text-center">
+                  <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-grad-brand text-white shadow-glow">
+                    <Icon name="gift" size={24} />
+                  </span>
+                  <p className="font-bold text-ink">先分享一張券，再繼續申請</p>
+                  <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-ink-soft">
+                    你已經申請 {me.applied_count ?? 3} 次囉！為了讓好康流動起來，先把一張你用不到的券
+                    分享出去，之後就能繼續無限制申請（只有一開始需要，分享過就不再提醒）。
+                  </p>
+                  <Button full size="lg" icon="plus" href="/new" className="mt-4">
+                    分享一張券
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Button
+                    full
+                    size="lg"
+                    icon={coupon.type === "GIFT" ? "gift" : "swap"}
+                    onClick={() => setClaimOpen(true)}
+                  >
+                    {coupon.type === "GIFT" ? "我要領取" : "我要交換"}
+                  </Button>
+                  <p className="mt-2 text-center text-xs text-ink-faint">
+                    送出申請不代表已取得票券，需由持有者選擇。
+                  </p>
+                  {!me.has_published &&
+                    (me.applied_count ?? 0) >= 1 &&
+                    (me.applied_count ?? 0) < 3 && (
+                      <p className="mt-1.5 text-center text-xs font-medium text-accent">
+                        小提醒：再申請 {3 - (me.applied_count ?? 0)} 次後，需先分享一張券才能繼續。
+                      </p>
+                    )}
+                </>
               )}
-              <p className="mt-2 text-center text-xs text-ink-faint">
-                送出申請不代表已取得票券，需由持有者選擇。
-              </p>
             </Card>
           ) : (
             !coupon.is_claimant && (
@@ -403,6 +426,7 @@ export default function CouponDetailPage() {
         onDone={() => {
           setClaimOpen(false);
           refetch();
+          refetchMe();
         }}
       />
       <ReportModal

@@ -4,6 +4,7 @@ import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireActiveUser, requireUser } from "@/lib/auth";
 import { assertDailyClaimLimit } from "@/lib/ratelimit";
+import { shareGate } from "@/lib/share-gate";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
 import { claimRequestView } from "@/lib/serialize";
@@ -31,6 +32,9 @@ export const POST = route(async (req, ctx) => {
   if (coupon.visibilityLevel === "LEVEL_3_ONLY" && user.userLevel !== "LEVEL_3") {
     throw new ApiError("FORBIDDEN", { message: "此票券僅限傳奇會員申請" });
   }
+
+  // Goodwill gate: brand-new users must share a coupon after a few applications.
+  if ((await shareGate(user.id)).mustShareFirst) throw new ApiError("SHARE_FIRST");
 
   await assertDailyClaimLimit(user);
 
