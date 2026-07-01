@@ -477,6 +477,82 @@ export function AchievementBadge({
   );
 }
 
+// ── Achievement as a row: medal + name + how-to-unlock condition + status. ──
+export function AchievementRow({
+  icon,
+  label,
+  condition,
+  tone = "blue",
+  unlocked = true,
+}: {
+  icon: IconName;
+  label: string;
+  condition: string;
+  tone?: keyof typeof BADGE_TONE;
+  unlocked?: boolean;
+}) {
+  const t = BADGE_TONE[tone];
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-2xl border p-3",
+        unlocked ? "border-line bg-paper shadow-soft" : "border-line bg-canvas/50",
+      )}
+    >
+      <div className="relative h-[52px] w-[52px] shrink-0">
+        {unlocked ? (
+          <>
+            <span
+              className="absolute inset-1 rounded-full opacity-40 blur-md"
+              style={{ backgroundImage: t.grad }}
+            />
+            <div
+              className="relative flex h-[52px] w-[52px] items-center justify-center rounded-full text-white"
+              style={{
+                backgroundImage: t.grad,
+                boxShadow: `0 6px 14px -5px ${t.glow}, inset 0 2px 3px rgba(255,255,255,.55), inset 0 -4px 7px rgba(0,0,0,.16), inset 0 0 0 2px rgba(255,255,255,.35)`,
+              }}
+            >
+              <span className="absolute left-2.5 top-2 h-2.5 w-4 -rotate-12 rounded-full bg-white/50 blur-[1.5px]" />
+              <Icon
+                name={icon}
+                size={24}
+                strokeWidth={2.1}
+                className="relative drop-shadow-[0_1px_1px_rgba(0,0,0,.25)]"
+              />
+            </div>
+          </>
+        ) : (
+          <div className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-sand text-ink-faint shadow-[inset_0_2px_5px_rgba(20,33,64,.08)] ring-1 ring-inset ring-line">
+            <Icon name={icon} size={22} strokeWidth={1.9} />
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-paper bg-ink-faint text-white">
+              <Icon name="lock" size={9} />
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <p className={cn("font-bold", unlocked ? "text-ink" : "text-ink-soft")}>{label}</p>
+          {unlocked ? (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-pine-tint px-1.5 py-0.5 text-[10px] font-bold text-pine">
+              <Icon name="check" size={10} /> 已達成
+            </span>
+          ) : (
+            <span className="rounded-full bg-sand px-1.5 py-0.5 text-[10px] font-bold text-ink-faint">
+              未解鎖
+            </span>
+          )}
+        </div>
+        <p className="mt-0.5 text-xs leading-snug text-ink-soft">
+          <span className="text-ink-faint">解鎖條件：</span>
+          {condition}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Compact stat tile for dashboards. ──
 export function StatTile({
   icon,

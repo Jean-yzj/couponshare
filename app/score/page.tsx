@@ -11,7 +11,7 @@ import {
   Avatar,
   GradientPanel,
   ProgressBar,
-  AchievementBadge,
+  AchievementRow,
 } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { HeroSparkles } from "@/components/Mascot";
@@ -89,20 +89,46 @@ export default function ScorePage() {
   const badges: {
     icon: IconName;
     label: string;
+    condition: string;
     tone: "blue" | "gold" | "pine" | "teal" | "grape" | "rose";
     unlocked: boolean;
   }[] = [
-    { icon: "leaf", label: "初來乍到", tone: "pine", unlocked: true },
+    { icon: "leaf", label: "初來乍到", condition: "註冊加入 CouponShare 就完成", tone: "pine", unlocked: true },
     {
       icon: "gift",
       label: "樂於分享",
+      condition: "成功送出第一張票券",
       tone: "blue",
       unlocked: doneEvents.has("COUPON_GIFTED") || data.contribution_score > 0,
     },
-    { icon: "swap", label: "交換達人", tone: "teal", unlocked: doneEvents.has("COUPON_EXCHANGED") },
-    { icon: "star", label: "人氣好評", tone: "gold", unlocked: doneEvents.has("POSITIVE_RATING") },
-    { icon: "heart", label: "揪感心", tone: "rose", unlocked: doneEvents.has("THANK_YOU_MESSAGE") },
-    { icon: "crown", label: "傳奇會員", tone: "grape", unlocked: data.user_level === "LEVEL_3" },
+    {
+      icon: "swap",
+      label: "交換達人",
+      condition: "完成一次票券交換",
+      tone: "teal",
+      unlocked: doneEvents.has("COUPON_EXCHANGED"),
+    },
+    {
+      icon: "star",
+      label: "人氣好評",
+      condition: "獲得第一則正面評價",
+      tone: "gold",
+      unlocked: doneEvents.has("POSITIVE_RATING"),
+    },
+    {
+      icon: "heart",
+      label: "揪感心",
+      condition: "收到對方的感謝訊息",
+      tone: "rose",
+      unlocked: doneEvents.has("THANK_YOU_MESSAGE"),
+    },
+    {
+      icon: "crown",
+      label: "傳奇會員",
+      condition: "貢獻分達 150，或當月成功送出 20 張",
+      tone: "grape",
+      unlocked: data.user_level === "LEVEL_3",
+    },
   ];
 
   return (
@@ -183,13 +209,11 @@ export default function ScorePage() {
           已解鎖 {badges.filter((b) => b.unlocked).length}/{badges.length}
         </span>
       </div>
-      <Card className="p-5">
-        <div className="grid grid-cols-3 gap-y-5 sm:grid-cols-6">
-          {badges.map((b) => (
-            <AchievementBadge key={b.label} {...b} />
-          ))}
-        </div>
-      </Card>
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        {badges.map((b) => (
+          <AchievementRow key={b.label} {...b} />
+        ))}
+      </div>
 
       {/* How to earn */}
       <h2 className="mb-3 mt-7 font-semibold text-ink">如何賺取貢獻分</h2>
