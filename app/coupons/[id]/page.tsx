@@ -92,6 +92,7 @@ export default function CouponDetailPage() {
   const [actingId, setActingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [adminRemoving, setAdminRemoving] = useState(false);
   const brandsApi = useApi<{ brands: string[] }>(me ? "/api/v1/me/brands" : null);
 
   // Warm the barcode image cache the moment the page loads so "出示我的票券"
@@ -164,6 +165,26 @@ export default function CouponDetailPage() {
       alert(e instanceof ApiErr ? e.message : "取消失敗");
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function adminRemove() {
+    const reason = window.prompt(
+      "下架原因（會通知持有者，可留空使用預設的品質規範說明）：",
+      "折扣未載明金額或內容不夠具體",
+    );
+    if (reason === null) return; // cancelled the prompt
+    setAdminRemoving(true);
+    try {
+      await apiFetch(`/api/v1/admin/coupons/${coupon!.id}/remove`, {
+        method: "POST",
+        body: JSON.stringify({ reason: reason.trim() || undefined }),
+      });
+      await refetch();
+    } catch (e) {
+      alert(e instanceof ApiErr ? e.message : "下架失敗");
+    } finally {
+      setAdminRemoving(false);
     }
   }
 
@@ -442,6 +463,25 @@ export default function CouponDetailPage() {
               <Icon name="flag" size={15} />
               檢舉這張票券
             </button>
+          )}
+
+          {me?.is_admin && !coupon.is_owner && ["AVAILABLE", "PENDING", "REPORTED"].includes(coupon.status) && (
+            <div className="mt-4 rounded-2xl border border-danger/25 bg-danger-tint/40 p-3.5">
+              <p className="flex items-center gap-1.5 text-xs font-bold text-danger">
+                <Icon name="shield" size={14} /> 管理員操作
+              </p>
+              <Button
+                full
+                variant="danger"
+                size="sm"
+                icon="ban"
+                loading={adminRemoving}
+                className="mt-2.5"
+                onClick={adminRemove}
+              >
+                以管理員身分下架這張券
+              </Button>
+            </div>
           )}
         </div>
       )}
