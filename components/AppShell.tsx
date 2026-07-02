@@ -85,7 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative z-10 flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-40 border-b border-line/80 bg-canvas/85 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-line/80 bg-canvas">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4 sm:px-6">
           <Logo />
 
@@ -226,7 +226,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Mobile bottom navigation — only when signed in */}
       {me && (
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 backdrop-blur-md md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper md:hidden">
         <div className="mx-auto flex max-w-md items-stretch px-2">
           <Tab href="/" icon="compass" label="探索" active={pathname === "/"} />
           <Tab href="/wallet" icon="wallet" label="錢包" active={isActive("/wallet")} />

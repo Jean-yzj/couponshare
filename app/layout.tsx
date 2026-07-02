@@ -12,6 +12,9 @@ const round = localFont({
   variable: "--font-round",
   display: "swap",
   weight: "400 800",
+  // Don't block/compete on first paint: text shows instantly in the system
+  // fallback (PingFang) via swap, then upgrades to the rounded font once loaded.
+  preload: false,
 });
 
 export const metadata: Metadata = {

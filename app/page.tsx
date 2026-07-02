@@ -95,7 +95,7 @@ function FeedView() {
     <div>
       <h1 className="mb-4 text-2xl font-extrabold tracking-tight text-ink">探索票券</h1>
 
-      <div className="sticky top-16 z-30 -mx-4 mb-6 space-y-3 border-y border-line/70 bg-canvas/85 px-4 py-3 backdrop-blur-md sm:mx-0 sm:rounded-2xl sm:border">
+      <div className="sticky top-16 z-30 -mx-4 mb-6 space-y-3 border-y border-line/70 bg-canvas px-4 py-3 sm:mx-0 sm:rounded-2xl sm:border">
         <div className="relative">
           <Icon
             name="search"
