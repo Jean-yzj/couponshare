@@ -35,6 +35,20 @@ export const createCouponSchema = z.object({
   visibility_level: z.enum(["PUBLIC", "LEVEL_2_ONLY", "LEVEL_3_ONLY"]).optional(),
 });
 
+// Owner fixes listing info after upload. Type is deliberately NOT editable —
+// existing applications were made against GIFT vs EXCHANGE semantics.
+export const updateCouponSchema = z
+  .object({
+    title: z.string().min(1).max(80),
+    brand: z.string().min(1).max(40),
+    category: createCouponSchema.shape.category,
+    description: z.string().max(1000).nullable(),
+    expiry_date: z.coerce.date().nullable(),
+    exchange_target: z.string().max(200).nullable(),
+  })
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, { message: "沒有任何要更新的欄位" });
+
 export const claimRequestSchema = z.object({
   message: z.string().min(1).max(500),
   request_type: z.enum(["GIFT", "EXCHANGE"]),

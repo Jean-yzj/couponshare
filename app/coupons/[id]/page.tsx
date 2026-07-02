@@ -315,6 +315,11 @@ export default function CouponDetailPage() {
       {coupon.is_owner ? (
         <div className="mt-4 space-y-4">
           <Card className="flex flex-wrap items-center gap-2 p-4">
+            {["DRAFT", "AVAILABLE", "PENDING"].includes(coupon.status) && (
+              <Button variant="outline" icon="edit" href={`/coupons/${coupon.id}/edit`}>
+                編輯資料
+              </Button>
+            )}
             {coupon.has_barcode && (
               <Button variant="outline" icon="eye" onClick={() => setBarcodeOpen(true)}>
                 查看我的條碼

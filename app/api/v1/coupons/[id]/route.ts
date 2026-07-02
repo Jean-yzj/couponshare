@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/db";
-import { route, jsonOk } from "@/lib/api";
+import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, requireActiveUser } from "@/lib/auth";
 import { couponDetail } from "@/lib/serialize";
 import { ratingSummary } from "@/lib/ratings";
+import { updateCouponSchema } from "@/lib/validation";
+import { writeAudit } from "@/lib/audit";
 
 export const GET = route(async (req, ctx) => {
   const { id } = await ctx.params;
@@ -37,4 +39,62 @@ export const GET = route(async (req, ctx) => {
     owner_rating: ownerRating,
     my_request_id: myRequestId,
   });
+});
+
+// Owner edits listing info after upload (typos, wrong expiry, etc.). Only while
+// the coupon is still theirs to give — once CLAIMED (or ended) the listing is
+// frozen as the record of what the claimant accepted. Type/barcode not here:
+// type would change application semantics, barcode has its own guarded route.
+export const PATCH = route(async (req, ctx) => {
+  const { id } = await ctx.params;
+  const user = await requireActiveUser();
+  const body = await readBody(req, updateCouponSchema);
+
+  const coupon = await prisma.coupon.findUnique({ where: { id } });
+  if (!coupon) throw new ApiError("COUPON_NOT_FOUND");
+  if (coupon.ownerId !== user.id) throw new ApiError("FORBIDDEN");
+  if (!["DRAFT", "AVAILABLE", "PENDING"].includes(coupon.status)) {
+    throw new ApiError("INVALID_STATUS_TRANSITION", {
+      message: "票券已送出或已結束，無法再編輯",
+    });
+  }
+  if (body.expiry_date && body.expiry_date <= new Date()) {
+    throw new ApiError("VALIDATION_ERROR", { message: "到期日必須是未來的時間" });
+  }
+
+  const updated = await prisma.coupon.update({
+    where: { id },
+    data: {
+      ...(body.title !== undefined && { title: body.title }),
+      ...(body.brand !== undefined && { brand: body.brand }),
+      ...(body.category !== undefined && { category: body.category }),
+      ...(body.description !== undefined && { description: body.description }),
+      ...(body.expiry_date !== undefined && { expiryDate: body.expiry_date }),
+      ...(body.exchange_target !== undefined && { exchangeTarget: body.exchange_target }),
+    },
+  });
+
+  const meta = clientMeta(req);
+  await writeAudit(prisma, {
+    actorId: user.id,
+    action: "coupon.update",
+    targetType: "coupon",
+    targetId: id,
+    before: {
+      title: coupon.title,
+      brand: coupon.brand,
+      category: coupon.category,
+      expiryDate: coupon.expiryDate,
+    },
+    after: {
+      title: updated.title,
+      brand: updated.brand,
+      category: updated.category,
+      expiryDate: updated.expiryDate,
+    },
+    ip: meta.ip,
+    ua: meta.ua,
+  });
+
+  return jsonOk(couponDetail(updated, user));
 });

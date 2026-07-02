@@ -46,7 +46,8 @@ export type IconName =
   | "sparkles"
   | "users"
   | "lightning"
-  | "instagram";
+  | "instagram"
+  | "edit";
 
 const PATHS: Record<IconName, ReactNode> = {
   compass: (
@@ -284,6 +285,12 @@ const PATHS: Record<IconName, ReactNode> = {
       <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
       <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
       <path d="M17.5 6.5h.01" />
+    </>
+  ),
+  edit: (
+    <>
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      <path d="m15 5 4 4" />
     </>
   ),
 };

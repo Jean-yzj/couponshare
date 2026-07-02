@@ -19,6 +19,13 @@ export const POST = route(async (req, ctx) => {
   const coupon = await prisma.coupon.findUnique({ where: { id } });
   if (!coupon) throw new ApiError("COUPON_NOT_FOUND");
   if (coupon.ownerId !== user.id) throw new ApiError("FORBIDDEN");
+  // Once claimed (or ended) the barcode is what the claimant accepted — owners
+  // must not be able to swap it out from under them.
+  if (!["DRAFT", "AVAILABLE", "PENDING"].includes(coupon.status)) {
+    throw new ApiError("INVALID_STATUS_TRANSITION", {
+      message: "票券已送出或已結束，無法更換條碼",
+    });
+  }
 
   const form = await req.formData();
   const file = form.get("file");
