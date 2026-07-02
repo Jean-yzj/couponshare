@@ -34,14 +34,18 @@ const NOTIF_ICON: Record<string, IconName> = {
 export default function NotificationsPage() {
   const router = useRouter();
   const { me, loading: meLoading } = useMe();
+  // Unconditional: parallel with the session check (endpoint enforces auth itself).
   const { data, loading, refetch } = useApi<{ data: Notif[]; unread_count: number }>(
-    me ? "/api/v1/notifications" : null,
+    "/api/v1/notifications",
   );
 
   if (meLoading)
     return (
-      <div className="flex justify-center py-20">
-        <Skeleton className="h-8 w-8 rounded-full" />
+      <div className="mx-auto max-w-2xl space-y-3">
+        <Skeleton className="h-8 w-40" />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-20 rounded-2xl" />
+        ))}
       </div>
     );
   if (!me) return <NeedLogin message="登入後即可查看你的通知。" />;
@@ -52,7 +56,12 @@ export default function NotificationsPage() {
       refetch();
     }
     if (n.reference_type === "coupon" && n.reference_id) router.push(`/coupons/${n.reference_id}`);
+    // Exchange messages / handover updates live on the transaction page (chat +
+    // 條碼/確認 flow), so deep-link straight to it — /wallet was a dead end here.
+    else if (n.reference_type === "transaction" && n.reference_id)
+      router.push(`/transactions/${n.reference_id}`);
     else if (n.reference_type === "transaction") router.push("/wallet");
+    else if (n.reference_type === "appeal") router.push("/appeal");
   }
 
   async function markAll() {

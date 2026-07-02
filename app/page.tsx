@@ -23,6 +23,10 @@ const SORTS = [
 
 const LIMIT = 12;
 
+// First-page feed results per filter combo — coming back to 探索 paints the
+// last list instantly, then refreshes in the background.
+const feedCache = new Map<string, { items: FeedCoupon[]; total: number }>();
+
 export default function HomePage() {
   const { me, loading } = useMe();
   // Landing only once we KNOW the visitor is signed out. While the session check
@@ -64,20 +68,32 @@ function FeedView({ me }: { me: Me | null }) {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     setLoadErr(false);
     const qs = new URLSearchParams({ sort, page: String(page), limit: String(LIMIT) });
     if (debounced) qs.set("brand", debounced);
     if (type !== "ALL") qs.set("type", type);
     if (category !== "ALL") qs.set("category", category);
+    const key = qs.toString();
+
+    // Paint cached first page immediately; the network refresh below replaces it.
+    const cached = page === 1 ? feedCache.get(key) : undefined;
+    if (cached) {
+      setItems(cached.items);
+      setTotal(cached.total);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     apiFetch<{ data: FeedCoupon[]; pagination: { total: number } }>(`/api/v1/coupons/feed?${qs}`)
       .then((r) => {
+        if (page === 1) feedCache.set(key, { items: r.data, total: r.pagination.total });
         if (cancelled) return;
         setTotal(r.pagination.total);
         setItems((prev) => (page === 1 ? r.data : [...prev, ...r.data]));
       })
       .catch(() => {
-        if (!cancelled) setLoadErr(true);
+        if (!cancelled && !cached) setLoadErr(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

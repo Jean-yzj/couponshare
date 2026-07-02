@@ -70,8 +70,11 @@ export default function ScorePage() {
 
   if (meLoading)
     return (
-      <div className="flex justify-center py-20">
-        <Skeleton className="h-8 w-8 rounded-full" />
+      <div className="mx-auto max-w-2xl space-y-4">
+        <Skeleton className="h-8 w-44" />
+        <Skeleton className="h-48 rounded-3xl" />
+        <Skeleton className="h-28 rounded-2xl" />
+        <Skeleton className="h-28 rounded-2xl" />
       </div>
     );
   if (!me) return <NeedLogin message="登入後即可查看你的貢獻值與會員等級。" />;

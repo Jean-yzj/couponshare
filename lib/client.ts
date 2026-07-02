@@ -69,17 +69,25 @@ export async function apiFetch<T = unknown>(path: string, opts: RequestInit = {}
   return data as T;
 }
 
+// Module-level response cache (stale-while-revalidate): switching tabs renders
+// the last-seen data instantly and refreshes silently in the background, instead
+// of blanking to a skeleton on every navigation. Lives for the browser session;
+// a full page load (login/logout both hard-redirect) resets it.
+const apiCache = new Map<string, unknown>();
+
 export function useApi<T = unknown>(path: string | null) {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState<boolean>(!!path);
+  const initial = path ? (apiCache.get(path) as T | undefined) : undefined;
+  const [data, setData] = useState<T | null>(initial ?? null);
+  const [loading, setLoading] = useState<boolean>(!!path && initial === undefined);
   const [error, setError] = useState<ApiErr | null>(null);
 
   const refetch = useCallback(async () => {
     if (!path) return;
-    setLoading(true);
     setError(null);
     try {
-      setData(await apiFetch<T>(path));
+      const d = await apiFetch<T>(path);
+      apiCache.set(path, d);
+      setData(d);
     } catch (e) {
       setError(e as ApiErr);
     } finally {
@@ -88,8 +96,14 @@ export function useApi<T = unknown>(path: string | null) {
   }, [path]);
 
   useEffect(() => {
+    // Path changed or first mount: paint cached data immediately (if any),
+    // then revalidate. Only paths never seen before show a loading state.
+    const c = path ? (apiCache.get(path) as T | undefined) : undefined;
+    setData(c ?? null);
+    setError(null);
+    setLoading(!!path && c === undefined);
     refetch();
-  }, [refetch]);
+  }, [refetch, path]);
 
   return { data, loading, error, refetch, setData };
 }

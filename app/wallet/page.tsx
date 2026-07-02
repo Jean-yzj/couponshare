@@ -88,8 +88,14 @@ export default function WalletPage() {
 
   if (meLoading)
     return (
-      <div className="flex justify-center py-20">
-        <Skeleton className="h-8 w-8 rounded-full" />
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-44" />
+        <Skeleton className="h-10 rounded-full" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-40 rounded-2xl" />
+          ))}
+        </div>
       </div>
     );
   if (!me) return <NeedLogin message="登入後即可管理你上架、申請與領取的票券。" />;
