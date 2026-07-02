@@ -43,12 +43,12 @@ type Wallet = {
 };
 
 const TABS = [
+  { key: "tx", label: "交易紀錄" },
   { key: "listed", label: "我上架的" },
   { key: "applied", label: "我申請的" },
   { key: "received", label: "我領取的" },
   { key: "expired", label: "已過期" },
   { key: "cancelled", label: "已取消" },
-  { key: "tx", label: "交易紀錄" },
 ] as const;
 
 const CR_STATUS: Record<string, { label: string; cls: string }> = {
@@ -70,7 +70,7 @@ export default function WalletPage() {
   const { me, loading: meLoading } = useMe();
   // Unconditional: parallel with the session check (endpoint enforces auth itself).
   const { data, loading, error, refetch } = useApi<Wallet>("/api/v1/me/wallet");
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("listed");
+  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("tx");
   const [cancelling, setCancelling] = useState<string | null>(null);
 
   async function cancelApplication(id: string) {
