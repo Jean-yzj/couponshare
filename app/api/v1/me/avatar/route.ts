@@ -4,6 +4,7 @@ import { route, readBody, jsonOk } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireUser } from "@/lib/auth";
 import { sniffImageType } from "@/lib/image";
+import { throttle } from "@/lib/throttle";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,7 @@ const schema = z.object({ image: z.string().nullable() });
 // URI (resized/cropped to 128px). We re-validate by magic bytes (SVG rejected —
 // it could carry inline script) and cap the size before storing it in avatar_url.
 export const POST = route(async (req) => {
+  throttle(req, "avatar", 12, 10 * 60_000);
   const user = await requireUser();
   const { image } = await readBody(req, schema);
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { apiFetch, useApi, useMe, type Me } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
 import { Landing } from "@/components/Landing";
-import { Button, Input, Skeleton, EmptyState } from "@/components/ui";
+import { Button, Input, Skeleton, EmptyState, LoadFailed } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/display";
 import { CATEGORIES } from "@/lib/categories";
@@ -43,6 +43,8 @@ function FeedView({ me }: { me: Me | null }) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
   const { data: brandsData } = useApi<{ brands: string[] }>(me ? "/api/v1/me/brands" : null);
   const { data: expData } = useApi<{ data: FeedCoupon[] }>(
     "/api/v1/coupons/feed?within_hours=48&sort=expiry_soon&limit=4",
@@ -63,6 +65,7 @@ function FeedView({ me }: { me: Me | null }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setLoadErr(false);
     const qs = new URLSearchParams({ sort, page: String(page), limit: String(LIMIT) });
     if (debounced) qs.set("brand", debounced);
     if (type !== "ALL") qs.set("type", type);
@@ -73,13 +76,16 @@ function FeedView({ me }: { me: Me | null }) {
         setTotal(r.pagination.total);
         setItems((prev) => (page === 1 ? r.data : [...prev, ...r.data]));
       })
+      .catch(() => {
+        if (!cancelled) setLoadErr(true);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [debounced, type, sort, category, page]);
+  }, [debounced, type, sort, category, page, retryNonce]);
 
   const canLoadMore = items.length < total;
   const firstLoad = loading && page === 1;
@@ -184,6 +190,8 @@ function FeedView({ me }: { me: Me | null }) {
             <Skeleton key={i} className="h-40 rounded-2xl" />
           ))}
         </div>
+      ) : loadErr && items.length === 0 ? (
+        <LoadFailed onRetry={() => setRetryNonce((n) => n + 1)} />
       ) : items.length === 0 ? (
         noFilters && total === 0 ? (
           <EmptyState

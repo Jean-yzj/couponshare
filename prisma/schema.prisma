@@ -394,6 +394,8 @@ model AuditLog {
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@index([targetType, targetId])
+  // Hot path: applyQuota counts coupon.publish events per user on every /auth/me.
+  @@index([actorId, action, createdAt])
   @@map("audit_logs")
 }
 

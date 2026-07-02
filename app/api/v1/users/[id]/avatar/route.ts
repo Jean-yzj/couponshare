@@ -25,6 +25,11 @@ export const GET = route(async (req, ctx) => {
 
   const m = /^data:(image\/[a-z+]+);base64,([A-Za-z0-9+/=]+)$/.exec(user.avatarUrl);
   if (!m) throw new ApiError("NOT_FOUND");
+  // Defence in depth: the upload route already sniffs magic bytes, but never
+  // serve anything scriptable (e.g. image/svg+xml) even if bad data lands in DB.
+  if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(m[1])) {
+    throw new ApiError("NOT_FOUND");
+  }
 
   return new NextResponse(new Uint8Array(Buffer.from(m[2], "base64")), {
     status: 200,

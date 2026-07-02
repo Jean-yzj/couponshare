@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { apiFetch, ApiErr, useApi, useMe } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
-import { Button, Card, Avatar, Skeleton, EmptyState, NeedLogin, Pill, PageHeader } from "@/components/ui";
+import { Button, Card, Avatar, Skeleton, EmptyState, NeedLogin, Pill, PageHeader, LoadFailed } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn, relativeTime } from "@/lib/display";
 
@@ -68,7 +68,8 @@ const TX_STATUS: Record<string, { label: string; cls: string }> = {
 
 export default function WalletPage() {
   const { me, loading: meLoading } = useMe();
-  const { data, loading, refetch } = useApi<Wallet>(me ? "/api/v1/me/wallet" : null);
+  // Unconditional: parallel with the session check (endpoint enforces auth itself).
+  const { data, loading, error, refetch } = useApi<Wallet>("/api/v1/me/wallet");
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("listed");
   const [cancelling, setCancelling] = useState<string | null>(null);
 
@@ -92,6 +93,7 @@ export default function WalletPage() {
       </div>
     );
   if (!me) return <NeedLogin message="登入後即可管理你上架、申請與領取的票券。" />;
+  if (error && !data) return <LoadFailed onRetry={refetch} />;
 
   const listedActive = data?.listed.filter((c) => !["EXPIRED", "CANCELLED"].includes(c.status)) ?? [];
   const expired = data?.listed.filter((c) => c.status === "EXPIRED") ?? [];

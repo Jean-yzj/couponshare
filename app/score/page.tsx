@@ -6,6 +6,7 @@ import {
   Card,
   Skeleton,
   NeedLogin,
+  LoadFailed,
   Pill,
   PageHeader,
   Avatar,
@@ -63,7 +64,9 @@ const LEVEL_NUM: Record<string, number> = { LEVEL_1: 1, LEVEL_2: 2, LEVEL_3: 3 }
 
 export default function ScorePage() {
   const { me, loading: meLoading } = useMe();
-  const { data, loading } = useApi<ScoreData>(me ? "/api/v1/me/score" : null);
+  // Unconditional: runs in parallel with the /auth/me session check (the API
+  // itself enforces auth); gating on `me` would serialise the two round-trips.
+  const { data, loading, error, refetch } = useApi<ScoreData>("/api/v1/me/score");
 
   if (meLoading)
     return (
@@ -72,6 +75,7 @@ export default function ScorePage() {
       </div>
     );
   if (!me) return <NeedLogin message="登入後即可查看你的貢獻值與會員等級。" />;
+  if (error && !data) return <LoadFailed onRetry={refetch} />;
   if (loading || !data) return <Skeleton className="h-64 rounded-3xl" />;
 
   const cur = data.levels.find((l) => l.key === data.user_level);

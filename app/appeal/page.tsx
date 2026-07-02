@@ -19,7 +19,8 @@ type AppealData = {
 
 export default function AppealPage() {
   const { me, loading: meLoading } = useMe();
-  const { data, loading, refetch } = useApi<AppealData>(me ? "/api/v1/me/appeal" : null);
+  // Unconditional: parallel with the session check (endpoint enforces auth itself).
+  const { data, loading, refetch } = useApi<AppealData>("/api/v1/me/appeal");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

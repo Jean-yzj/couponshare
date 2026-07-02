@@ -241,6 +241,23 @@ export function Skeleton({ className }: { className?: string }) {
   return <div className={cn("shimmer rounded-lg", className)} />;
 }
 
+// Fetch failed (timeout / network / server hiccup): give the user a retry button
+// instead of an eternal skeleton or a silently-wrong empty state.
+export function LoadFailed({ onRetry, message }: { onRetry: () => void; message?: string }) {
+  return (
+    <div className="flex flex-col items-center rounded-2xl border border-line bg-paper px-6 py-10 text-center shadow-soft">
+      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-danger-tint text-danger">
+        <Icon name="info" size={22} />
+      </span>
+      <p className="mt-3 font-bold text-ink">資料載入失敗</p>
+      <p className="mt-1 text-sm text-ink-soft">{message ?? "可能是網路不穩或伺服器忙碌中，再試一次通常就好了。"}</p>
+      <Button size="sm" icon="chevronRight" className="mt-4" onClick={onRetry}>
+        重試
+      </Button>
+    </div>
+  );
+}
+
 export function EmptyState({
   icon = "sparkle",
   title,

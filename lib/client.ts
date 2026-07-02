@@ -8,16 +8,50 @@ export class ApiErr extends Error {
   details?: Record<string, unknown>;
 }
 
+// One attempt with a hard deadline — a hung connection must fail fast so the UI
+// can retry, instead of leaving the user on an eternal skeleton.
+async function fetchOnce(path: string, opts: RequestInit, timeoutMs: number): Promise<Response> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    return await fetch(path, { ...opts, signal: ctl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function apiFetch<T = unknown>(path: string, opts: RequestInit = {}): Promise<T> {
   const isForm = opts.body instanceof FormData;
-  const res = await fetch(path, {
+  const init: RequestInit = {
     ...opts,
     headers: {
       ...(isForm ? {} : { "Content-Type": "application/json" }),
       ...(opts.headers || {}),
     },
     credentials: "same-origin",
-  });
+  };
+  const method = (opts.method || "GET").toUpperCase();
+
+  let res: Response;
+  try {
+    res = await fetchOnce(path, init, 12_000);
+  } catch (e) {
+    // Network drop or timeout. GETs are safe to retry once; mutations are not
+    // (the first attempt may have landed server-side).
+    if (method !== "GET") {
+      const err = new ApiErr("連線逾時，請檢查網路後再試");
+      err.code = "NETWORK";
+      throw err;
+    }
+    await new Promise((r) => setTimeout(r, 600));
+    try {
+      res = await fetchOnce(path, init, 12_000);
+    } catch {
+      const err = new ApiErr("連線逾時，請檢查網路後再試");
+      err.code = "NETWORK";
+      throw err;
+    }
+  }
   let data: unknown = null;
   try {
     data = await res.json();

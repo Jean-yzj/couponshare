@@ -8,6 +8,7 @@ import {
   GradientPanel,
   LevelBadge,
   NeedLogin,
+  LoadFailed,
   PageHeader,
   Skeleton,
 } from "@/components/ui";
@@ -34,9 +35,16 @@ const MEDAL: Record<number, { ring: string; badge: string }> = {
 
 export default function LeaderboardPage() {
   const { me } = useMe();
-  const { data, loading } = useApi<Data>(me ? "/api/v1/leaderboard" : null);
+  // Unconditional: parallel with the session check (endpoint enforces auth itself).
+  const { data, loading, error, refetch } = useApi<Data>("/api/v1/leaderboard");
 
   if (!me) return <NeedLogin message="登入後即可查看貢獻排行榜。" />;
+  if (error && !data)
+    return (
+      <div className="mx-auto max-w-2xl">
+        <LoadFailed onRetry={refetch} />
+      </div>
+    );
   if (loading || !data)
     return (
       <div className="mx-auto max-w-2xl">
