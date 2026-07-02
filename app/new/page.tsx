@@ -150,6 +150,8 @@ export default function NewCouponPage() {
         <Banner tone="info" icon="shieldCheck">
           請分享<span className="font-semibold">可以直接兌換</span>的實質票券，例如飲料兌換券、超商購物金。
           請勿上架需要加好友或完成任務才能用的券，以及人人都有的通用折扣碼，讓好券不被淹沒。
+          折扣類請<span className="font-semibold">寫清楚金額或內容</span>（如「折 50 元」「買一送一」）——
+          <span className="font-semibold text-danger">沒寫明折扣金額、或優惠內容不夠具體的券，平台會直接刪除</span>。
         </Banner>
 
         {/* Barcode upload */}
