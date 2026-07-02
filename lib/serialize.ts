@@ -14,11 +14,24 @@ type OwnerRelation = Pick<
   "id" | "displayName" | "avatarUrl" | "userLevel" | "contributionScore"
 >;
 
+// Uploaded avatars are stored as data URIs (10-20KB of base64). Inlining that in
+// every API payload bloats a feed response ~6x and defeats browser caching, so we
+// emit a stable per-user image URL instead; the `v` param is derived from the data
+// itself so the URL (and its immutable cache entry) changes when the avatar does.
+export function avatarRef(u: Pick<User, "id" | "avatarUrl">): string | null {
+  const a = u.avatarUrl;
+  if (!a) return null;
+  if (!a.startsWith("data:")) return a; // external URL (e.g. Google) — use as-is
+  let h = 5381;
+  for (let i = Math.max(0, a.length - 64); i < a.length; i++) h = ((h << 5) + h + a.charCodeAt(i)) | 0;
+  return `/api/v1/users/${u.id}/avatar?v=${(h >>> 0).toString(36)}${a.length.toString(36)}`;
+}
+
 export function publicUser(u: OwnerRelation) {
   return {
     id: u.id,
     display_name: u.displayName,
-    avatar_url: u.avatarUrl,
+    avatar_url: avatarRef(u),
     user_level: u.userLevel,
     level_name: LEVELS[u.userLevel].name,
     contribution_score: u.contributionScore,

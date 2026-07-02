@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { route, jsonOk } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { LEVELS } from "@/lib/levels";
+import { avatarRef } from "@/lib/serialize";
 
 // Contribution leaderboard — top active members by contribution score, plus the
 // viewer's own rank so they can see where they stand.
@@ -25,7 +26,7 @@ export const GET = route(async () => {
     rank: i + 1,
     id: u.id,
     display_name: u.displayName,
-    avatar_url: u.avatarUrl,
+    avatar_url: avatarRef(u),
     user_level: u.userLevel,
     level_name: LEVELS[u.userLevel].name,
     contribution_score: u.contributionScore,

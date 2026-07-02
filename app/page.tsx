@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch, useApi, useMe } from "@/lib/client";
+import { apiFetch, useApi, useMe, type Me } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
 import { Landing } from "@/components/Landing";
 import { Button, Input, Skeleton, EmptyState } from "@/components/ui";
@@ -25,21 +25,14 @@ const LIMIT = 12;
 
 export default function HomePage() {
   const { me, loading } = useMe();
-  if (loading) {
-    return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-40 rounded-2xl" />
-        ))}
-      </div>
-    );
-  }
-  if (!me) return <Landing />;
-  return <FeedView />;
+  // Landing only once we KNOW the visitor is signed out. While the session check
+  // runs we mount the feed anyway, so the cards request races /auth/me instead of
+  // waiting behind it — signed-in users (the common case) see cards a round-trip sooner.
+  if (!loading && !me) return <Landing />;
+  return <FeedView me={me} />;
 }
 
-function FeedView() {
-  const { me } = useMe();
+function FeedView({ me }: { me: Me | null }) {
   const [brand, setBrand] = useState("");
   const [debounced, setDebounced] = useState("");
   const [category, setCategory] = useState<string>("ALL");

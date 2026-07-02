@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { route, jsonOk } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
-import { feedCoupon } from "@/lib/serialize";
+import { avatarRef, feedCoupon } from "@/lib/serialize";
 import { ratingSummary } from "@/lib/ratings";
 import { LEVELS } from "@/lib/levels";
 
@@ -37,7 +37,7 @@ export const GET = route(async (req, ctx) => {
     user: {
       id: user.id,
       display_name: user.displayName,
-      avatar_url: user.avatarUrl,
+      avatar_url: avatarRef(user),
       user_level: user.userLevel,
       level_name: LEVELS[user.userLevel].name,
       contribution_score: user.contributionScore,
@@ -49,7 +49,7 @@ export const GET = route(async (req, ctx) => {
       count: summary.count,
       items: ratings.map((r) => ({
         from: r.fromUser
-          ? { display_name: r.fromUser.displayName, avatar_url: r.fromUser.avatarUrl }
+          ? { display_name: r.fromUser.displayName, avatar_url: avatarRef(r.fromUser) }
           : null,
         rating_score: r.ratingScore,
         tags: r.tags,
