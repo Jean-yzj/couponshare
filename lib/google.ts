@@ -19,10 +19,22 @@ export function googleAuthUrl(state: string, redirectUri: string): string {
   return `${AUTH_URL}?${params.toString()}`;
 }
 
+// Outbound calls to Google MUST have a deadline: Node fetch has none by default,
+// so a stalled connection from the host leaves the user's browser hanging forever
+// on a blank callback page. Timing out throws → callback redirects to
+// /login?error=google_failed, which the user can simply retry.
+function withDeadline(ms: number): AbortSignal {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  (t as unknown as { unref?: () => void }).unref?.();
+  return ctl.signal;
+}
+
 export async function exchangeCode(code: string, redirectUri: string): Promise<string> {
   const res = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    signal: withDeadline(10_000),
     body: new URLSearchParams({
       code,
       client_id: process.env.GOOGLE_CLIENT_ID!,
@@ -40,7 +52,10 @@ export async function exchangeCode(code: string, redirectUri: string): Promise<s
 export async function fetchGoogleProfile(
   accessToken: string,
 ): Promise<{ sub: string; email: string; name: string; picture: string | null }> {
-  const res = await fetch(USERINFO_URL, { headers: { Authorization: `Bearer ${accessToken}` } });
+  const res = await fetch(USERINFO_URL, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    signal: withDeadline(10_000),
+  });
   if (!res.ok) throw new Error("google profile fetch failed");
   const p = (await res.json()) as {
     sub: string;

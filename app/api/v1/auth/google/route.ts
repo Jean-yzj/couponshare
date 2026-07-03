@@ -11,6 +11,17 @@ export const GET = route(async (req) => {
   if (!googleConfigured()) {
     return NextResponse.redirect(`${origin}/login?error=google_not_configured`);
   }
+
+  // Run the whole OAuth dance on the one canonical domain registered in the
+  // Google Console. Starting from an alternate host (e.g. *.zeabur.app) would
+  // send Google a redirect_uri it has never heard of — a hard fail on their
+  // side. Bouncing first also puts the state cookie and the session cookie on
+  // the domain the user actually finishes on.
+  const canonical = process.env.APP_ORIGIN?.replace(/\/+$/, "");
+  if (canonical && origin !== canonical) {
+    return NextResponse.redirect(`${canonical}/api/v1/auth/google`);
+  }
+
   const state = randomBytes(16).toString("hex");
   const store = await cookies();
   store.set("g_state", state, {
