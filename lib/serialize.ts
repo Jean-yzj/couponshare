@@ -14,6 +14,21 @@ type OwnerRelation = Pick<
   "id" | "displayName" | "avatarUrl" | "userLevel" | "contributionScore"
 >;
 
+type FeedCouponRecord = Pick<
+  Coupon,
+  | "id"
+  | "title"
+  | "brand"
+  | "category"
+  | "type"
+  | "expiryDate"
+  | "status"
+  | "visibilityLevel"
+  | "viewCount"
+  | "claimRequestCount"
+  | "createdAt"
+>;
+
 // Uploaded avatars are stored as data URIs (10-20KB of base64). Inlining that in
 // every API payload bloats a feed response ~6x and defeats browser caching, so we
 // emit a stable per-user image URL instead; the `v` param is derived from the data
@@ -41,7 +56,7 @@ export function publicUser(u: OwnerRelation) {
 // Feed card. NEVER includes barcode_* fields (PRD §8.1, AC §17.2).
 // `myRequestStatus` (when a viewer is signed in) surfaces "已申請 / 已獲得" on the card.
 export function feedCoupon(
-  c: Coupon & { owner?: OwnerRelation | null },
+  c: FeedCouponRecord & { owner?: OwnerRelation | null },
   myRequestStatus?: ClaimRequestStatus | null,
 ) {
   return {

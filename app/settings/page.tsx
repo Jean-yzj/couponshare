@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiFetch, ApiErr, useMe } from "@/lib/client";
-import { Avatar, Banner, Button, Card, NeedLogin, PageHeader, Skeleton } from "@/components/ui";
+import { Avatar, Banner, Button, Card, Field, Input, NeedLogin, PageHeader, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 
 // Read a picked file, crop it to a centered square and downscale to 128px, then
@@ -35,11 +35,15 @@ function fileToAvatar(file: File): Promise<string> {
 
 export default function SettingsPage() {
   const { me, loading, refetch } = useMe();
+  const [displayName, setDisplayName] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (me) setDisplayName(me.display_name);
+  }, [me]);
 
   if (loading)
     return (
@@ -50,13 +54,15 @@ export default function SettingsPage() {
   if (!me) return <NeedLogin message="登入後即可編輯個人資料。" />;
 
   const shown = preview ?? me.avatar_url;
+  const name = displayName.trim();
+  const nameChanged = name.length > 0 && name !== me.display_name;
+  const canSave = nameChanged || !!preview;
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     setError(null);
-    setSaved(false);
     if (!file.type.startsWith("image/")) {
       setError("請選擇圖片檔（PNG / JPG / WebP）");
       return;
@@ -68,12 +74,21 @@ export default function SettingsPage() {
     }
   }
 
-  async function save() {
-    if (!preview) return;
+  async function saveProfile() {
+    if (!canSave) return;
     setBusy(true);
     setError(null);
     try {
-      await apiFetch("/api/v1/me/avatar", { method: "POST", body: JSON.stringify({ image: preview }) });
+      if (nameChanged) {
+        await apiFetch("/api/v1/me/profile", {
+          method: "PATCH",
+          body: JSON.stringify({ display_name: name }),
+        });
+      }
+      if (preview) {
+        await apiFetch("/api/v1/me/avatar", { method: "POST", body: JSON.stringify({ image: preview }) });
+      }
+      await refetch();
       window.location.reload();
     } catch (err) {
       setError(err instanceof ApiErr ? err.message : "儲存失敗，請稍後再試");
@@ -86,6 +101,7 @@ export default function SettingsPage() {
     setError(null);
     try {
       await apiFetch("/api/v1/me/avatar", { method: "POST", body: JSON.stringify({ image: null }) });
+      await refetch();
       window.location.reload();
     } catch (err) {
       setError(err instanceof ApiErr ? err.message : "移除失敗，請稍後再試");
@@ -95,7 +111,7 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <PageHeader eyebrow="Settings" title="個人設定" subtitle="換上你喜歡的頭像。" />
+      <PageHeader eyebrow="Settings" title="個人設定" subtitle="更新你的暱稱與頭像。" />
 
       <Card className="mt-5 p-6">
         <div className="flex flex-col items-center">
@@ -119,6 +135,20 @@ export default function SettingsPage() {
           />
           <p className="mt-4 text-sm text-ink-soft">點右下角的 + 選一張照片，會自動裁成方形。</p>
 
+          <div className="mt-6 w-full">
+            <Field label="暱稱" hint="最多 40 個字，會顯示在票券、排行榜與交易訊息中。">
+              <Input
+                value={displayName}
+                onChange={(e) => {
+                  setDisplayName(e.target.value);
+                  setError(null);
+                }}
+                maxLength={40}
+                placeholder="輸入你的暱稱"
+              />
+            </Field>
+          </div>
+
           {error && (
             <div className="mt-4 w-full">
               <Banner tone="warn" icon="info">
@@ -126,10 +156,9 @@ export default function SettingsPage() {
               </Banner>
             </div>
           )}
-
           <div className="mt-5 flex w-full flex-col gap-2">
-            <Button full size="lg" icon="check" loading={busy} disabled={!preview} onClick={save}>
-              {preview ? "儲存新頭像" : "尚未選擇圖片"}
+            <Button full size="lg" icon="check" loading={busy} disabled={!canSave} onClick={saveProfile}>
+              {canSave ? "儲存個人資料" : "尚未變更"}
             </Button>
             {me.avatar_url && !preview && (
               <Button full variant="ghost" loading={busy} onClick={removeAvatar}>

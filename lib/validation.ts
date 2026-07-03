@@ -100,7 +100,14 @@ export const disputeSchema = z.object({
 });
 
 export const transactionMessageSchema = z.object({
-  message: z.string().min(1).max(500),
+  message: z.string().max(500).optional().default(""),
+  image: z.string().max(700_000).optional().nullable(),
+}).refine((v) => v.message.trim().length > 0 || !!v.image, {
+  message: "請輸入訊息或選擇圖片",
+});
+
+export const updateProfileSchema = z.object({
+  display_name: z.string().trim().min(1).max(40),
 });
 
 export const brandSchema = z.object({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
@@ -35,6 +35,7 @@ type Msg = {
   id: string;
   sender: Party;
   message: string;
+  image_url: string | null;
   created_at: string;
 };
 type Txn = {
@@ -73,13 +74,43 @@ const DISPUTE_REASONS: { key: string; label: string }[] = [
   { key: "OTHER", label: "其他問題" },
 ];
 
+function fileToChatImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read failed"));
+    reader.onload = () => {
+      const img = new window.Image();
+      img.onerror = () => reject(new Error("decode failed"));
+      img.onload = () => {
+        const maxSide = 960;
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("no canvas"));
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function TransactionPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { me } = useMe();
   const { data: t, loading, refetch } = useApi<Txn>(`/api/v1/transactions/${id}`);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const [text, setText] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [barcodeOpen, setBarcodeOpen] = useState(false);
   const [offerBarcodeOpen, setOfferBarcodeOpen] = useState(false);
@@ -111,15 +142,32 @@ export default function TransactionPage() {
   const otherConfirmed = isOwner ? t.claimant_completed : t.owner_completed;
   const myBarcodeReady = isOwner ? true : t.has_offer_barcode;
 
+  async function pickMessageImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("請選擇圖片檔（PNG / JPG / WebP / GIF）");
+      return;
+    }
+    try {
+      setImagePreview(await fileToChatImage(file));
+    } catch {
+      alert("無法讀取這張圖片，請換一張");
+    }
+  }
+
   async function send() {
-    if (!text.trim()) return;
+    const message = text.trim();
+    if (!message && !imagePreview) return;
     setSending(true);
     try {
       await apiFetch(`/api/v1/transactions/${id}/messages`, {
         method: "POST",
-        body: JSON.stringify({ message: text.trim() }),
+        body: JSON.stringify({ message, image: imagePreview }),
       });
       setText("");
+      setImagePreview(null);
       await refetch();
     } catch (e) {
       alert(e instanceof ApiErr ? e.message : "送出失敗");
@@ -395,14 +443,28 @@ export default function TransactionPage() {
                 <div key={m.id} className={cn("flex gap-2", mine && "flex-row-reverse")}>
                   <Avatar name={m.sender.display_name} url={m.sender.avatar_url} size={28} />
                   <div className={cn("max-w-[75%]", mine && "items-end text-right")}>
-                    <div
-                      className={cn(
-                        "inline-block rounded-2xl px-3.5 py-2 text-sm leading-relaxed",
-                        mine ? "bg-accent text-white" : "bg-sand text-ink",
-                      )}
-                    >
-                      {m.message}
-                    </div>
+                    {m.image_url && (
+                      <a href={m.image_url} target="_blank" rel="noreferrer" className="mb-1.5 block">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={m.image_url}
+                          alt="訊息圖片"
+                          loading="lazy"
+                          decoding="async"
+                          className="max-h-64 max-w-full rounded-2xl border border-line object-contain shadow-soft"
+                        />
+                      </a>
+                    )}
+                    {m.message && (
+                      <div
+                        className={cn(
+                          "inline-block rounded-2xl px-3.5 py-2 text-sm leading-relaxed",
+                          mine ? "bg-accent text-white" : "bg-sand text-ink",
+                        )}
+                      >
+                        {m.message}
+                      </div>
+                    )}
                     <p className="mt-0.5 text-[11px] text-ink-faint">{relativeTime(m.created_at)}</p>
                   </div>
                 </div>
@@ -411,22 +473,61 @@ export default function TransactionPage() {
           </div>
         )}
 
-        {!completed && !disputed && (
-          <div className="mt-4 flex gap-2">
-            <Input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              placeholder="輸入訊息…"
-            />
-            <Button icon="send" loading={sending} onClick={send} disabled={!text.trim()}>
-              傳送
-            </Button>
+        {!disputed && (
+          <div className="mt-4 space-y-2">
+            {imagePreview && (
+              <div className="flex items-center gap-3 rounded-2xl border border-line bg-canvas/60 p-2.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imagePreview}
+                  alt="待傳送圖片"
+                  className="h-16 w-16 rounded-xl object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-ink">已選擇圖片</p>
+                  <p className="text-xs text-ink-faint">送出前會先壓縮，點叉叉可移除。</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImagePreview(null)}
+                  aria-label="移除圖片"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-faint hover:bg-sand hover:text-ink"
+                >
+                  <Icon name="x" size={16} />
+                </button>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={pickMessageImage}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                aria-label="選擇圖片"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-paper text-ink-soft transition-colors hover:bg-sand hover:text-ink"
+              >
+                <Icon name="image" size={19} />
+              </button>
+              <Input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+                placeholder={imagePreview ? "加一句話（可不填）…" : "輸入訊息…"}
+              />
+              <Button icon="send" loading={sending} onClick={send} disabled={!text.trim() && !imagePreview}>
+                傳送
+              </Button>
+            </div>
           </div>
         )}
       </Card>

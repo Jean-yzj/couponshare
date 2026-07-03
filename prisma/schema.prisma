@@ -219,7 +219,10 @@ model Coupon {
   @@index([category])
   @@index([expiryDate])
   @@index([createdAt])
+  @@index([status, createdAt])
   @@index([status, expiryDate])
+  @@index([status, claimRequestCount])
+  @@index([status, visibilityLevel, expiryDate])
   @@index([status, brand, createdAt])
   @@map("coupons")
 }
