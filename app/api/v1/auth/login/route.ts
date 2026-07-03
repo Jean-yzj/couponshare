@@ -9,11 +9,13 @@ import { throttle } from "@/lib/throttle";
 export const POST = route(async (req) => {
   throttle(req, "login", 10, 5 * 60_000);
   const body = await readBody(req, loginSchema);
-  const user = await prisma.user.findUnique({ where: { email: body.email } });
-  if (!user || !verifyPassword(body.password, user.passwordHash)) {
-    throw new ApiError("INVALID_CREDENTIALS");
-  }
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: body.email, mode: "insensitive" } },
+  });
+  if (!user) throw new ApiError("INVALID_CREDENTIALS");
   if (user.status === "DELETED") throw new ApiError("INVALID_CREDENTIALS");
+  if (!user.passwordHash) throw new ApiError("PASSWORD_LOGIN_UNAVAILABLE");
+  if (!verifyPassword(body.password, user.passwordHash)) throw new ApiError("INVALID_CREDENTIALS");
   // Suspended accounts CAN log in (read-only) so they can submit an appeal.
 
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });

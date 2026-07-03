@@ -27,16 +27,19 @@ export const GET = route(async (req) => {
     const token = await exchangeCode(code, redirectUri);
     const profile = await fetchGoogleProfile(token);
     if (!profile.email) return NextResponse.redirect(`${origin}/login?error=google_failed`);
+    const email = profile.email.trim().toLowerCase();
 
-    const existing = await prisma.user.findUnique({ where: { email: profile.email } });
+    const existing = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+    });
     const user = existing
       ? await prisma.user.update({
           where: { id: existing.id },
-          data: { lastLoginAt: new Date(), avatarUrl: existing.avatarUrl ?? profile.picture },
+          data: { email, lastLoginAt: new Date(), avatarUrl: existing.avatarUrl ?? profile.picture },
         })
       : await prisma.user.create({
           data: {
-            email: profile.email,
+            email,
             displayName: profile.name,
             avatarUrl: profile.picture,
             loginProvider: "GOOGLE",

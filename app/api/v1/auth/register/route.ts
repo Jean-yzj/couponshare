@@ -11,7 +11,9 @@ export const POST = route(async (req) => {
   // Throttle account creation per IP — also makes email-enumeration probing impractical.
   throttle(req, "register", 8, 60 * 60_000);
   const body = await readBody(req, registerSchema);
-  const existing = await prisma.user.findUnique({ where: { email: body.email } });
+  const existing = await prisma.user.findFirst({
+    where: { email: { equals: body.email, mode: "insensitive" } },
+  });
   if (existing) throw new ApiError("EMAIL_TAKEN");
 
   const user = await prisma.user.create({
