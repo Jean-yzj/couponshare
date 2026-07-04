@@ -4,7 +4,7 @@ import { ApiError } from "@/lib/errors";
 import { requireActiveUser } from "@/lib/auth";
 import { assertTransition } from "@/lib/coupon-state";
 import { writeAudit } from "@/lib/audit";
-import { notify } from "@/lib/notify";
+import { notifyMany } from "@/lib/notify";
 
 export const POST = route(async (req, ctx) => {
   const { id } = await ctx.params;
@@ -34,21 +34,21 @@ export const POST = route(async (req, ctx) => {
 
   const updated = await prisma.coupon.update({ where: { id }, data: { status: "AVAILABLE" } });
 
-  // Notify followers of this brand (restock alert).
+  // Notify followers of this brand (restock alert) — one batched write + push,
+  // capped, instead of a serial round-trip per follower.
   const followers = await prisma.brandFollow.findMany({
     where: { brand: { equals: coupon.brand, mode: "insensitive" }, NOT: { userId: user.id } },
     select: { userId: true },
+    take: 500,
   });
-  for (const f of followers) {
-    await notify(prisma, {
-      userId: f.userId,
-      type: "BRAND_RESTOCK",
-      title: `${coupon.brand} 有新券！`,
-      body: `你追蹤的「${coupon.brand}」有人分享了「${coupon.title}」`,
-      referenceType: "coupon",
-      referenceId: id,
-    });
-  }
+  await notifyMany(prisma, {
+    userIds: followers.map((f) => f.userId),
+    type: "BRAND_RESTOCK",
+    title: `${coupon.brand} 有新券！`,
+    body: `你追蹤的「${coupon.brand}」有人分享了「${coupon.title}」`,
+    referenceType: "coupon",
+    referenceId: id,
+  });
 
   const meta = clientMeta(req);
   await writeAudit(prisma, {

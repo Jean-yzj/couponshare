@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/errors";
 import { getCurrentUser } from "@/lib/auth";
 import { hasBlockBetween } from "@/lib/blocks";
 import { avatarRef, feedCoupon } from "@/lib/serialize";
+import { couponCardSelect } from "@/lib/selects";
 import { ratingSummary } from "@/lib/ratings";
 import { LEVELS } from "@/lib/levels";
 
@@ -32,7 +33,7 @@ export const GET = route(async (req, ctx) => {
             visibilityLevel: "PUBLIC",
             OR: [{ expiryDate: null }, { expiryDate: { gt: new Date() } }],
           },
-          include: { owner: true },
+          select: couponCardSelect,
           orderBy: { createdAt: "desc" },
           take: 12,
         }),

@@ -30,8 +30,19 @@ const REDEEM_KIND_OPTIONS: { value: string; label: string }[] = [
 const LIMIT = 12;
 
 // First-page feed results per filter combo — coming back to 探索 paints the
-// last list instantly, then refreshes in the background.
+// last list instantly, then refreshes in the background. LRU-capped so a long
+// browsing session across many filters can't grow the JS heap unbounded.
 const feedCache = new Map<string, { items: FeedCoupon[]; total: number }>();
+const FEED_CACHE_MAX = 8;
+function putFeedCache(key: string, value: { items: FeedCoupon[]; total: number }) {
+  feedCache.delete(key); // re-insert → most-recently-used
+  feedCache.set(key, value);
+  while (feedCache.size > FEED_CACHE_MAX) {
+    const oldest = feedCache.keys().next().value;
+    if (oldest === undefined) break;
+    feedCache.delete(oldest);
+  }
+}
 
 type InitialFeed = {
   data: FeedCoupon[];
@@ -232,7 +243,7 @@ function FeedView({
 
     if (!skippedInitialFeedRequest.current && page === 1 && key === initialKey) {
       skippedInitialFeedRequest.current = true;
-      feedCache.set(key, { items: initialFeed.data, total: initialFeed.pagination.total });
+      putFeedCache(key, { items: initialFeed.data, total: initialFeed.pagination.total });
       return;
     }
 
@@ -248,7 +259,7 @@ function FeedView({
 
     apiFetch<{ data: FeedCoupon[]; pagination: { total: number } }>(`/api/v1/coupons/feed?${key}`)
       .then((r) => {
-        if (page === 1) feedCache.set(key, { items: r.data, total: r.pagination.total });
+        if (page === 1) putFeedCache(key, { items: r.data, total: r.pagination.total });
         if (cancelled) return;
         setTotal(r.pagination.total);
         setItems((prev) => (page === 1 ? r.data : [...prev, ...r.data]));

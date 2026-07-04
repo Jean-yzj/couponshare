@@ -9,32 +9,9 @@ import type {
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { feedCoupon } from "@/lib/serialize";
+import { couponCardSelect } from "@/lib/selects";
 import { CATEGORY_KEYS, REDEEM_KIND_KEYS } from "@/lib/categories";
 import { blockedUserIds } from "@/lib/blocks";
-
-const ownerSelect = {
-  id: true,
-  displayName: true,
-  avatarUrl: true,
-  userLevel: true,
-  contributionScore: true,
-} satisfies Prisma.UserSelect;
-
-const couponFeedSelect = {
-  id: true,
-  title: true,
-  brand: true,
-  category: true,
-  redeemKind: true,
-  type: true,
-  expiryDate: true,
-  status: true,
-  visibilityLevel: true,
-  viewCount: true,
-  claimRequestCount: true,
-  createdAt: true,
-  owner: { select: ownerSelect },
-} satisfies Prisma.CouponSelect;
 
 type FeedViewer = Pick<User, "id" | "userLevel"> | null;
 
@@ -111,7 +88,7 @@ export async function getCouponFeed(params: CouponFeedParams) {
     prisma.coupon.findMany({
       where,
       orderBy,
-      select: couponFeedSelect,
+      select: couponCardSelect,
       skip: (page - 1) * limit,
       take: limit,
     }),

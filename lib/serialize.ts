@@ -140,11 +140,28 @@ export function claimRequestView(
 }
 
 export function transactionView(
-  t: Transaction & {
+  t: Pick<
+    Transaction,
+    | "id"
+    | "couponId"
+    | "transactionType"
+    | "status"
+    | "ownerCompleted"
+    | "claimantCompleted"
+    | "ownerReady"
+    | "claimantReady"
+    | "revealedAt"
+    | "offerBarcodeMime"
+    | "disputedAt"
+    | "ownerId"
+    | "claimantId"
+    | "completedAt"
+    | "createdAt"
+  > & {
     coupon?: Pick<Coupon, "id" | "title" | "brand"> | null;
     owner?: OwnerRelation | null;
     claimant?: OwnerRelation | null;
-    ratings?: Rating[];
+    ratings?: Pick<Rating, "fromUserId">[];
   },
   viewerId?: string,
 ) {
@@ -163,7 +180,7 @@ export function transactionView(
     owner_ready: t.ownerReady,
     claimant_ready: t.claimantReady,
     revealed: !!t.revealedAt,
-    has_offer_barcode: !!t.offerBarcodeEncryptedData,
+    has_offer_barcode: !!t.offerBarcodeMime,
     disputed_at: t.disputedAt,
     role: viewerId
       ? viewerId === t.ownerId

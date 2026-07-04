@@ -7,6 +7,7 @@ import { applyQuota } from "@/lib/share-gate";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
 import { claimRequestView } from "@/lib/serialize";
+import { ownerSelect } from "@/lib/selects";
 import { claimRequestSchema } from "@/lib/validation";
 import { hasBlockBetween } from "@/lib/blocks";
 import { assertTransition } from "@/lib/coupon-state";
@@ -179,8 +180,9 @@ export const GET = route(async (req, ctx) => {
 
   const requests = await prisma.claimRequest.findMany({
     where: { couponId },
-    include: { requester: true },
+    include: { requester: { select: ownerSelect } },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+    take: 100,
   });
 
   return jsonOk({ data: requests.map(claimRequestView) });

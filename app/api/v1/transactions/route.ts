@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { route, jsonOk } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { transactionView } from "@/lib/serialize";
+import { txnSelect } from "@/lib/selects";
 
 export const GET = route(async (req) => {
   const user = await requireUser();
@@ -22,8 +23,9 @@ export const GET = route(async (req) => {
 
   const txns = await prisma.transaction.findMany({
     where,
-    include: { coupon: true, owner: true, claimant: true, ratings: true },
+    select: txnSelect,
     orderBy: { createdAt: "desc" },
+    take: 50,
   });
 
   return jsonOk({ data: txns.map((t) => transactionView(t, user.id)) });

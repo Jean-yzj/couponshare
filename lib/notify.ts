@@ -62,6 +62,35 @@ async function sendExpoPush(tokens: PushRecord[], args: NotifyArgs): Promise<voi
   }
 }
 
+// Fan-out version: one createMany + one batched push for many recipients (e.g.
+// brand-restock to all followers), instead of N serial create+fetch round-trips
+// that would block the request and pin memory/connections on a hot brand.
+export async function notifyMany(
+  db: Db,
+  args: Omit<NotifyArgs, "userId"> & { userIds: string[] },
+): Promise<void> {
+  if (!args.userIds.length) return;
+  await db.notification.createMany({
+    data: args.userIds.map((userId) => ({
+      userId,
+      type: args.type,
+      title: args.title,
+      body: args.body,
+      referenceType: args.referenceType,
+      referenceId: args.referenceId,
+    })),
+  });
+  try {
+    const tokens = await db.pushToken.findMany({
+      where: { userId: { in: args.userIds }, platform: "ios" },
+      select: { token: true },
+    });
+    if (tokens.length) await sendExpoPush(tokens, { ...args, userId: "" });
+  } catch (err) {
+    console.warn("[push] expo bulk send failed", err);
+  }
+}
+
 export async function notify(
   db: Db,
   args: NotifyArgs,
