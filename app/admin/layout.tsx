@@ -8,6 +8,7 @@ import { cn } from "@/lib/display";
 
 const TABS = [
   { href: "/admin", label: "數據總覽" },
+  { href: "/admin/reports", label: "檢舉複核" },
   { href: "/admin/appeals", label: "申訴複核" },
 ];
 

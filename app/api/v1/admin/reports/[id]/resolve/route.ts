@@ -1,0 +1,88 @@
+import { z } from "zod";
+import { prisma } from "@/lib/db";
+import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
+import { ApiError } from "@/lib/errors";
+import { requireAdmin } from "@/lib/admin";
+import { notify } from "@/lib/notify";
+import { writeAudit } from "@/lib/audit";
+
+const schema = z.object({
+  action: z.enum(["dismiss", "remove_coupon", "suspend_user"]),
+  note: z.string().max(300).optional(),
+});
+
+// Admin decides a report. dismiss = no violation (re-list the coupon if it had
+// been auto-flagged REPORTED); remove_coupon = take that listing down;
+// suspend_user = suspend the account + pull all its listings. Terms §5.
+export const POST = route(async (req, ctx) => {
+  const admin = await requireAdmin();
+  const { id } = await ctx.params;
+  const { action, note } = await readBody(req, schema);
+  const meta = clientMeta(req);
+
+  const report = await prisma.report.findUnique({ where: { id }, include: { coupon: true } });
+  if (!report) throw new ApiError("NOT_FOUND");
+  if (!["PENDING", "REVIEWING"].includes(report.status)) {
+    throw new ApiError("VALIDATION_ERROR", { message: "此檢舉已處理" });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (action === "dismiss") {
+      await tx.report.update({
+        where: { id },
+        data: { status: "REJECTED", adminNote: note ?? null, resolvedAt: new Date() },
+      });
+      // If this coupon had been auto-flagged REPORTED purely by report count,
+      // clearing a report puts it back on the shelf.
+      if (report.coupon && report.coupon.status === "REPORTED") {
+        await tx.coupon.update({ where: { id: report.coupon.id }, data: { status: "AVAILABLE" } });
+      }
+    } else if (action === "remove_coupon") {
+      if (!report.coupon) throw new ApiError("VALIDATION_ERROR", { message: "此檢舉沒有對應票券" });
+      await tx.coupon.update({ where: { id: report.coupon.id }, data: { status: "SUSPENDED" } });
+      await tx.report.update({
+        where: { id },
+        data: { status: "RESOLVED", adminNote: note ?? null, resolvedAt: new Date() },
+      });
+      await notify(tx, {
+        userId: report.coupon.ownerId,
+        type: "REPORT_UPDATED",
+        title: "你的票券已被下架",
+        body: `「${report.coupon.title}」因違反平台規範已被下架${note ? `：${note}` : ""}。如有疑問請聯繫客服。`,
+        referenceType: "coupon",
+        referenceId: report.coupon.id,
+      });
+    } else {
+      // suspend_user
+      const targetId = report.reportedUserId;
+      if (!targetId) throw new ApiError("VALIDATION_ERROR", { message: "此檢舉沒有對應使用者" });
+      await tx.user.update({ where: { id: targetId }, data: { status: "SUSPENDED" } });
+      await tx.coupon.updateMany({
+        where: { ownerId: targetId, status: { in: ["AVAILABLE", "PENDING", "REPORTED"] } },
+        data: { status: "SUSPENDED" },
+      });
+      await tx.report.update({
+        where: { id },
+        data: { status: "RESOLVED", adminNote: note ?? null, resolvedAt: new Date() },
+      });
+      await notify(tx, {
+        userId: targetId,
+        type: "REPORT_UPDATED",
+        title: "你的帳號已被暫停",
+        body: `你的帳號因違反平台規範已被暫停，相關票券已下架${note ? `：${note}` : ""}。如有疑問可提出申訴。`,
+      });
+    }
+
+    await writeAudit(tx, {
+      actorId: admin.id,
+      action: `report.${action}`,
+      targetType: "report",
+      targetId: id,
+      after: { action, note: note ?? null },
+      ip: meta.ip,
+      ua: meta.ua,
+    });
+  });
+
+  return jsonOk({ id, action });
+});

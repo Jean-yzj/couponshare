@@ -31,11 +31,11 @@ type Detail = {
   is_owner: boolean;
 };
 
-// ISO timestamp -> value for <input type="datetime-local"> in the user's zone.
+// ISO timestamp -> value for <input type="date"> in the user's zone.
 function toLocalInput(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 export default function EditCouponPage() {
@@ -106,7 +106,7 @@ export default function EditCouponPage() {
           brand: brand.trim(),
           category,
           description: description.trim() || null,
-          expiry_date: noExpiry ? null : new Date(expiry).toISOString(),
+          expiry_date: noExpiry ? null : new Date(expiry + "T23:59:59").toISOString(),
           ...(coupon!.type === "EXCHANGE" && { exchange_target: exchangeTarget.trim() || null }),
         }),
       });
@@ -158,7 +158,7 @@ export default function EditCouponPage() {
           </div>
           <Field label="到期日">
             <Input
-              type="datetime-local"
+              type="date"
               value={expiry}
               onChange={(e) => setExpiry(e.target.value)}
               disabled={noExpiry}

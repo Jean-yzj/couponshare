@@ -71,7 +71,7 @@ export default function NewCouponPage() {
     if (!title.trim()) return "請填寫標題";
     if (!brand.trim()) return "請填寫品牌";
     if (!category) return "請選擇分類";
-    if (!noExpiry && (!expiry || new Date(expiry).getTime() <= Date.now())) return "到期日必須晚於現在";
+    if (!noExpiry && (!expiry || new Date(expiry + "T23:59:59").getTime() <= Date.now())) return "到期日必須晚於今天";
     if (type === "EXCHANGE" && !exchangeTarget.trim()) return "交換類型必須填寫想交換的目標";
     if (!agreed) return "請先勾選確認這是可直接兌換的票券";
     return null;
@@ -96,7 +96,7 @@ export default function NewCouponPage() {
             brand: brand.trim(),
             category,
             description: description.trim() || null,
-            expiry_date: noExpiry ? null : new Date(expiry).toISOString(),
+            expiry_date: noExpiry ? null : new Date(expiry + "T23:59:59").toISOString(),
             type,
             exchange_target: type === "EXCHANGE" ? exchangeTarget.trim() : null,
             unlock_policy:
@@ -220,7 +220,7 @@ export default function NewCouponPage() {
           </div>
           <Field label="到期日">
             <Input
-              type="datetime-local"
+              type="date"
               value={expiry}
               onChange={(e) => setExpiry(e.target.value)}
               disabled={noExpiry}
