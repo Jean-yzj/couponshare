@@ -6,6 +6,7 @@ import { couponDetail } from "@/lib/serialize";
 import { ratingSummary } from "@/lib/ratings";
 import { updateCouponSchema } from "@/lib/validation";
 import { writeAudit } from "@/lib/audit";
+import { encryptBarcode } from "@/lib/crypto";
 
 export const GET = route(async (req, ctx) => {
   const { id } = await ctx.params;
@@ -69,6 +70,11 @@ export const PATCH = route(async (req, ctx) => {
       ...(body.brand !== undefined && { brand: body.brand }),
       ...(body.category !== undefined && { category: body.category }),
       ...(body.redeem_kind !== undefined && { redeemKind: body.redeem_kind }),
+      ...(body.redeem_code !== undefined && {
+        redeemCodeEncrypted: body.redeem_code
+          ? encryptBarcode(Buffer.from(body.redeem_code, "utf8"))
+          : null,
+      }),
       ...(body.description !== undefined && { description: body.description }),
       ...(body.expiry_date !== undefined && { expiryDate: body.expiry_date }),
       ...(body.exchange_target !== undefined && { exchangeTarget: body.exchange_target }),

@@ -60,6 +60,8 @@ export const createCouponSchema = z.object({
   ]),
   // 券內容：免費兌換實體 vs 折價券。與品牌分類正交，上架時必選。
   redeem_kind: z.enum(["FREE_ITEM", "DISCOUNT"]),
+  // 文字兌換碼（條碼圖片的替代；加密保存、只有領取者看得到）。
+  redeem_code: z.string().trim().min(1).max(200).optional().nullable(),
   description: z.string().max(1000).optional().nullable(),
   expiry_date: z.coerce.date().nullable().optional(),
   type: z.enum(["GIFT", "EXCHANGE"]),
@@ -78,6 +80,7 @@ export const updateCouponSchema = z
     brand: z.string().min(1).max(40),
     category: createCouponSchema.shape.category,
     redeem_kind: createCouponSchema.shape.redeem_kind,
+    redeem_code: createCouponSchema.shape.redeem_code,
     description: z.string().max(1000).nullable(),
     expiry_date: z.coerce.date().nullable(),
     exchange_target: z.string().max(200).nullable(),

@@ -89,6 +89,8 @@ export function couponDetail(
   const isClaimant = !!viewer && c.claimantId === viewer.id;
   const hasBarcode = !!c.barcodeEncryptedData;
   const canViewBarcode = (isOwner || (isClaimant && c.status === "CLAIMED")) && hasBarcode;
+  const hasRedeemCode = !!c.redeemCodeEncrypted;
+  const canViewRedeemCode = (isOwner || (isClaimant && c.status === "CLAIMED")) && hasRedeemCode;
   return {
     my_request_status: myRequestStatus ?? null,
     id: c.id,
@@ -108,6 +110,8 @@ export function couponDetail(
     report_count: c.reportCount,
     has_barcode: hasBarcode,
     can_view_barcode: canViewBarcode,
+    has_redeem_code: hasRedeemCode,
+    can_view_redeem_code: canViewRedeemCode,
     is_owner: isOwner,
     is_claimant: isClaimant,
     claimant_id: c.claimantId,

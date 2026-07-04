@@ -3,6 +3,7 @@ import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
 import { requireActiveUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { createCouponSchema } from "@/lib/validation";
+import { encryptBarcode } from "@/lib/crypto";
 
 export const POST = route(async (req) => {
   const user = await requireActiveUser();
@@ -15,6 +16,9 @@ export const POST = route(async (req) => {
       brand: body.brand,
       category: body.category,
       redeemKind: body.redeem_kind,
+      redeemCodeEncrypted: body.redeem_code
+        ? encryptBarcode(Buffer.from(body.redeem_code, "utf8"))
+        : null,
       description: body.description ?? null,
       expiryDate: body.expiry_date ?? null,
       type: body.type,

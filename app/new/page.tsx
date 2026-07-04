@@ -43,6 +43,8 @@ export default function NewCouponPage() {
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState("PUBLIC");
   const [agreed, setAgreed] = useState(false);
+  const [redeemMethod, setRedeemMethod] = useState<"image" | "code">("image");
+  const [redeemCode, setRedeemCode] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
@@ -69,7 +71,8 @@ export default function NewCouponPage() {
   }
 
   function validate(): string | null {
-    if (!file) return "請上傳條碼或 QR Code 圖片";
+    if (redeemMethod === "image" && !file) return "請上傳條碼或 QR Code 圖片";
+    if (redeemMethod === "code" && !redeemCode.trim()) return "請填寫兌換碼";
     if (!title.trim()) return "請填寫標題";
     if (!brand.trim()) return "請填寫品牌";
     if (!category) return "請選擇分類";
@@ -99,6 +102,7 @@ export default function NewCouponPage() {
             brand: brand.trim(),
             category,
             redeem_kind: redeemKind,
+            redeem_code: redeemMethod === "code" ? redeemCode.trim() : null,
             description: description.trim() || null,
             expiry_date: noExpiry ? null : new Date(expiry + "T23:59:59").toISOString(),
             type,
@@ -113,7 +117,7 @@ export default function NewCouponPage() {
         });
         draftId.current = created.id;
       }
-      if (file && !uploaded.current) {
+      if (redeemMethod === "image" && file && !uploaded.current) {
         setStepText("加密上傳條碼中…");
         const fd = new FormData();
         fd.append("file", file);
@@ -163,11 +167,34 @@ export default function NewCouponPage() {
           <span className="font-semibold text-danger">沒寫明折扣金額、或優惠內容不夠具體的券，平台會直接刪除</span>。
         </Banner>
 
-        {/* Barcode upload */}
+        {/* Redeem content: barcode image OR text code */}
         <Card className="p-5">
-          <p className="mb-2 flex items-center gap-1 text-sm font-medium text-ink">
-            條碼 / QR Code 圖片<span className="text-accent">*</span>
+          <p className="mb-3 flex items-center gap-1 text-sm font-medium text-ink">
+            兌換方式<span className="text-accent">*</span>
           </p>
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            {(
+              [
+                ["image", "條碼 / QR 圖片"],
+                ["code", "文字兌換碼"],
+              ] as const
+            ).map(([m, label]) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setRedeemMethod(m)}
+                className={cn(
+                  "rounded-xl border py-2.5 text-sm font-semibold transition-all",
+                  redeemMethod === m
+                    ? "border-transparent bg-grad-brand text-white shadow-glow"
+                    : "border-line bg-paper text-ink-soft hover:bg-canvas-2",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <input
             ref={fileRef}
             type="file"
@@ -175,31 +202,45 @@ export default function NewCouponPage() {
             className="hidden"
             onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
           />
-          {preview ? (
-            <div className="flex items-center gap-4">
-              <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-line bg-white">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={preview} alt="條碼預覽" className="max-h-full max-w-full object-contain" />
+
+          {redeemMethod === "image" ? (
+            preview ? (
+              <div className="flex items-center gap-4">
+                <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-line bg-white">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={preview} alt="條碼預覽" className="max-h-full max-w-full object-contain" />
+                </div>
+                <div className="space-y-2">
+                  <p className="flex items-center gap-1.5 text-sm text-pine">
+                    <Icon name="check" size={16} /> 已選擇圖片
+                  </p>
+                  <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+                    更換圖片
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <p className="flex items-center gap-1.5 text-sm text-pine">
-                  <Icon name="check" size={16} /> 已選擇圖片
-                </p>
-                <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                  更換圖片
-                </Button>
-              </div>
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-canvas/50 py-9 text-ink-soft transition-colors hover:border-accent hover:bg-accent-tint/40 hover:text-accent"
+              >
+                <Icon name="image" size={28} />
+                <span className="text-sm font-medium">點此上傳條碼圖片</span>
+                <span className="text-xs text-ink-faint">支援 JPG / PNG，上限 5MB</span>
+              </button>
+            )
           ) : (
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-canvas/50 py-9 text-ink-soft transition-colors hover:border-accent hover:bg-accent-tint/40 hover:text-accent"
-            >
-              <Icon name="image" size={28} />
-              <span className="text-sm font-medium">點此上傳條碼圖片</span>
-              <span className="text-xs text-ink-faint">支援 JPG / PNG，上限 5MB</span>
-            </button>
+            <div>
+              <Input
+                value={redeemCode}
+                onChange={(e) => setRedeemCode(e.target.value)}
+                placeholder="例如：STAR-2026-8H3K"
+              />
+              <p className="mt-2 text-xs text-ink-faint">
+                只有被你選中的領取者看得到這組兌換碼，一樣會 AES 加密保存。
+              </p>
+            </div>
           )}
         </Card>
 
