@@ -1,0 +1,52 @@
+name: Daily DB backup to R2
+
+# Pulls the full DB from the app's streaming backup endpoint and stores it
+# off-site in Cloudflare R2. Runs daily; also runnable on demand to test.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   BACKUP_SECRET         same value as the app's BACKUP_SECRET env var
+#   R2_ACCOUNT_ID         Cloudflare account id (the R2 S3 endpoint subdomain)
+#   R2_BUCKET             R2 bucket name (e.g. couponshare-backups)
+#   R2_ACCESS_KEY_ID      R2 API token access key
+#   R2_SECRET_ACCESS_KEY  R2 API token secret key
+# Set a 30-day lifecycle/expiry rule on the bucket to prune old backups.
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # 02:00 Asia/Taipei daily
+  workflow_dispatch: {}
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Download backup from app
+        run: |
+          set -euo pipefail
+          TS=$(date -u +%Y%m%d-%H%M)
+          echo "TS=$TS" >> "$GITHUB_ENV"
+          curl -fsS --max-time 1800 \
+            -H "x-backup-secret: ${{ secrets.BACKUP_SECRET }}" \
+            "https://couponshare.lazybearlife.com/api/v1/admin/backup" \
+            -o "couponshare-$TS.ndjson.gz"
+          gzip -t "couponshare-$TS.ndjson.gz"
+          ls -lh "couponshare-$TS.ndjson.gz"
+
+      - name: Upload to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
+          AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
+        run: |
+          set -euo pipefail
+          aws s3 cp "couponshare-${TS}.ndjson.gz" \
+            "s3://${{ secrets.R2_BUCKET }}/couponshare/couponshare-${TS}.ndjson.gz" \
+            --endpoint-url "https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+          echo "✓ uploaded couponshare-${TS}.ndjson.gz to R2 bucket ${{ secrets.R2_BUCKET }}"

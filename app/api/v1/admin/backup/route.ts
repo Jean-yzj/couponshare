@@ -1,6 +1,5 @@
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { assertCron } from "@/lib/cron";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,9 +52,14 @@ async function* generate(): AsyncGenerator<string> {
 }
 
 export async function GET(req: NextRequest) {
-  try {
-    assertCron(req);
-  } catch {
+  // Dedicated BACKUP_SECRET (x-backup-secret) so a full-DB download isn't tied to
+  // the cron secret. Still accepts the cron secret during the transition; drop
+  // that once BACKUP_SECRET is set everywhere. Fail closed if neither is set.
+  const bk = process.env.BACKUP_SECRET;
+  const cs = process.env.CRON_SECRET;
+  const okBackup = !!bk && req.headers.get("x-backup-secret") === bk;
+  const okCron = !!cs && req.headers.get("x-cron-secret") === cs;
+  if (!okBackup && !okCron) {
     return new Response("unauthorized\n", { status: 401 });
   }
 
