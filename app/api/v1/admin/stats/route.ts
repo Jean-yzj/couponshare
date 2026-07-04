@@ -148,12 +148,13 @@ export const GET = route(async () => {
     prisma.$queryRaw<{ h: number; c: number }[]>`SELECT EXTRACT(HOUR FROM created_at + interval '8 hours')::int AS h, COUNT(*)::int AS c FROM users GROUP BY 1 ORDER BY 1`,
     // Distinct users who applied for a coupon, per day (30-day window).
     prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT requester_id)::int AS c FROM claim_requests WHERE created_at >= ${windowStart} GROUP BY 1`,
-    // Distinct users who published a coupon, per day.
-    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT actor_id)::int AS c FROM audit_logs WHERE action = 'coupon.publish' AND created_at >= ${windowStart} GROUP BY 1`,
-    // DAU proxy: distinct users with any audited activity, per day.
-    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT actor_id)::int AS c FROM audit_logs WHERE created_at >= ${windowStart} GROUP BY 1`,
-    // WAU: distinct active users in the trailing 7 days.
-    prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT actor_id)::int AS c FROM audit_logs WHERE created_at >= ${since(7)}`,
+    // Distinct users who published a coupon, per day. JOIN users so audit rows
+    // left behind by deleted accounts don't inflate the count.
+    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(a.created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.action = 'coupon.publish' AND a.created_at >= ${windowStart} GROUP BY 1`,
+    // DAU: distinct still-existing users with any audited activity, per day.
+    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(a.created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.created_at >= ${windowStart} GROUP BY 1`,
+    // WAU: distinct still-existing active users in the trailing 7 days.
+    prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.created_at >= ${since(7)}`,
   ]);
 
   const days: string[] = [];

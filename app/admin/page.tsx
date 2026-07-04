@@ -247,6 +247,16 @@ function StatCard({
 function TrendChart({ title, days, values }: { title: string; days: string[]; values: number[] }) {
   const max = Math.max(1, ...values);
   const total = sum(values);
+  const W = 300;
+  const H = 96;
+  const P = 5;
+  const n = values.length;
+  const gid = "tg" + title.split("").reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36);
+  const xAt = (i: number) => (n <= 1 ? W / 2 : P + (i / (n - 1)) * (W - 2 * P));
+  const yAt = (v: number) => H - P - (v / max) * (H - 2 * P);
+  const line = values.map((v, i) => `${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(" ");
+  const area = `${P},${H - P} ${line} ${W - P},${H - P}`;
+  const last = values[n - 1] ?? 0;
   return (
     <Card className="p-5">
       <div className="flex items-baseline justify-between">
@@ -257,16 +267,25 @@ function TrendChart({ title, days, values }: { title: string; days: string[]; va
         <div className="flex h-28 items-center justify-center text-sm text-ink-faint">尚無資料</div>
       ) : (
         <>
-          <div className="mt-4 flex h-28 items-end gap-px">
-            {values.map((v, i) => (
-              <div
-                key={i}
-                className="flex-1 rounded-t bg-accent/85"
-                style={{ height: v === 0 ? "0%" : `${Math.max(5, (v / max) * 100)}%` }}
-                title={`${days[i]}：${v}`}
-              />
-            ))}
-          </div>
+          <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="mt-3 h-28 w-full">
+            <defs>
+              <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <polygon points={area} fill={`url(#${gid})`} />
+            <polyline
+              points={line}
+              fill="none"
+              stroke="var(--color-accent)"
+              strokeWidth="2"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+            <circle cx={xAt(n - 1)} cy={yAt(last)} r="2.6" fill="var(--color-accent)" vectorEffect="non-scaling-stroke" />
+          </svg>
           <div className="mt-1.5 flex justify-between text-[10px] text-ink-faint">
             <span>{days[0]}</span>
             <span>{days[Math.floor(days.length / 2)]}</span>
