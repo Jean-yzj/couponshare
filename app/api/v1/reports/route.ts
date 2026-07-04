@@ -3,7 +3,6 @@ import { prisma } from "@/lib/db";
 import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireActiveUser } from "@/lib/auth";
-import { canTransition } from "@/lib/coupon-state";
 import { writeAudit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 import { reportSchema } from "@/lib/validation";
@@ -52,14 +51,33 @@ export const POST = route(async (req) => {
       },
     });
 
-    // Coupon-level: flag the coupon once enough reports land.
+    // Coupon-level: 3 distinct reporters (one report per user) AUTO-DELIST the
+    // coupon — no admin review, so offensive / junk listings vanish fast even when
+    // the admin isn't watching. Owner is notified and can appeal.
     if (body.coupon_id && coupon) {
       const updated = await prisma.coupon.update({
         where: { id: body.coupon_id },
         data: { reportCount: { increment: 1 } },
       });
-      if (updated.reportCount >= COUPON_REPORT_THRESHOLD && canTransition(updated.status, "REPORTED")) {
-        await prisma.coupon.update({ where: { id: body.coupon_id }, data: { status: "REPORTED" } });
+      if (
+        updated.reportCount >= COUPON_REPORT_THRESHOLD &&
+        ["AVAILABLE", "PENDING", "REPORTED"].includes(updated.status)
+      ) {
+        await prisma.coupon.update({ where: { id: body.coupon_id }, data: { status: "SUSPENDED" } });
+        await notify(prisma, {
+          userId: updated.ownerId,
+          type: "REPORT_UPDATED",
+          title: "你的票券已被自動下架",
+          body: `「${updated.title}」因被多位使用者檢舉，已自動下架。如有疑問可提出申訴。`,
+          referenceType: "coupon",
+          referenceId: updated.id,
+        });
+        await writeAudit(prisma, {
+          action: "coupon.auto_suspend_reported",
+          targetType: "coupon",
+          targetId: updated.id,
+          after: { report_count: updated.reportCount },
+        });
       }
     }
 

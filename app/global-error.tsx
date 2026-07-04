@@ -9,9 +9,10 @@ export default function GlobalError({ error }: { error: Error }) {
   useEffect(() => {
     const s = `${error.name} ${error.message}`;
     if (!/chunk|dynamically imported module|fetch.*failed|NetworkError|text\/html/i.test(s)) return;
-    const KEY = "cs-reloaded-once";
-    if (sessionStorage.getItem(KEY)) return;
-    sessionStorage.setItem(KEY, "1");
+    const KEY = "cs-reloaded-at";
+    const last = Number(sessionStorage.getItem(KEY) || "0");
+    if (Date.now() - last < 10_000) return;
+    sessionStorage.setItem(KEY, String(Date.now()));
     window.location.reload();
   }, [error]);
 
@@ -25,7 +26,7 @@ export default function GlobalError({ error }: { error: Error }) {
           </p>
           <button
             onClick={() => {
-              sessionStorage.removeItem("cs-reloaded-once");
+              sessionStorage.removeItem("cs-reloaded-at");
               window.location.reload();
             }}
             style={{

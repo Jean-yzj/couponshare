@@ -99,6 +99,7 @@ export default function CouponDetailPage() {
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [adminRemoving, setAdminRemoving] = useState(false);
+  const [adminSuspending, setAdminSuspending] = useState(false);
   const brandsApi = useApi<{ brands: string[] }>(me ? "/api/v1/me/brands" : null);
 
   // Warm the barcode image cache the moment the page loads so "出示我的票券"
@@ -191,6 +192,26 @@ export default function CouponDetailPage() {
       alert(e instanceof ApiErr ? e.message : "下架失敗");
     } finally {
       setAdminRemoving(false);
+    }
+  }
+
+  async function adminSuspendOwner() {
+    if (!coupon?.owner) return;
+    const reason = window.prompt(
+      `停權「${coupon.owner.display_name}」並下架其所有票券？可填原因（會通知對方）。`,
+    );
+    if (reason === null) return;
+    setAdminSuspending(true);
+    try {
+      await apiFetch(`/api/v1/admin/users/${coupon.owner.id}/suspend`, {
+        method: "POST",
+        body: JSON.stringify({ reason: reason.trim() || undefined }),
+      });
+      await refetch();
+    } catch (e) {
+      alert(e instanceof ApiErr ? e.message : "停權失敗");
+    } finally {
+      setAdminSuspending(false);
     }
   }
 
@@ -496,21 +517,34 @@ export default function CouponDetailPage() {
             </button>
           )}
 
-          {me?.is_admin && !coupon.is_owner && ["AVAILABLE", "PENDING", "REPORTED"].includes(coupon.status) && (
+          {me?.is_admin && !coupon.is_owner && coupon.owner && (
             <div className="mt-4 rounded-2xl border border-danger/25 bg-danger-tint/40 p-3.5">
               <p className="flex items-center gap-1.5 text-xs font-bold text-danger">
                 <Icon name="shield" size={14} /> 管理員操作
               </p>
+              {["AVAILABLE", "PENDING", "REPORTED"].includes(coupon.status) && (
+                <Button
+                  full
+                  variant="danger"
+                  size="sm"
+                  icon="ban"
+                  loading={adminRemoving}
+                  className="mt-2.5"
+                  onClick={adminRemove}
+                >
+                  以管理員身分下架這張券
+                </Button>
+              )}
               <Button
                 full
-                variant="danger"
+                variant="outline"
                 size="sm"
-                icon="ban"
-                loading={adminRemoving}
-                className="mt-2.5"
-                onClick={adminRemove}
+                icon="shield"
+                loading={adminSuspending}
+                className="mt-2"
+                onClick={adminSuspendOwner}
               >
-                以管理員身分下架這張券
+                停權持有者（{coupon.owner.display_name}）
               </Button>
             </div>
           )}

@@ -14,9 +14,13 @@ function isStaleBuildError(err: Error): boolean {
 export default function ErrorPage({ error, reset }: { error: Error; reset: () => void }) {
   useEffect(() => {
     if (!isStaleBuildError(error)) return;
-    const KEY = "cs-reloaded-once";
-    if (sessionStorage.getItem(KEY)) return; // avoid reload loops
-    sessionStorage.setItem(KEY, "1");
+    // Time-window guard: reload on a stale chunk, but not if we already reloaded
+    // seconds ago (that would be a genuine loop). Using a timestamp (not a
+    // set-once flag) means EVERY later deploy's stale chunk recovers too.
+    const KEY = "cs-reloaded-at";
+    const last = Number(sessionStorage.getItem(KEY) || "0");
+    if (Date.now() - last < 10_000) return;
+    sessionStorage.setItem(KEY, String(Date.now()));
     window.location.reload();
   }, [error]);
 
@@ -35,7 +39,7 @@ export default function ErrorPage({ error, reset }: { error: Error; reset: () =>
       <div className="mt-6 flex gap-2">
         <button
           onClick={() => {
-            sessionStorage.removeItem("cs-reloaded-once");
+            sessionStorage.removeItem("cs-reloaded-at");
             window.location.reload();
           }}
           className="rounded-full bg-grad-brand px-6 py-2.5 text-sm font-semibold text-white shadow-glow"

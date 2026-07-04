@@ -34,6 +34,7 @@ type Stats = {
   };
   active_users: { dau_today: number; wau: number };
   activation: { registered: number; shared: number; claimed: number; completed: number; returning_7d: number };
+  sources: { referred: number; organic: number; by_provider: { key: string; count: number }[] };
   heatmap_hours: number[];
   top_contributors: { id: string; display_name: string; avatar_url: string | null; level_name: string; contribution_score: number }[];
   top_brands: { brand: string; count: number }[];
@@ -130,6 +131,29 @@ export default function AdminDashboardPage() {
           近 7 日回訪老用戶（註冊超過 7 天、仍在使用）：
           <span className="font-semibold text-accent">{data.activation.returning_7d.toLocaleString()}</span> 人
         </p>
+      </Section>
+
+      {/* Registration source */}
+      <Section title="註冊來源">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-canvas/60 p-3 text-center">
+            <p className="font-display text-2xl font-extrabold tabular-nums text-accent">
+              {data.sources.referred.toLocaleString()}
+            </p>
+            <p className="mt-0.5 text-xs text-ink-soft">朋友推薦而來</p>
+          </div>
+          <div className="rounded-xl bg-canvas/60 p-3 text-center">
+            <p className="font-display text-2xl font-extrabold tabular-nums text-ink">
+              {data.sources.organic.toLocaleString()}
+            </p>
+            <p className="mt-0.5 text-xs text-ink-soft">自然註冊</p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <BarList
+            items={data.sources.by_provider.map((p) => ({ label: PROVIDER_LABEL[p.key] || p.key, count: p.count }))}
+          />
+        </div>
       </Section>
 
       {/* Breakdowns */}
