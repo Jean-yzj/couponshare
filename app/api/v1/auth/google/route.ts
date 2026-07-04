@@ -3,11 +3,13 @@ import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { route, publicOrigin } from "@/lib/api";
 import { googleConfigured, googleAuthUrl } from "@/lib/google";
+import { REF_COOKIE } from "@/lib/referral";
 
 export const runtime = "nodejs";
 
 export const GET = route(async (req) => {
   const origin = publicOrigin(req);
+  const ref = new URL(req.url).searchParams.get("ref")?.trim() || "";
   if (!googleConfigured()) {
     return NextResponse.redirect(`${origin}/login?error=google_not_configured`);
   }
@@ -19,7 +21,10 @@ export const GET = route(async (req) => {
   // the domain the user actually finishes on.
   const canonical = process.env.APP_ORIGIN?.replace(/\/+$/, "");
   if (canonical && origin !== canonical) {
-    return NextResponse.redirect(`${canonical}/api/v1/auth/google`);
+    // Carry the invite ref across the host bounce so it survives to the callback.
+    return NextResponse.redirect(
+      `${canonical}/api/v1/auth/google${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`,
+    );
   }
 
   const state = randomBytes(16).toString("hex");
@@ -31,6 +36,16 @@ export const GET = route(async (req) => {
     path: "/",
     maxAge: 600,
   });
+  // Stash the invite ref for the callback (only used if a new account is created).
+  if (ref) {
+    store.set(REF_COOKIE, ref, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 600,
+    });
+  }
   const redirectUri = `${origin}/api/v1/auth/google/callback`;
   return NextResponse.redirect(googleAuthUrl(state, redirectUri));
 });

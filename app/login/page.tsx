@@ -38,12 +38,19 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [inApp, setInApp] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [ref, setRef] = useState("");
 
   useEffect(() => {
     setInApp(isInAppBrowser());
-    const err = new URLSearchParams(window.location.search).get("error");
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("error");
     if (err === "google_not_configured") setError("Google 登入尚未設定，請改用 Email 註冊或登入");
     else if (err === "google_failed") setError("Google 登入失敗，請再試一次");
+    const r = params.get("ref");
+    if (r) {
+      setRef(r);
+      setMode("register"); // an invite link means they're here to sign up
+    }
   }, []);
 
   async function copyLink() {
@@ -69,7 +76,7 @@ export default function LoginPage() {
       } else {
         await apiFetch("/api/v1/auth/register", {
           method: "POST",
-          body: JSON.stringify({ email, password, display_name: displayName }),
+          body: JSON.stringify({ email, password, display_name: displayName, ref: ref || undefined }),
         });
       }
       window.location.href = "/";
@@ -92,6 +99,13 @@ export default function LoginPage() {
       </div>
 
       <Card className="p-5">
+        {ref && (
+          <div className="mb-4">
+            <Banner tone="success" icon="gift">
+              有位朋友邀請你加入！註冊完成後，對方會獲得當日額外的申請次數。
+            </Banner>
+          </div>
+        )}
         {inApp && (
           <div className="mb-4">
             <Banner tone="warn" icon="info">
@@ -120,7 +134,9 @@ export default function LoginPage() {
         )}
         <button
           onClick={() => {
-            window.location.href = "/api/v1/auth/google";
+            window.location.href = ref
+              ? `/api/v1/auth/google?ref=${encodeURIComponent(ref)}`
+              : "/api/v1/auth/google";
           }}
           className="flex w-full items-center justify-center gap-2.5 rounded-full border border-line bg-paper py-2.5 text-[15px] font-medium text-ink transition-colors hover:bg-canvas-2"
         >

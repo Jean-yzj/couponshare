@@ -2,6 +2,7 @@ import type { User } from "@prisma/client";
 import { prisma } from "./db";
 import { LEVELS } from "./levels";
 import { startOfTodayTaipei } from "./time";
+import { REFERRAL_BONUS } from "./referral";
 
 // Applications a brand-new user gets before they must share their first coupon.
 export const FREE_CLAIMS_BEFORE_SHARE = 3;
@@ -22,35 +23,41 @@ export const SHARE_BONUS = 3;
  */
 export async function applyQuota(user: User) {
   const dayStart = startOfTodayTaipei();
-  const [publishedEver, publishedToday, totalApplied, appliedToday] = await Promise.all([
-    prisma.auditLog.count({ where: { actorId: user.id, action: "coupon.publish" } }),
-    prisma.auditLog.count({
-      where: { actorId: user.id, action: "coupon.publish", createdAt: { gte: dayStart } },
-    }),
-    prisma.claimRequest.count({ where: { requesterId: user.id } }),
-    prisma.claimRequest.count({ where: { requesterId: user.id, createdAt: { gte: dayStart } } }),
-  ]);
+  const [publishedEver, publishedToday, totalApplied, appliedToday, referralsToday] =
+    await Promise.all([
+      prisma.auditLog.count({ where: { actorId: user.id, action: "coupon.publish" } }),
+      prisma.auditLog.count({
+        where: { actorId: user.id, action: "coupon.publish", createdAt: { gte: dayStart } },
+      }),
+      prisma.claimRequest.count({ where: { requesterId: user.id } }),
+      prisma.claimRequest.count({ where: { requesterId: user.id, createdAt: { gte: dayStart } } }),
+      // Friends who signed up through this user's invite link today → bonus claims.
+      prisma.user.count({ where: { referredById: user.id, createdAt: { gte: dayStart } } }),
+    ]);
 
   const hasShared = publishedEver > 0;
+  const referralBonus = REFERRAL_BONUS * referralsToday;
   const base = user.riskFlag
     ? Math.max(1, Math.floor(LEVELS[user.userLevel].dailyClaim / 5))
     : LEVELS[user.userLevel].dailyClaim;
 
   if (!hasShared) {
-    // Onboarding phase: a lifetime allowance of 3 until the first share.
-    const remaining = Math.max(0, FREE_CLAIMS_BEFORE_SHARE - totalApplied);
+    // Onboarding phase: a lifetime allowance of 3 until the first share, plus any
+    // invite bonus earned today (a temporary top-up on top of the lifetime three).
+    const limit = FREE_CLAIMS_BEFORE_SHARE + referralBonus;
+    const remaining = Math.max(0, limit - totalApplied);
     return {
       hasShared,
       base,
-      limit: FREE_CLAIMS_BEFORE_SHARE,
+      limit,
       used: totalApplied,
       remaining,
-      bonusToday: 0,
+      bonusToday: referralBonus,
       mustShare: remaining === 0,
     };
   }
 
-  const bonusToday = SHARE_BONUS * publishedToday;
+  const bonusToday = SHARE_BONUS * publishedToday + referralBonus;
   const limit = base + bonusToday;
   const remaining = Math.max(0, limit - appliedToday);
   return { hasShared, base, limit, used: appliedToday, remaining, bonusToday, mustShare: remaining === 0 };

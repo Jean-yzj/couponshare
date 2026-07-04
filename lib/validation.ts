@@ -6,6 +6,8 @@ export const registerSchema = z.object({
   email: emailSchema,
   password: z.string().min(6).max(200),
   display_name: z.string().trim().min(1).max(40),
+  // Optional inviter user id from an invite link (?ref=). Rewards the inviter.
+  ref: z.string().trim().max(40).optional(),
 });
 
 export const loginSchema = z.object({

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useApi, useMe } from "@/lib/client";
 import {
@@ -232,6 +233,9 @@ export default function ScorePage() {
         </div>
       )}
 
+      {/* Invite friends */}
+      <InviteCard userId={me.id} />
+
       {/* Achievements */}
       <div className="mb-3 mt-7 flex items-center justify-between">
         <h2 className="font-semibold text-ink">我的徽章</h2>
@@ -340,6 +344,39 @@ export default function ScorePage() {
           })}
         </Card>
       )}
+    </div>
+  );
+}
+
+function InviteCard({ userId }: { userId: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/login?ref=${userId}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked — user can share the page URL manually */
+    }
+  }
+  return (
+    <div className="mt-4 rounded-2xl border border-line bg-paper p-4 shadow-soft">
+      <div className="flex items-center gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pine-tint text-pine">
+          <Icon name="gift" size={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-ink">邀請好友，賺申請次數</p>
+          <p className="mt-0.5 text-sm text-ink-soft">每邀請一位好友註冊，你當天多 2 次申請額度。</p>
+        </div>
+      </div>
+      <button
+        onClick={copy}
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-grad-brand py-2.5 text-sm font-semibold text-white shadow-glow transition-transform active:scale-[0.99]"
+      >
+        <Icon name={copied ? "check" : "share"} size={16} />
+        {copied ? "已複製邀請連結" : "複製我的邀請連結"}
+      </button>
     </div>
   );
 }

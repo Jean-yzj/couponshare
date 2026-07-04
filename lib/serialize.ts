@@ -8,6 +8,7 @@ import type {
   User,
 } from "@prisma/client";
 import { LEVELS } from "./levels";
+import { topRank } from "./ranks";
 
 type OwnerRelation = Pick<
   User,
@@ -51,6 +52,8 @@ export function publicUser(u: OwnerRelation) {
     user_level: u.userLevel,
     level_name: LEVELS[u.userLevel].name,
     contribution_score: u.contributionScore,
+    // Leaderboard rank (1-3) so a "第N名" badge can follow the name everywhere.
+    rank: topRank(u.id),
   };
 }
 

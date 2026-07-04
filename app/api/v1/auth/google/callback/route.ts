@@ -5,6 +5,7 @@ import { route, clientMeta, publicOrigin } from "@/lib/api";
 import { createSession } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
 import { exchangeCode, fetchGoogleProfile } from "@/lib/google";
+import { resolveReferrer, REF_COOKIE } from "@/lib/referral";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,9 @@ export const GET = route(async (req) => {
 
   const store = await cookies();
   const saved = store.get("g_state")?.value;
+  const savedRef = store.get(REF_COOKIE)?.value;
   store.delete("g_state");
+  store.delete(REF_COOKIE);
 
   if (!code || !state || !saved || state !== saved) {
     console.error("[google callback] pre-check failed", { hasCode: !!code, hasSaved: !!saved, match: state === saved });
@@ -45,6 +48,7 @@ export const GET = route(async (req) => {
             avatarUrl: profile.picture,
             loginProvider: "GOOGLE",
             lastLoginAt: new Date(),
+            referredById: await resolveReferrer(savedRef),
           },
         });
 

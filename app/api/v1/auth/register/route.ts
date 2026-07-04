@@ -6,6 +6,7 @@ import { createSession } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
 import { registerSchema } from "@/lib/validation";
 import { throttle } from "@/lib/throttle";
+import { resolveReferrer } from "@/lib/referral";
 
 export const POST = route(async (req) => {
   // Throttle account creation per IP — also makes email-enumeration probing impractical.
@@ -16,6 +17,7 @@ export const POST = route(async (req) => {
   });
   if (existing) throw new ApiError("EMAIL_TAKEN");
 
+  const referredById = await resolveReferrer(body.ref);
   const user = await prisma.user.create({
     data: {
       email: body.email,
@@ -23,6 +25,7 @@ export const POST = route(async (req) => {
       displayName: body.display_name,
       loginProvider: "EMAIL",
       lastLoginAt: new Date(),
+      referredById,
     },
   });
 
