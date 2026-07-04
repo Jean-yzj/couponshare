@@ -19,12 +19,8 @@ export const GET = route(async (req) => {
   store.delete("g_state");
 
   if (!code || !state || !saved || state !== saved) {
-    // Most common cause here: the g_state cookie didn't come back on the
-    // cross-site redirect from Google (SameSite / third-party-cookie behaviour,
-    // esp. in-app browsers). Distinguish it so we're not guessing.
-    const why = !code ? "no_code" : !saved ? "no_state_cookie" : state !== saved ? "state_mismatch" : "no_state";
-    console.error("[google callback] pre-check failed:", why, { hasCode: !!code, hasSaved: !!saved });
-    return NextResponse.redirect(`${origin}/login?error=google_failed&stage=${why}`);
+    console.error("[google callback] pre-check failed", { hasCode: !!code, hasSaved: !!saved, match: state === saved });
+    return NextResponse.redirect(`${origin}/login?error=google_failed`);
   }
 
   try {
@@ -65,24 +61,11 @@ export const GET = route(async (req) => {
     await createSession(user.id);
     return NextResponse.redirect(`${origin}/`);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("[google callback] exchange/profile failed:", msg);
-    const g = /invalid_client/.test(msg)
-      ? "invalid_client" // client_id/secret wrong or secret rotated
-      : /redirect_uri_mismatch/.test(msg)
-        ? "redirect_uri_mismatch" // callback URL not whitelisted in Google Console
-        : /invalid_grant/.test(msg)
-          ? "invalid_grant" // code expired/reused — usually transient
-          : /token_exchange/.test(msg)
-            ? "token_exchange"
-            : /profile/.test(msg)
-              ? "profile_fetch"
-              : "unknown";
-    // Temporary: carry a truncated error summary so we can pinpoint an `unknown`
-    // failure without log access. Secrets never appear in these messages (the
-    // client_secret is only ever in the request body sent TO Google, not in any
-    // thrown Error). Remove once diagnosed.
-    const d = encodeURIComponent(msg.slice(0, 160));
-    return NextResponse.redirect(`${origin}/login?error=google_failed&stage=token&g=${g}&d=${d}`);
+    // Log the real cause (token exchange / profile fetch / DB write) — the user
+    // just gets a generic retry. Root-caused once here: a schema drift where
+    // users.apple_sub / blocks / push_tokens existed in the Prisma client but
+    // not in the DB, so every user upsert threw P2022.
+    console.error("[google callback] failed:", e);
+    return NextResponse.redirect(`${origin}/login?error=google_failed`);
   }
 });
