@@ -308,24 +308,22 @@ export default function NewCouponPage() {
                   type="button"
                   onClick={() => setRedeemKind(r.key)}
                   className={cn(
-                    "flex flex-col items-start gap-0.5 rounded-xl border px-3.5 py-2.5 text-left transition-all",
+                    "flex items-center justify-center gap-2 rounded-xl border py-3 text-sm font-semibold transition-all",
                     redeemKind === r.key
                       ? "border-transparent bg-grad-brand text-white shadow-glow"
                       : "border-line bg-paper text-ink-soft hover:bg-canvas-2",
                   )}
                 >
-                  <span className="text-sm font-semibold">{r.label}</span>
-                  <span
-                    className={cn(
-                      "text-[11px] leading-tight",
-                      redeemKind === r.key ? "text-white/85" : "text-ink-faint",
-                    )}
-                  >
-                    {r.hint}
-                  </span>
+                  <Icon name={r.key === "FREE_ITEM" ? "gift" : "coin"} size={17} />
+                  {r.label}
                 </button>
               ))}
             </div>
+            {redeemKind && (
+              <p className="mt-1.5 text-xs text-ink-faint">
+                {REDEEM_KINDS.find((r) => r.key === redeemKind)?.hint}
+              </p>
+            )}
           </div>
 
           <Field label="到期日">

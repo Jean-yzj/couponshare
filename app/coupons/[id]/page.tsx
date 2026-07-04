@@ -306,7 +306,7 @@ export default function CouponDetailPage() {
               <Avatar name={coupon.owner.display_name} url={coupon.owner.avatar_url} size={42} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-ink">{coupon.owner.display_name}</p>
-                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-faint">
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-ink-faint">
                   {coupon.owner_rating && coupon.owner_rating.count > 0 ? (
                     <span className="inline-flex items-center gap-0.5 font-medium text-gold">
                       <Icon name="star" size={12} className="fill-gold" />
@@ -316,7 +316,7 @@ export default function CouponDetailPage() {
                   ) : (
                     <span>尚無評價</span>
                   )}
-                  · 分享於 {formatDate(coupon.created_at)}
+                  <span className="whitespace-nowrap">· 分享於 {formatDate(coupon.created_at)}</span>
                 </p>
               </div>
               <LevelBadge level={coupon.owner.user_level} />
