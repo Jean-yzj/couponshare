@@ -264,7 +264,7 @@ export default function TransactionPage() {
             <Avatar name={counterpart.display_name} url={counterpart.avatar_url} size={40} />
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium text-ink">
-                {isOwner ? "交換對象" : "來自"} {counterpart.display_name}
+                {isExchange ? "交換對象" : isOwner ? "送給" : "來自"} {counterpart.display_name}
               </p>
               <p className="text-xs text-ink-faint">{counterpart.contribution_score} 貢獻分</p>
             </div>
@@ -274,23 +274,34 @@ export default function TransactionPage() {
         )}
       </Card>
 
-      {/* Step guide */}
-      <Card className="mt-4 p-5">
-        <p className="mb-3 flex items-center gap-1.5 font-semibold text-ink">
-          <Icon name="info" size={17} className="text-accent" />
-          {isExchange ? "交換怎麼進行" : "領取流程"}
-        </p>
-        <ol className="space-y-2.5">
-          {(isExchange ? EXCHANGE_STEPS : GIFT_STEPS).map((s, i) => (
-            <li key={i} className="flex items-start gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-tint text-xs font-bold text-accent-press">
-                {i + 1}
-              </span>
-              <span className="text-sm leading-relaxed text-ink-soft">{s}</span>
-            </li>
-          ))}
-        </ol>
-      </Card>
+      {/* Owner of a gift: thank-you, not the claimant's redeem steps */}
+      {!isExchange && isOwner ? (
+        <Card className="mt-4 p-5">
+          <p className="flex items-center gap-1.5 font-semibold text-ink">
+            <Icon name="heart" size={17} className="text-pine" /> 感謝你的分享
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+            你已經把這張券送出去了，謝謝你讓用不到的好康流動起來。等對方兌換後，別忘了回來互相評價與感謝。
+          </p>
+        </Card>
+      ) : (
+        <Card className="mt-4 p-5">
+          <p className="mb-3 flex items-center gap-1.5 font-semibold text-ink">
+            <Icon name="info" size={17} className="text-accent" />
+            {isExchange ? "交換怎麼進行" : "領取流程"}
+          </p>
+          <ol className="space-y-2.5">
+            {(isExchange ? EXCHANGE_STEPS : GIFT_STEPS).map((s, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-tint text-xs font-bold text-accent-press">
+                  {i + 1}
+                </span>
+                <span className="text-sm leading-relaxed text-ink-soft">{s}</span>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      )}
 
       {/* Gift claimant barcode */}
       {isClaimant && !isExchange && (

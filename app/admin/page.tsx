@@ -33,6 +33,7 @@ type Stats = {
     dau: number[];
   };
   active_users: { dau_today: number; wau: number };
+  activation: { registered: number; shared: number; claimed: number; completed: number; returning_7d: number };
   heatmap_hours: number[];
   top_contributors: { id: string; display_name: string; avatar_url: string | null; level_name: string; contribution_score: number }[];
   top_brands: { brand: string; count: number }[];
@@ -118,6 +119,18 @@ export default function AdminDashboardPage() {
         <TrendChart title="每日領券人數" days={s.days} values={s.claimers} />
         <TrendChart title="每日分享人數" days={s.days} values={s.sharers} />
       </div>
+
+      {/* Activation funnel */}
+      <Section title="啟動漏斗 · 有多少人真的用起來（累計不重複人數）">
+        <FunnelRow label="註冊" value={data.activation.registered} base={data.activation.registered} />
+        <FunnelRow label="分享過券" value={data.activation.shared} base={data.activation.registered} />
+        <FunnelRow label="領取過券" value={data.activation.claimed} base={data.activation.registered} />
+        <FunnelRow label="完成交易" value={data.activation.completed} base={data.activation.registered} />
+        <p className="mt-3 border-t border-line pt-3 text-sm text-ink-soft">
+          近 7 日回訪老用戶（註冊超過 7 天、仍在使用）：
+          <span className="font-semibold text-accent">{data.activation.returning_7d.toLocaleString()}</span> 人
+        </p>
+      </Section>
 
       {/* Breakdowns */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -323,6 +336,23 @@ function HourHeatmap({ hours }: { hours: number[] }) {
         <span>12</span>
         <span>18</span>
         <span>23</span>
+      </div>
+    </div>
+  );
+}
+
+function FunnelRow({ label, value, base }: { label: string; value: number; base: number }) {
+  const pct = base > 0 ? Math.round((value / base) * 100) : 0;
+  return (
+    <div className="mb-2.5">
+      <div className="mb-1 flex items-baseline justify-between text-sm">
+        <span className="text-ink">{label}</span>
+        <span className="text-ink-faint">
+          <span className="font-semibold text-ink">{value.toLocaleString()}</span> 人 · {pct}%
+        </span>
+      </div>
+      <div className="h-2.5 overflow-hidden rounded-full bg-sand">
+        <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(pct, 1)}%` }} />
       </div>
     </div>
   );

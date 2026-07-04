@@ -122,7 +122,8 @@ export const reportSchema = z.object({
     "OTHER",
   ]),
   description: z.string().max(1000).optional().nullable(),
-  evidence_image_url: z.string().url().optional().nullable(),
+  // A base64 data-URI screenshot (validated server-side) or an external URL.
+  evidence_image_url: z.string().max(700_000).optional().nullable(),
 });
 
 export const demoLoginSchema = z.object({ user_id: z.string().min(1) });

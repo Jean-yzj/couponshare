@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { apiFetch, ApiErr } from "@/lib/client";
+import { fileToDataUri } from "@/lib/client-image";
 import { Modal } from "./Modal";
 import { Button, Field, Textarea, Select, Banner } from "./ui";
 import { Icon } from "./icons";
@@ -34,9 +35,25 @@ export function ReportModal({
 }) {
   const [reason, setReason] = useState(reportedUserId ? "NO_RESPONSE" : "INVALID_COUPON");
   const [description, setDescription] = useState("");
+  const [image, setImage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function pickImage(f: File | null) {
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      setError("請選擇圖片檔");
+      return;
+    }
+    try {
+      setImage(await fileToDataUri(f));
+      setError(null);
+    } catch {
+      setError("圖片處理失敗，請換一張");
+    }
+  }
 
   async function submit() {
     setBusy(true);
@@ -49,6 +66,7 @@ export function ReportModal({
           reported_user_id: reportedUserId ?? null,
           reason,
           description: description.trim() || null,
+          evidence_image_url: image,
         }),
       });
       setDone(true);
@@ -96,6 +114,38 @@ export function ReportModal({
               placeholder="例如：到店顯示已被兌換 / 對方要求的交換很不合理 / 約好卻已讀不回"
             />
           </Field>
+          <div>
+            <p className="mb-1.5 text-sm font-medium text-ink">證據截圖（選填）</p>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => pickImage(e.target.files?.[0] ?? null)}
+            />
+            {image ? (
+              <div className="relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={image} alt="證據截圖" className="max-h-44 rounded-xl border border-line" />
+                <button
+                  type="button"
+                  onClick={() => setImage(null)}
+                  aria-label="移除圖片"
+                  className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-danger text-white shadow-soft"
+                >
+                  <Icon name="x" size={13} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-canvas/50 py-4 text-sm text-ink-soft transition-colors hover:border-accent hover:text-accent"
+              >
+                <Icon name="image" size={18} /> 上傳截圖（例如：到店顯示已使用、對話紀錄）
+              </button>
+            )}
+          </div>
           <Banner tone="warn" icon="shield">
             同一帳號被 3 位以上使用者檢舉，將自動停權並下架其票券。請據實檢舉。
           </Banner>

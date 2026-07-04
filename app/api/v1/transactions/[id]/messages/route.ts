@@ -7,6 +7,7 @@ import { transactionMessageSchema } from "@/lib/validation";
 import { sniffImageType } from "@/lib/image";
 import { throttle } from "@/lib/throttle";
 import { hasBlockBetween } from "@/lib/blocks";
+import { applyScore, SCORE_RULES } from "@/lib/score";
 
 function validateMessageImage(image: string | null | undefined): string | null {
   if (!image) return null;
@@ -51,6 +52,19 @@ export const POST = route(async (req, ctx) => {
     referenceType: "transaction",
     referenceId: id,
   });
+
+  // A message from the claimant counts as thanking the giver — award the giver the
+  // "揪感心" recognition (+2), once per transaction (applyScore is idempotent).
+  if (user.id === t.claimantId) {
+    await applyScore(prisma, {
+      userId: t.ownerId,
+      eventType: "THANK_YOU_MESSAGE",
+      delta: SCORE_RULES.THANK_YOU_MESSAGE,
+      referenceType: "TRANSACTION",
+      referenceId: id,
+      description: "領取者的感謝訊息",
+    });
+  }
 
   return jsonOk({ id: msg.id, image_url: msg.imageUrl, created_at: msg.createdAt }, 201);
 });

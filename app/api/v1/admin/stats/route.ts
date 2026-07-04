@@ -65,6 +65,10 @@ export const GET = route(async () => {
     dailySharersRaw,
     dauRaw,
     wauRaw,
+    sharersRaw,
+    claimersRaw,
+    completersRaw,
+    returningRaw,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { status: "ACTIVE" } }),
@@ -155,6 +159,12 @@ export const GET = route(async () => {
     prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(a.created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.created_at >= ${windowStart} GROUP BY 1`,
     // WAU: distinct still-existing active users in the trailing 7 days.
     prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.created_at >= ${since(7)}`,
+    // Activation funnel: distinct users who ever shared / claimed / completed.
+    prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.action = 'coupon.publish'`,
+    prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT cr.requester_id)::int AS c FROM claim_requests cr JOIN users u ON u.id = cr.requester_id`,
+    prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT uid)::int AS c FROM (SELECT owner_id AS uid FROM transactions WHERE status = 'COMPLETED' UNION SELECT claimant_id FROM transactions WHERE status = 'COMPLETED') t`,
+    // Returning: active in last 7d AND registered more than 7d ago.
+    prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.created_at >= ${since(7)} AND u.created_at < ${since(7)}`,
   ]);
 
   const days: string[] = [];
@@ -231,6 +241,13 @@ export const GET = route(async () => {
       dau: dauSeries,
     },
     active_users: { dau_today: dauSeries[29] ?? 0, wau: Number(wauRaw[0]?.c ?? 0) },
+    activation: {
+      registered: userTotal,
+      shared: Number(sharersRaw[0]?.c ?? 0),
+      claimed: Number(claimersRaw[0]?.c ?? 0),
+      completed: Number(completersRaw[0]?.c ?? 0),
+      returning_7d: Number(returningRaw[0]?.c ?? 0),
+    },
     heatmap_hours: heatmapHours,
     top_contributors: topContributors.map((u) => ({
       id: u.id,

@@ -10,7 +10,7 @@ const EARN_RULES = [
   { label: "成功送出一張票券", delta: SCORE_RULES.COUPON_GIFTED, icon: "gift" },
   { label: "成功交換一張票券", delta: SCORE_RULES.COUPON_EXCHANGED, icon: "swap" },
   { label: "收到 4 星以上好評", delta: SCORE_RULES.POSITIVE_RATING, icon: "star" },
-  { label: "領取後留下感謝訊息", delta: SCORE_RULES.THANK_YOU_MESSAGE, icon: "heart" },
+  { label: "收到領取者的感謝訊息", delta: SCORE_RULES.THANK_YOU_MESSAGE, icon: "heart" },
 ];
 const PENALTY_RULES = [
   { label: "下架已上架、但還沒送出的票券", delta: SCORE_RULES.COUPON_WITHDRAWN, icon: "ban" },

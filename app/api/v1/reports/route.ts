@@ -8,6 +8,7 @@ import { writeAudit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 import { reportSchema } from "@/lib/validation";
 import { throttle } from "@/lib/throttle";
+import { validateDataUriImage } from "@/lib/image";
 
 const COUPON_REPORT_THRESHOLD = 3; // distinct-ish reports flag a coupon
 const USER_SUSPEND_THRESHOLD = 3; // 3 distinct reporters suspend the account
@@ -16,6 +17,10 @@ export const POST = route(async (req) => {
   throttle(req, "report", 20, 60 * 60_000);
   const user = await requireActiveUser();
   const body = await readBody(req, reportSchema);
+  // Accept a data-URI screenshot (or an http URL passes through untouched).
+  const evidenceImageUrl = body.evidence_image_url?.startsWith("data:")
+    ? validateDataUriImage(body.evidence_image_url)
+    : (body.evidence_image_url ?? null);
 
   if (!body.coupon_id && !body.transaction_id && !body.reported_user_id) {
     throw new ApiError("VALIDATION_ERROR", { message: "檢舉必須指定票券、交易或使用者" });
@@ -42,7 +47,7 @@ export const POST = route(async (req) => {
         reportedUserId,
         reason: body.reason,
         description: body.description ?? null,
-        evidenceImageUrl: body.evidence_image_url ?? null,
+        evidenceImageUrl,
         status: "PENDING",
       },
     });

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "./CouponCard";
+import { LiveStats } from "./LiveStats";
 import { Button, Card, Eyebrow } from "./ui";
 import { Icon, type IconName } from "./icons";
 import { CATEGORIES } from "@/lib/categories";
@@ -88,6 +89,9 @@ export function Landing() {
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3 md:justify-start">
             <Button href="/login" size="lg" icon="heart">加入，開始分享</Button>
             <Button href="/login" size="lg" variant="outline">我已經有帳號</Button>
+          </div>
+          <div className="flex justify-center md:justify-start">
+            <LiveStats />
           </div>
         </div>
 
