@@ -10,7 +10,7 @@ import { Avatar, Button } from "./ui";
 
 function Logo() {
   return (
-    <Link href="/" prefetch={false} className="flex items-center gap-2">
+    <Link href="/" prefetch={true} className="flex items-center gap-2">
       <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-grad-brand text-white shadow-glow">
         <Icon name="ticket" size={20} />
       </span>
@@ -25,7 +25,7 @@ function NavLink({ href, label, active }: { href: string; label: string; active:
   return (
     <Link
       href={href}
-      prefetch={false}
+      prefetch={true}
       className={cn(
         "rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
         active ? "bg-sand text-ink" : "text-ink-soft hover:text-ink",
@@ -50,7 +50,7 @@ function Tab({
   return (
     <Link
       href={href}
-      prefetch={false}
+      prefetch={true}
       className={cn(
         "flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium transition-colors",
         active ? "text-accent" : "text-ink-soft",
@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </span>
                 <Link
                   href="/notifications"
-                  prefetch={false}
+                  prefetch={true}
                   aria-label="通知"
                   className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-sand/70 hover:text-ink"
                 >
@@ -192,7 +192,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </p>
             <Link
               href="/appeal"
-              prefetch={false}
+              prefetch={true}
               className="shrink-0 rounded-full bg-danger px-3.5 py-1.5 text-sm font-medium text-white"
             >
               提出申訴
@@ -237,7 +237,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex flex-1 items-center justify-center">
             <Link
               href="/new"
-              prefetch={false}
+              prefetch={true}
               aria-label="新增優惠券"
               className="-mt-7 flex items-center justify-center rounded-2xl bg-grad-brand text-white shadow-glow transition-transform active:scale-95"
               style={{ height: 54, width: 54 }}
@@ -268,7 +268,7 @@ function MenuItem({
   return (
     <Link
       href={href}
-      prefetch={false}
+      prefetch={true}
       onClick={onClick}
       className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-ink transition-colors hover:bg-sand/60"
     >

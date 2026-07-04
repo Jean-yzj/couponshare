@@ -4,6 +4,7 @@ import { requireActiveUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { createCouponSchema } from "@/lib/validation";
 import { encryptBarcode } from "@/lib/crypto";
+import { normalizeBrand } from "@/lib/brands";
 
 export const POST = route(async (req) => {
   const user = await requireActiveUser();
@@ -13,7 +14,7 @@ export const POST = route(async (req) => {
     data: {
       ownerId: user.id,
       title: body.title,
-      brand: body.brand,
+      brand: normalizeBrand(body.brand),
       category: body.category,
       redeemKind: body.redeem_kind,
       redeemCodeEncrypted: body.redeem_code

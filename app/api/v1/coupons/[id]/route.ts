@@ -7,6 +7,7 @@ import { ratingSummary } from "@/lib/ratings";
 import { updateCouponSchema } from "@/lib/validation";
 import { writeAudit } from "@/lib/audit";
 import { encryptBarcode } from "@/lib/crypto";
+import { normalizeBrand } from "@/lib/brands";
 
 export const GET = route(async (req, ctx) => {
   const { id } = await ctx.params;
@@ -67,7 +68,7 @@ export const PATCH = route(async (req, ctx) => {
     where: { id },
     data: {
       ...(body.title !== undefined && { title: body.title }),
-      ...(body.brand !== undefined && { brand: body.brand }),
+      ...(body.brand !== undefined && { brand: normalizeBrand(body.brand) }),
       ...(body.category !== undefined && { category: body.category }),
       ...(body.redeem_kind !== undefined && { redeemKind: body.redeem_kind }),
       ...(body.redeem_code !== undefined && {

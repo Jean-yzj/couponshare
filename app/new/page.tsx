@@ -18,6 +18,7 @@ import {
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/display";
 import { CATEGORIES, REDEEM_KINDS } from "@/lib/categories";
+import { brandsForCategory, ALL_BRAND_NAMES, normalizeBrand } from "@/lib/brands";
 
 // YYYY-MM-DD in the user's zone, for <input type="date">.
 function defaultExpiry(): string {
@@ -248,21 +249,53 @@ export default function NewCouponPage() {
           <Field label="標題" required>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例如：星巴克買一送一" />
           </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="品牌" required>
-              <Input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="例如：Starbucks" />
-            </Field>
-            <Field label="分類" required>
-              <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-                <option value="">請選擇</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c.key} value={c.key}>
-                    {c.label}
-                  </option>
+          <Field label="分類" required>
+            <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="">請選擇</option>
+              {CATEGORIES.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field
+            label="品牌"
+            required
+            hint={category ? "點下方常用品牌，或直接輸入" : "選分類後會出現該類常用品牌"}
+          >
+            <Input
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+              onBlur={(e) => setBrand(normalizeBrand(e.target.value))}
+              list="brand-suggestions"
+              placeholder="例如：星巴克"
+            />
+            <datalist id="brand-suggestions">
+              {(category ? brandsForCategory(category) : ALL_BRAND_NAMES).map((b) => (
+                <option key={b} value={b} />
+              ))}
+            </datalist>
+            {category && brandsForCategory(category).length > 0 && (
+              <div className="no-scrollbar mt-2 flex flex-wrap gap-1.5">
+                {brandsForCategory(category).map((b) => (
+                  <button
+                    key={b}
+                    type="button"
+                    onClick={() => setBrand(b)}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                      brand === b
+                        ? "border-transparent bg-accent text-white"
+                        : "border-line bg-paper text-ink-soft hover:bg-sand",
+                    )}
+                  >
+                    {b}
+                  </button>
                 ))}
-              </Select>
-            </Field>
-          </div>
+              </div>
+            )}
+          </Field>
 
           <div>
             <p className="mb-1.5 text-sm font-medium text-ink">
