@@ -43,7 +43,12 @@ export async function exchangeCode(code: string, redirectUri: string): Promise<s
       grant_type: "authorization_code",
     }).toString(),
   });
-  if (!res.ok) throw new Error("google token exchange failed");
+  if (!res.ok) {
+    // Preserve Google's error code (invalid_client / redirect_uri_mismatch /
+    // invalid_grant) so the callback can surface *which* thing broke.
+    const body = await res.text().catch(() => "");
+    throw new Error(`token_exchange ${res.status} ${body.slice(0, 300)}`);
+  }
   const data = (await res.json()) as { access_token?: string };
   if (!data.access_token) throw new Error("no access token");
   return data.access_token;
