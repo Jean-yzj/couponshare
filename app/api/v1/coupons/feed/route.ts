@@ -7,6 +7,7 @@ export const GET = route(async (req) => {
   const brand = url.searchParams.get("brand")?.trim() || undefined;
   const type = url.searchParams.get("type");
   const category = url.searchParams.get("category");
+  const redeemKind = url.searchParams.get("redeem_kind");
   const sort = url.searchParams.get("sort") || "latest";
   const withinHours = parseInt(url.searchParams.get("within_hours") || "", 10);
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10) || 1);
@@ -19,6 +20,7 @@ export const GET = route(async (req) => {
       brand,
       type,
       category,
+      redeemKind,
       sort,
       withinHours: Number.isFinite(withinHours) ? withinHours : 0,
       page,

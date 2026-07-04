@@ -58,6 +58,8 @@ export const createCouponSchema = z.object({
     "ENTERTAINMENT",
     "OTHER",
   ]),
+  // 券內容：免費兌換實體 vs 折價券。與品牌分類正交，上架時必選。
+  redeem_kind: z.enum(["FREE_ITEM", "DISCOUNT"]),
   description: z.string().max(1000).optional().nullable(),
   expiry_date: z.coerce.date().nullable().optional(),
   type: z.enum(["GIFT", "EXCHANGE"]),
@@ -75,6 +77,7 @@ export const updateCouponSchema = z
     title: z.string().min(1).max(80),
     brand: z.string().min(1).max(40),
     category: createCouponSchema.shape.category,
+    redeem_kind: createCouponSchema.shape.redeem_kind,
     description: z.string().max(1000).nullable(),
     expiry_date: z.coerce.date().nullable(),
     exchange_target: z.string().max(200).nullable(),

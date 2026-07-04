@@ -20,6 +20,7 @@ type FeedCouponRecord = Pick<
   | "title"
   | "brand"
   | "category"
+  | "redeemKind"
   | "type"
   | "expiryDate"
   | "status"
@@ -64,6 +65,7 @@ export function feedCoupon(
     title: c.title,
     brand: c.brand,
     category: c.category,
+    redeem_kind: c.redeemKind,
     type: c.type,
     expiry_date: c.expiryDate,
     status: c.status,
@@ -93,6 +95,7 @@ export function couponDetail(
     title: c.title,
     brand: c.brand,
     category: c.category,
+    redeem_kind: c.redeemKind,
     description: c.description,
     type: c.type,
     exchange_target: c.exchangeTarget,

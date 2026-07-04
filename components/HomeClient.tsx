@@ -7,7 +7,7 @@ import { Landing } from "@/components/Landing";
 import { Button, Input, Skeleton, EmptyState, LoadFailed, Spinner } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/display";
-import { CATEGORIES } from "@/lib/categories";
+import { CATEGORIES, REDEEM_KINDS } from "@/lib/categories";
 
 const TYPES = [
   { value: "ALL", label: "全部" },
@@ -35,6 +35,7 @@ type InitialFeed = {
 export type FeedFilters = {
   brand: string;
   category: string;
+  redeemKind: string;
   type: "ALL" | "GIFT" | "EXCHANGE";
   sort: "latest" | "expiry_soon" | "popular";
 };
@@ -42,6 +43,7 @@ export type FeedFilters = {
 export const DEFAULT_FEED_FILTERS: FeedFilters = {
   brand: "",
   category: "ALL",
+  redeemKind: "ALL",
   type: "ALL",
   sort: "latest",
 };
@@ -57,7 +59,13 @@ export const DEFAULT_FEED_FILTERS: FeedFilters = {
 const FILTERS_STORAGE_KEY = "cs-explore-filters-v1";
 
 function isDefaultFilters(f: FeedFilters): boolean {
-  return f.brand === "" && f.category === "ALL" && f.type === "ALL" && f.sort === "latest";
+  return (
+    f.brand === "" &&
+    f.category === "ALL" &&
+    f.redeemKind === "ALL" &&
+    f.type === "ALL" &&
+    f.sort === "latest"
+  );
 }
 
 function loadStoredFilters(): FeedFilters | null {
@@ -70,6 +78,7 @@ function loadStoredFilters(): FeedFilters | null {
     return {
       brand: parsed.brand,
       category: typeof parsed.category === "string" ? parsed.category : "ALL",
+      redeemKind: typeof parsed.redeemKind === "string" ? parsed.redeemKind : "ALL",
       type: parsed.type === "GIFT" || parsed.type === "EXCHANGE" ? parsed.type : "ALL",
       sort:
         parsed.sort === "expiry_soon" || parsed.sort === "popular" ? parsed.sort : "latest",
@@ -92,6 +101,7 @@ function feedQueryKey(filters: FeedFilters, page: number) {
   if (filters.brand) qs.set("brand", filters.brand);
   if (filters.type !== "ALL") qs.set("type", filters.type);
   if (filters.category !== "ALL") qs.set("category", filters.category);
+  if (filters.redeemKind !== "ALL") qs.set("redeem_kind", filters.redeemKind);
   return qs.toString();
 }
 
@@ -139,6 +149,7 @@ function FeedView({
   const [brand, setBrand] = useState(resolved.brand);
   const [debounced, setDebounced] = useState(resolved.brand);
   const [category, setCategory] = useState<string>(resolved.category);
+  const [redeemKind, setRedeemKind] = useState<string>(resolved.redeemKind);
   const [type, setType] = useState<"ALL" | "GIFT" | "EXCHANGE">(resolved.type);
   const [sort, setSort] = useState<"latest" | "expiry_soon" | "popular">(resolved.sort);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -153,7 +164,7 @@ function FeedView({
   const autoLoadLocked = useRef(false);
   const brandsData = { brands: initialBrands };
   const expData = { data: initialExpiring };
-  const noFilters = category === "ALL" && type === "ALL" && !debounced;
+  const noFilters = category === "ALL" && redeemKind === "ALL" && type === "ALL" && !debounced;
   const typeLabel = TYPES.find((t) => t.value === type)?.label ?? "全部";
   const sortLabel = SORTS.find((s) => s.value === sort)?.label ?? "最新";
 
@@ -164,7 +175,7 @@ function FeedView({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const current: FeedFilters = { brand: debounced, category, type, sort };
+    const current: FeedFilters = { brand: debounced, category, redeemKind, type, sort };
 
     // The reliable mechanism (see FILTERS_STORAGE_KEY comment above) — this is
     // what actually restores your search when you come back from a coupon.
@@ -179,6 +190,7 @@ function FeedView({
     const qs = new URLSearchParams();
     if (debounced) qs.set("brand", debounced);
     if (category !== "ALL") qs.set("category", category);
+    if (redeemKind !== "ALL") qs.set("redeem_kind", redeemKind);
     if (type !== "ALL") qs.set("type", type);
     if (sort !== "latest") qs.set("sort", sort);
     const nextUrl = qs.toString() ? `${window.location.pathname}?${qs}` : window.location.pathname;
@@ -188,12 +200,12 @@ function FeedView({
   useEffect(() => {
     autoLoadLocked.current = false;
     setPage(1);
-  }, [debounced, type, sort, category]);
+  }, [debounced, type, sort, category, redeemKind]);
 
   useEffect(() => {
     let cancelled = false;
     setLoadErr(false);
-    const key = feedQueryKey({ brand: debounced, category, type, sort }, page);
+    const key = feedQueryKey({ brand: debounced, category, redeemKind, type, sort }, page);
     const initialKey = feedQueryKey(initialFilters, 1);
 
     if (!skippedInitialFeedRequest.current && page === 1 && key === initialKey) {
@@ -231,7 +243,7 @@ function FeedView({
     return () => {
       cancelled = true;
     };
-  }, [debounced, type, sort, category, page, retryNonce, initialFeed, initialFilters]);
+  }, [debounced, type, sort, category, redeemKind, page, retryNonce, initialFeed, initialFilters]);
 
   const canLoadMore = items.length < total;
   const firstLoad = loading && page === 1;
@@ -280,6 +292,18 @@ function FeedView({
           {CATEGORIES.map((c) => (
             <Chip key={c.key} active={category === c.key} onClick={() => setCategory(c.key)}>
               {c.label}
+            </Chip>
+          ))}
+        </div>
+
+        {/* Redeem-kind chips (免費兌換 vs 折價券) */}
+        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
+          <Chip active={redeemKind === "ALL"} onClick={() => setRedeemKind("ALL")}>
+            全部內容
+          </Chip>
+          {REDEEM_KINDS.map((r) => (
+            <Chip key={r.key} active={redeemKind === r.key} onClick={() => setRedeemKind(r.key)}>
+              {r.label}
             </Chip>
           ))}
         </div>

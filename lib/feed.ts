@@ -1,6 +1,7 @@
 import type {
   ClaimRequestStatus,
   CouponCategory,
+  CouponRedeemKind,
   Prisma,
   User,
   UserLevel,
@@ -8,7 +9,7 @@ import type {
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { feedCoupon } from "@/lib/serialize";
-import { CATEGORY_KEYS } from "@/lib/categories";
+import { CATEGORY_KEYS, REDEEM_KIND_KEYS } from "@/lib/categories";
 import { blockedUserIds } from "@/lib/blocks";
 
 const ownerSelect = {
@@ -24,6 +25,7 @@ const couponFeedSelect = {
   title: true,
   brand: true,
   category: true,
+  redeemKind: true,
   type: true,
   expiryDate: true,
   status: true,
@@ -44,6 +46,7 @@ export type CouponFeedParams = {
   brand?: string;
   type?: string | null;
   category?: string | null;
+  redeemKind?: string | null;
   sort?: string | null;
   withinHours?: number;
   page?: number;
@@ -92,6 +95,9 @@ export async function getCouponFeed(params: CouponFeedParams) {
   if (params.type === "GIFT" || params.type === "EXCHANGE") where.type = params.type;
   if (params.category && (CATEGORY_KEYS as string[]).includes(params.category)) {
     where.category = params.category as CouponCategory;
+  }
+  if (params.redeemKind && (REDEEM_KIND_KEYS as string[]).includes(params.redeemKind)) {
+    where.redeemKind = params.redeemKind as CouponRedeemKind;
   }
 
   const orderBy: Prisma.CouponOrderByWithRelationInput =

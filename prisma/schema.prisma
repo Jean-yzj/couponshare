@@ -50,6 +50,12 @@ enum CouponCategory {
   OTHER
 }
 
+// What the coupon actually gives: a free item to redeem, or money off.
+enum CouponRedeemKind {
+  FREE_ITEM
+  DISCOUNT
+}
+
 enum CouponStatus {
   DRAFT
   AVAILABLE
@@ -227,6 +233,12 @@ model Coupon {
   barcodeMime          String?         @map("barcode_mime")
   barcodeImageUrl      String?         @map("barcode_image_url")
   barcodeStorageKey    String?         @map("barcode_storage_key")
+  // Redeem via a text code instead of / as well as a barcode image (AES-encrypted,
+  // shown only to the chosen claimant — same secrecy as the barcode).
+  redeemCodeEncrypted  String?         @map("redeem_code_encrypted")
+  // FREE_ITEM = redeem a free product; DISCOUNT = money/percent off. Nullable for
+  // coupons created before this field existed.
+  redeemKind           CouponRedeemKind? @map("redeem_kind")
   unlockPolicy         UnlockPolicy    @default(OWNER_APPROVAL) @map("unlock_policy")
   visibilityLevel      VisibilityLevel @default(PUBLIC) @map("visibility_level")
   viewCount            Int             @default(0) @map("view_count")

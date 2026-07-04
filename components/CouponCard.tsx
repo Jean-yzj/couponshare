@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cn, expiryText } from "@/lib/display";
 import { Avatar } from "./ui";
 import { Icon, type IconName } from "./icons";
-import { CATEGORY_LABEL, categoryStyle } from "@/lib/categories";
+import { CATEGORY_LABEL, categoryStyle, REDEEM_KIND_LABEL, REDEEM_KIND_STYLE } from "@/lib/categories";
 
 export type FeedOwner = {
   id: string;
@@ -18,6 +18,7 @@ export type FeedCoupon = {
   title: string;
   brand: string;
   category?: string;
+  redeem_kind?: string | null;
   type: string;
   expiry_date: string | null;
   status: string;
@@ -39,6 +40,8 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
   const isGift = c.type === "GIFT";
   const cs = categoryStyle(c.category);
   const category = c.category ? CATEGORY_LABEL[c.category] : undefined;
+  const rk = c.redeem_kind ? REDEEM_KIND_STYLE[c.redeem_kind] : undefined;
+  const rkLabel = c.redeem_kind ? REDEEM_KIND_LABEL[c.redeem_kind] : undefined;
   const applied = c.my_request_status ? APPLIED_META[c.my_request_status] : null;
 
   return (
@@ -72,13 +75,25 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
 
         {/* Body */}
         <div className="flex flex-1 flex-col px-3 pb-3 pt-2.5">
-          {category && (
-            <p
-              className="mb-1 truncate text-[10px] font-bold uppercase tracking-wide"
-              style={{ color: cs.text }}
-            >
-              {category}
-            </p>
+          {(category || rk) && (
+            <div className="mb-1 flex items-center gap-1.5">
+              {category && (
+                <span
+                  className="truncate text-[10px] font-bold uppercase tracking-wide"
+                  style={{ color: cs.text }}
+                >
+                  {category}
+                </span>
+              )}
+              {rk && rkLabel && (
+                <span
+                  className="shrink-0 rounded-full px-1.5 py-px text-[9px] font-bold"
+                  style={{ backgroundColor: rk.tint, color: rk.text }}
+                >
+                  {rkLabel}
+                </span>
+              )}
+            </div>
           )}
           <h3 className="line-clamp-2 min-h-[2.5em] text-[13.5px] font-bold leading-snug text-ink">
             {c.title}

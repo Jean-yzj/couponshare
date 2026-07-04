@@ -22,7 +22,7 @@ import { BarcodeModal } from "@/components/BarcodeModal";
 import { ReportModal } from "@/components/ReportModal";
 import { Icon } from "@/components/icons";
 import { cn, expiryText, formatDate, relativeTime, STATUS_META } from "@/lib/display";
-import { categoryStyle } from "@/lib/categories";
+import { categoryStyle, REDEEM_KIND_LABEL, REDEEM_KIND_STYLE } from "@/lib/categories";
 
 type Owner = {
   id: string;
@@ -38,6 +38,7 @@ type Detail = {
   title: string;
   brand: string;
   category?: string | null;
+  redeem_kind?: string | null;
   description: string | null;
   type: string;
   exchange_target: string | null;
@@ -235,6 +236,17 @@ export default function CouponDetailPage() {
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <TypePill type={coupon.type} />
+            {coupon.redeem_kind && REDEEM_KIND_LABEL[coupon.redeem_kind] && (
+              <span
+                className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold"
+                style={{
+                  backgroundColor: REDEEM_KIND_STYLE[coupon.redeem_kind].tint,
+                  color: REDEEM_KIND_STYLE[coupon.redeem_kind].text,
+                }}
+              >
+                {REDEEM_KIND_LABEL[coupon.redeem_kind]}
+              </span>
+            )}
             <span
               className={cn(
                 "inline-flex items-center gap-1 rounded-full bg-paper/70 px-2.5 py-1 text-xs font-medium",

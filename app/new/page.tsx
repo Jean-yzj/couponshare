@@ -17,12 +17,13 @@ import {
 } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/display";
-import { CATEGORIES } from "@/lib/categories";
+import { CATEGORIES, REDEEM_KINDS } from "@/lib/categories";
 
+// YYYY-MM-DD in the user's zone, for <input type="date">.
 function defaultExpiry(): string {
   const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
+  return d.toISOString().slice(0, 10);
 }
 
 export default function NewCouponPage() {
@@ -33,6 +34,7 @@ export default function NewCouponPage() {
   const [title, setTitle] = useState("");
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("");
+  const [redeemKind, setRedeemKind] = useState("");
   const [expiry, setExpiry] = useState(defaultExpiry);
   const [noExpiry, setNoExpiry] = useState(false);
   const [type, setType] = useState<"GIFT" | "EXCHANGE">("GIFT");
@@ -71,6 +73,7 @@ export default function NewCouponPage() {
     if (!title.trim()) return "請填寫標題";
     if (!brand.trim()) return "請填寫品牌";
     if (!category) return "請選擇分類";
+    if (!redeemKind) return "請選擇券內容（免費兌換或折價券）";
     if (!noExpiry && (!expiry || new Date(expiry + "T23:59:59").getTime() <= Date.now())) return "到期日必須晚於今天";
     if (type === "EXCHANGE" && !exchangeTarget.trim()) return "交換類型必須填寫想交換的目標";
     if (!agreed) return "請先勾選確認這是可直接兌換的票券";
@@ -95,6 +98,7 @@ export default function NewCouponPage() {
             title: title.trim(),
             brand: brand.trim(),
             category,
+            redeem_kind: redeemKind,
             description: description.trim() || null,
             expiry_date: noExpiry ? null : new Date(expiry + "T23:59:59").toISOString(),
             type,
@@ -218,6 +222,38 @@ export default function NewCouponPage() {
               </Select>
             </Field>
           </div>
+
+          <div>
+            <p className="mb-1.5 text-sm font-medium text-ink">
+              券內容<span className="text-accent">*</span>
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {REDEEM_KINDS.map((r) => (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={() => setRedeemKind(r.key)}
+                  className={cn(
+                    "flex flex-col items-start gap-0.5 rounded-xl border px-3.5 py-2.5 text-left transition-all",
+                    redeemKind === r.key
+                      ? "border-transparent bg-grad-brand text-white shadow-glow"
+                      : "border-line bg-paper text-ink-soft hover:bg-canvas-2",
+                  )}
+                >
+                  <span className="text-sm font-semibold">{r.label}</span>
+                  <span
+                    className={cn(
+                      "text-[11px] leading-tight",
+                      redeemKind === r.key ? "text-white/85" : "text-ink-faint",
+                    )}
+                  >
+                    {r.hint}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <Field label="到期日">
             <Input
               type="date"

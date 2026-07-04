@@ -1,6 +1,6 @@
 import { DEFAULT_FEED_FILTERS, HomeClient, type FeedFilters } from "@/components/HomeClient";
 import { getCurrentUser } from "@/lib/auth";
-import { CATEGORY_KEYS } from "@/lib/categories";
+import { CATEGORY_KEYS, REDEEM_KIND_KEYS } from "@/lib/categories";
 import { prisma } from "@/lib/db";
 import { getCouponFeed } from "@/lib/feed";
 
@@ -23,12 +23,15 @@ function single(value: string | string[] | undefined): string | undefined {
 function parseFilters(params: SearchParams): FeedFilters {
   const brand = single(params.brand)?.trim().slice(0, 60) ?? "";
   const category = single(params.category);
+  const redeemKind = single(params.redeem_kind);
   const type = single(params.type);
   const sort = single(params.sort);
 
   return {
     brand,
     category: category && (CATEGORY_KEYS as readonly string[]).includes(category) ? category : "ALL",
+    redeemKind:
+      redeemKind && (REDEEM_KIND_KEYS as readonly string[]).includes(redeemKind) ? redeemKind : "ALL",
     type: type === "GIFT" || type === "EXCHANGE" ? type : "ALL",
     sort: sort === "expiry_soon" || sort === "popular" ? sort : "latest",
   };
@@ -60,6 +63,7 @@ export default async function HomePage({
       brand: filters.brand,
       type: filters.type,
       category: filters.category,
+      redeemKind: filters.redeemKind,
       sort: filters.sort,
       page: 1,
       limit: LIMIT,

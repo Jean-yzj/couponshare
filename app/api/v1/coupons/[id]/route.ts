@@ -68,6 +68,7 @@ export const PATCH = route(async (req, ctx) => {
       ...(body.title !== undefined && { title: body.title }),
       ...(body.brand !== undefined && { brand: body.brand }),
       ...(body.category !== undefined && { category: body.category }),
+      ...(body.redeem_kind !== undefined && { redeemKind: body.redeem_kind }),
       ...(body.description !== undefined && { description: body.description }),
       ...(body.expiry_date !== undefined && { expiryDate: body.expiry_date }),
       ...(body.exchange_target !== undefined && { exchangeTarget: body.exchange_target }),
