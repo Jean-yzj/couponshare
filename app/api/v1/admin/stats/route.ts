@@ -58,6 +58,13 @@ export const GET = route(async () => {
     userTs,
     couponTs,
     txnTs,
+    userNew3h,
+    userNew48h,
+    hourHeatRaw,
+    dailyClaimersRaw,
+    dailySharersRaw,
+    dauRaw,
+    wauRaw,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { status: "ACTIVE" } }),
@@ -135,6 +142,18 @@ export const GET = route(async () => {
       where: { createdAt: { gte: windowStart } },
       select: { createdAt: true },
     }),
+    prisma.user.count({ where: { createdAt: { gte: since(0.125) } } }),
+    prisma.user.count({ where: { createdAt: { gte: since(2) } } }),
+    // Registration-by-hour heatmap in Taipei time (UTC+8). DB-side aggregation.
+    prisma.$queryRaw<{ h: number; c: number }[]>`SELECT EXTRACT(HOUR FROM created_at + interval '8 hours')::int AS h, COUNT(*)::int AS c FROM users GROUP BY 1 ORDER BY 1`,
+    // Distinct users who applied for a coupon, per day (30-day window).
+    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT requester_id)::int AS c FROM claim_requests WHERE created_at >= ${windowStart} GROUP BY 1`,
+    // Distinct users who published a coupon, per day.
+    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT actor_id)::int AS c FROM audit_logs WHERE action = 'coupon.publish' AND created_at >= ${windowStart} GROUP BY 1`,
+    // DAU proxy: distinct users with any audited activity, per day.
+    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT actor_id)::int AS c FROM audit_logs WHERE created_at >= ${windowStart} GROUP BY 1`,
+    // WAU: distinct active users in the trailing 7 days.
+    prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT actor_id)::int AS c FROM audit_logs WHERE created_at >= ${since(7)}`,
   ]);
 
   const days: string[] = [];
@@ -152,6 +171,18 @@ export const GET = route(async () => {
     }
     return arr;
   };
+  // Raw daily aggregates keyed by 'YYYY-MM-DD' → the same 30-slot series shape.
+  const dailyBucket = (rows: { d: string; c: number }[]) => {
+    const arr = new Array<number>(30).fill(0);
+    for (const r of rows) {
+      const i = keyIndex.get(r.d);
+      if (i !== undefined) arr[i] = Number(r.c);
+    }
+    return arr;
+  };
+  const heatmapHours = new Array<number>(24).fill(0);
+  for (const r of hourHeatRaw) heatmapHours[Number(r.h)] = Number(r.c);
+  const dauSeries = dailyBucket(dauRaw);
 
   type Group = { _count: number };
   const grp = <T extends Group>(rows: T[], field: keyof T) =>
@@ -166,7 +197,9 @@ export const GET = route(async () => {
         total: userTotal,
         active: userActive,
         suspended: userSuspended,
+        new_3h: userNew3h,
         new_24h: userNew24,
+        new_48h: userNew48h,
         new_7d: userNew7,
         new_30d: userNew30,
       },
@@ -187,7 +220,17 @@ export const GET = route(async () => {
     by_status: grp(byStatus, "status"),
     by_type: grp(byType, "type"),
     by_level: grp(byLevel, "userLevel"),
-    series: { days, signups: bucket(userTs), coupons: bucket(couponTs), transactions: bucket(txnTs) },
+    series: {
+      days,
+      signups: bucket(userTs),
+      coupons: bucket(couponTs),
+      transactions: bucket(txnTs),
+      claimers: dailyBucket(dailyClaimersRaw),
+      sharers: dailyBucket(dailySharersRaw),
+      dau: dauSeries,
+    },
+    active_users: { dau_today: dauSeries[29] ?? 0, wau: Number(wauRaw[0]?.c ?? 0) },
+    heatmap_hours: heatmapHours,
     top_contributors: topContributors.map((u) => ({
       id: u.id,
       display_name: u.displayName,

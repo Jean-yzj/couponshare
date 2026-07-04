@@ -32,6 +32,48 @@ type Report = {
   coupon: { id: string; title: string; brand: string; status: string; report_count: number } | null;
 };
 
+type ReportDetail = {
+  id: string;
+  reason: string;
+  description: string | null;
+  evidence_image_url: string | null;
+  reporter: { id: string; display_name: string; contribution_score: number; created_at: string } | null;
+  reported_user: {
+    id: string;
+    display_name: string;
+    status: string;
+    user_level: string;
+    contribution_score: number;
+    created_at: string;
+    stats: {
+      coupons_shared: number;
+      reports_against: number;
+      completed_transactions: number;
+      rating_avg: number | null;
+      rating_count: number;
+    } | null;
+  } | null;
+  coupon: {
+    id: string;
+    title: string;
+    brand: string;
+    description: string | null;
+    category: string | null;
+    redeem_kind: string | null;
+    type: string;
+    exchange_target: string | null;
+    status: string;
+    expiry_date: string | null;
+    report_count: number;
+    view_count: number;
+    claim_request_count: number;
+    has_barcode: boolean;
+    has_redeem_code: boolean;
+    created_at: string;
+    owner: { id: string; display_name: string } | null;
+  } | null;
+};
+
 const TABS = [
   { key: "PENDING", label: "待處理" },
   { key: "RESOLVED", label: "已處置" },
@@ -45,6 +87,26 @@ export default function AdminReportsPage() {
     me?.is_admin ? `/api/v1/admin/reports?status=${tab}` : null,
   );
   const [acting, setActing] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<ReportDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  async function toggleDetail(id: string) {
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(id);
+    setDetail(null);
+    setDetailLoading(true);
+    try {
+      setDetail(await apiFetch<ReportDetail>(`/api/v1/admin/reports/${id}`));
+    } catch {
+      setDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  }
 
   if (meLoading)
     return (
@@ -150,6 +212,15 @@ export default function AdminReportsPage() {
                 )}
               </div>
 
+              <button
+                onClick={() => toggleDetail(r.id)}
+                className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-accent transition-colors hover:text-accent-press"
+              >
+                <Icon name={expandedId === r.id ? "chevronDown" : "chevronRight"} size={13} />
+                {expandedId === r.id ? "收合詳情" : "展開詳情（券內容 · 用戶歷史 · 證據）"}
+              </button>
+              {expandedId === r.id && <ReportDetailPanel detail={detail} loading={detailLoading} />}
+
               {r.admin_note && <p className="mt-2 text-xs text-ink-faint">處理備註：{r.admin_note}</p>}
 
               {r.status === "PENDING" || r.status === "REVIEWING" ? (
@@ -177,6 +248,101 @@ export default function AdminReportsPage() {
           ))
         )}
       </div>
+    </div>
+  );
+}
+
+function daysSince(iso: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
+}
+
+function ReportDetailPanel({ detail, loading }: { detail: ReportDetail | null; loading: boolean }) {
+  if (loading)
+    return (
+      <div className="mt-2 rounded-xl bg-canvas/60 p-4 text-center text-sm text-ink-faint">載入中…</div>
+    );
+  if (!detail)
+    return (
+      <div className="mt-2 rounded-xl bg-canvas/60 p-4 text-center text-sm text-ink-faint">
+        無法載入詳情
+      </div>
+    );
+  const u = detail.reported_user;
+  const c = detail.coupon;
+  return (
+    <div className="mt-2 space-y-3 rounded-xl border border-line bg-canvas/50 p-4 text-sm">
+      {c && (
+        <section>
+          <p className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-faint">被檢舉的券</p>
+          <p className="font-medium text-ink">
+            {c.brand}｜{c.title}
+          </p>
+          {c.description && <p className="mt-1 whitespace-pre-wrap text-ink-soft">{c.description}</p>}
+          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-faint">
+            <span>分類 {c.category ?? "—"}</span>
+            <span>內容 {c.redeem_kind === "FREE_ITEM" ? "免費兌換" : c.redeem_kind === "DISCOUNT" ? "折價券" : "—"}</span>
+            <span>{c.type === "GIFT" ? "贈送" : "交換"}</span>
+            {c.exchange_target && <span>換：{c.exchange_target}</span>}
+            <span>狀態 {c.status}</span>
+            <span>到期 {c.expiry_date ? new Date(c.expiry_date).toLocaleDateString() : "無期限"}</span>
+            <span>瀏覽 {c.view_count}</span>
+            <span>申請 {c.claim_request_count}</span>
+            <span className={cn(c.report_count >= 3 && "font-bold text-danger")}>被檢舉 {c.report_count} 次</span>
+            <span>{c.has_barcode ? "條碼圖" : c.has_redeem_code ? "文字兌換碼" : "無兌換內容"}</span>
+          </div>
+        </section>
+      )}
+      {u && (
+        <section className="border-t border-line pt-3">
+          <p className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-faint">被檢舉帳號歷史</p>
+          <p className="font-medium text-ink">
+            {u.display_name}
+            <span className="ml-1.5 text-xs font-normal text-ink-faint">
+              {u.status} · {u.user_level}
+            </span>
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-faint">
+            <span>帳齡 {daysSince(u.created_at)} 天</span>
+            <span>貢獻分 {u.contribution_score}</span>
+            {u.stats && (
+              <>
+                <span>分享 {u.stats.coupons_shared} 張</span>
+                <span>完成交易 {u.stats.completed_transactions}</span>
+                <span className={cn(u.stats.reports_against >= 2 && "font-bold text-danger")}>
+                  被 {u.stats.reports_against} 人檢舉
+                </span>
+                <span>
+                  評價 {u.stats.rating_avg != null ? u.stats.rating_avg.toFixed(1) : "—"}（{u.stats.rating_count}）
+                </span>
+              </>
+            )}
+          </div>
+        </section>
+      )}
+      {detail.reporter && (
+        <section className="border-t border-line pt-3">
+          <p className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-faint">檢舉人</p>
+          <div className="flex flex-wrap gap-x-3 text-xs text-ink-faint">
+            <span className="font-medium text-ink">{detail.reporter.display_name}</span>
+            <span className={cn(daysSince(detail.reporter.created_at) < 1 && "font-bold text-danger")}>
+              帳齡 {daysSince(detail.reporter.created_at)} 天
+            </span>
+            <span>貢獻分 {detail.reporter.contribution_score}</span>
+          </div>
+        </section>
+      )}
+      {detail.evidence_image_url && (
+        <section className="border-t border-line pt-3">
+          <p className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-faint">證據圖</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={detail.evidence_image_url}
+            alt="檢舉證據"
+            referrerPolicy="no-referrer"
+            className="max-h-64 rounded-lg border border-line"
+          />
+        </section>
+      )}
     </div>
   );
 }

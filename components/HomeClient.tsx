@@ -21,6 +21,12 @@ const SORTS = [
   { value: "popular", label: "熱門" },
 ] as const;
 
+// 券內容維度移進「篩選與排序」面板（不再是探索頁上的第二排彩色 chips）。
+const REDEEM_KIND_OPTIONS: { value: string; label: string }[] = [
+  { value: "ALL", label: "全部" },
+  ...REDEEM_KINDS.map((r) => ({ value: r.key as string, label: r.label })),
+];
+
 const LIMIT = 12;
 
 // First-page feed results per filter combo — coming back to 探索 paints the
@@ -181,6 +187,8 @@ function FeedView({
   const noFilters = category === "ALL" && redeemKind === "ALL" && type === "ALL" && !debounced;
   const typeLabel = TYPES.find((t) => t.value === type)?.label ?? "全部";
   const sortLabel = SORTS.find((s) => s.value === sort)?.label ?? "最新";
+  const redeemKindLabel =
+    redeemKind === "ALL" ? "" : ` · ${REDEEM_KIND_OPTIONS.find((o) => o.value === redeemKind)?.label ?? ""}`;
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(brand.trim()), 350);
@@ -310,18 +318,6 @@ function FeedView({
           ))}
         </div>
 
-        {/* Redeem-kind chips (免費兌換 vs 折價券) */}
-        <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
-          <Chip active={redeemKind === "ALL"} onClick={() => setRedeemKind("ALL")}>
-            全部內容
-          </Chip>
-          {REDEEM_KINDS.map((r) => (
-            <Chip key={r.key} active={redeemKind === r.key} onClick={() => setRedeemKind(r.key)}>
-              {r.label}
-            </Chip>
-          ))}
-        </div>
-
         {signedIn && followedBrands.length > 0 && (
           <div className="no-scrollbar -mx-1 flex items-center gap-1.5 overflow-x-auto px-1">
             <span className="shrink-0 text-xs font-medium text-ink-faint">追蹤中</span>
@@ -362,6 +358,7 @@ function FeedView({
             <span className="font-semibold text-ink">篩選與排序</span>
             <span className="text-ink-faint">
               · {typeLabel} · {sortLabel}
+              {redeemKindLabel}
             </span>
           </span>
           <Icon
@@ -377,6 +374,7 @@ function FeedView({
           )}
         >
           <FilterRow label="類型" options={TYPES} value={type} onChange={setType} />
+          <FilterRow label="券內容" options={REDEEM_KIND_OPTIONS} value={redeemKind} onChange={setRedeemKind} />
           <FilterRow label="排序" options={SORTS} value={sort} onChange={setSort} />
         </div>
       </div>

@@ -3,7 +3,6 @@ import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { getCurrentUser, requireActiveUser } from "@/lib/auth";
 import { couponDetail } from "@/lib/serialize";
-import { ensureRanks } from "@/lib/ranks";
 import { ratingSummary } from "@/lib/ratings";
 import { updateCouponSchema } from "@/lib/validation";
 import { writeAudit } from "@/lib/audit";
@@ -35,7 +34,6 @@ export const GET = route(async (req, ctx) => {
     myRequestId = cr?.id ?? null;
   }
 
-  await ensureRanks(); // top-3 cache for the owner rank badge
   const ownerRating = await ratingSummary(prisma, coupon.ownerId);
   return jsonOk({
     ...couponDetail(coupon, viewer, myRequestStatus),

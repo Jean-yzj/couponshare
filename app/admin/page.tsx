@@ -10,7 +10,7 @@ import { CATEGORIES } from "@/lib/categories";
 type Stats = {
   generated_at: string;
   overview: {
-    users: { total: number; active: number; suspended: number; new_24h: number; new_7d: number; new_30d: number };
+    users: { total: number; active: number; suspended: number; new_3h: number; new_24h: number; new_48h: number; new_7d: number; new_30d: number };
     coupons: { total: number; new_24h: number; new_7d: number; new_30d: number };
     transactions: { total: number; completed: number; gift: number; exchange: number };
     claims: { total: number; pending: number };
@@ -23,7 +23,17 @@ type Stats = {
   by_status: { key: string; count: number }[];
   by_type: { key: string; count: number }[];
   by_level: { key: string; count: number }[];
-  series: { days: string[]; signups: number[]; coupons: number[]; transactions: number[] };
+  series: {
+    days: string[];
+    signups: number[];
+    coupons: number[];
+    transactions: number[];
+    claimers: number[];
+    sharers: number[];
+    dau: number[];
+  };
+  active_users: { dau_today: number; wau: number };
+  heatmap_hours: number[];
   top_contributors: { id: string; display_name: string; avatar_url: string | null; level_name: string; contribution_score: number }[];
   top_brands: { brand: string; count: number }[];
   followed_brands: { brand: string; count: number }[];
@@ -85,11 +95,28 @@ export default function AdminDashboardPage() {
         <StatCard icon="shield" label="待處理申訴" value={o.appeals.pending} tone={o.appeals.pending > 0 ? "accent" : undefined} sub={`累計 ${o.appeals.total} 筆`} />
       </div>
 
+      {/* Activity + registration velocity */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <StatCard icon="lightning" label="當日活躍 DAU" value={data.active_users.dau_today} sub="今日有動作的人" tone="accent" />
+        <StatCard icon="users" label="7 日活躍 WAU" value={data.active_users.wau} sub="近 7 日活躍人數" />
+        <StatCard icon="user" label="3 小時註冊" value={o.users.new_3h} />
+        <StatCard icon="user" label="24 小時註冊" value={o.users.new_24h} />
+        <StatCard icon="user" label="48 小時註冊" value={o.users.new_48h} />
+      </div>
+
+      {/* Registration-by-hour heatmap */}
+      <Section title="註冊時段分佈（台灣時間）">
+        <HourHeatmap hours={data.heatmap_hours} />
+      </Section>
+
       {/* Trends */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <TrendChart title="每日註冊" days={s.days} values={s.signups} />
         <TrendChart title="每日上架" days={s.days} values={s.coupons} />
         <TrendChart title="每日媒合" days={s.days} values={s.transactions} />
+        <TrendChart title="每日活躍 DAU" days={s.days} values={s.dau} />
+        <TrendChart title="每日領券人數" days={s.days} values={s.claimers} />
+        <TrendChart title="每日分享人數" days={s.days} values={s.sharers} />
       </div>
 
       {/* Breakdowns */}
@@ -248,6 +275,37 @@ function TrendChart({ title, days, values }: { title: string; days: string[]; va
         </>
       )}
     </Card>
+  );
+}
+
+function HourHeatmap({ hours }: { hours: number[] }) {
+  const total = sum(hours);
+  if (total === 0) return <Empty />;
+  const max = Math.max(1, ...hours);
+  const peak = hours.indexOf(Math.max(...hours));
+  return (
+    <div>
+      <p className="mb-3 text-xs text-ink-soft">
+        尖峰時段 <span className="font-semibold text-accent">{peak}:00–{peak}:59</span>　·　全站累計 {total} 筆註冊
+      </p>
+      <div className="flex h-24 items-end gap-px">
+        {hours.map((c, h) => (
+          <div
+            key={h}
+            className={cn("flex-1 rounded-t", h === peak ? "bg-accent" : "bg-accent/45")}
+            style={{ height: c === 0 ? "2%" : `${Math.max(4, (c / max) * 100)}%` }}
+            title={`${h}:00　${c} 人`}
+          />
+        ))}
+      </div>
+      <div className="mt-1.5 flex justify-between text-[10px] text-ink-faint">
+        <span>0</span>
+        <span>6</span>
+        <span>12</span>
+        <span>18</span>
+        <span>23</span>
+      </div>
+    </div>
   );
 }
 

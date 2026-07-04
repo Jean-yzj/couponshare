@@ -20,7 +20,6 @@ import {
 import { Modal } from "@/components/Modal";
 import { BarcodeModal } from "@/components/BarcodeModal";
 import { RedeemCodeModal } from "@/components/RedeemCodeModal";
-import { RankBadge } from "@/components/RankBadge";
 import { ReportModal } from "@/components/ReportModal";
 import { Icon } from "@/components/icons";
 import { cn, expiryText, formatDate, relativeTime, STATUS_META } from "@/lib/display";
@@ -33,7 +32,6 @@ type Owner = {
   user_level: string;
   level_name: string;
   contribution_score: number;
-  rank?: number | null;
 };
 
 type Detail = {
@@ -307,10 +305,7 @@ export default function CouponDetailPage() {
             >
               <Avatar name={coupon.owner.display_name} url={coupon.owner.avatar_url} size={42} />
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="truncate font-medium text-ink">{coupon.owner.display_name}</p>
-                  {coupon.owner.rank ? <RankBadge rank={coupon.owner.rank} size="md" /> : null}
-                </div>
+                <p className="truncate font-medium text-ink">{coupon.owner.display_name}</p>
                 <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-faint">
                   {coupon.owner_rating && coupon.owner_rating.count > 0 ? (
                     <span className="inline-flex items-center gap-0.5 font-medium text-gold">

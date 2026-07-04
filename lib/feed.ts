@@ -9,7 +9,6 @@ import type {
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { feedCoupon } from "@/lib/serialize";
-import { ensureRanks } from "@/lib/ranks";
 import { CATEGORY_KEYS, REDEEM_KIND_KEYS } from "@/lib/categories";
 import { blockedUserIds } from "@/lib/blocks";
 
@@ -71,7 +70,6 @@ function toFeedCoupon(coupon: Parameters<typeof feedCoupon>[0], status?: ClaimRe
 }
 
 export async function getCouponFeed(params: CouponFeedParams) {
-  await ensureRanks(); // fill the top-3 cache so owner rank badges are correct
   const page = Math.max(1, params.page || 1);
   const limit = Math.min(50, Math.max(1, params.limit || 20));
   const within = params.withinHours || 0;

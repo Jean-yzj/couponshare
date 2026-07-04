@@ -3,7 +3,6 @@ import { cn, expiryText } from "@/lib/display";
 import { Avatar } from "./ui";
 import { Icon, type IconName } from "./icons";
 import { CATEGORY_LABEL, categoryStyle, REDEEM_KIND_LABEL, REDEEM_KIND_STYLE } from "@/lib/categories";
-import { RankBadge } from "./RankBadge";
 
 export type FeedOwner = {
   id: string;
@@ -12,7 +11,6 @@ export type FeedOwner = {
   user_level: string;
   level_name: string;
   contribution_score: number;
-  rank?: number | null;
 };
 
 export type FeedCoupon = {
@@ -109,7 +107,6 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
               <span className="truncate text-[11px] font-medium text-ink-soft">
                 {c.owner?.display_name ?? "—"}
               </span>
-              {c.owner?.rank ? <RankBadge rank={c.owner.rank} /> : null}
             </div>
             <div className="flex shrink-0 flex-col items-end gap-0.5">
               <span
