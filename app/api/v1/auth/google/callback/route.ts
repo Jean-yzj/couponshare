@@ -78,6 +78,11 @@ export const GET = route(async (req) => {
             : /profile/.test(msg)
               ? "profile_fetch"
               : "unknown";
-    return NextResponse.redirect(`${origin}/login?error=google_failed&stage=token&g=${g}`);
+    // Temporary: carry a truncated error summary so we can pinpoint an `unknown`
+    // failure without log access. Secrets never appear in these messages (the
+    // client_secret is only ever in the request body sent TO Google, not in any
+    // thrown Error). Remove once diagnosed.
+    const d = encodeURIComponent(msg.slice(0, 160));
+    return NextResponse.redirect(`${origin}/login?error=google_failed&stage=token&g=${g}&d=${d}`);
   }
 });
