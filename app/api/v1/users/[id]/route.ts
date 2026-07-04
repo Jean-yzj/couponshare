@@ -4,12 +4,14 @@ import { ApiError } from "@/lib/errors";
 import { getCurrentUser } from "@/lib/auth";
 import { hasBlockBetween } from "@/lib/blocks";
 import { avatarRef, feedCoupon } from "@/lib/serialize";
+import { ensureRanks } from "@/lib/ranks";
 import { ratingSummary } from "@/lib/ratings";
 import { LEVELS } from "@/lib/levels";
 
 export const GET = route(async (req, ctx) => {
   const { id } = await ctx.params;
   const viewer = await getCurrentUser();
+  await ensureRanks(); // top-3 cache for rank badges on this profile's coupons
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user || user.status === "DELETED") throw new ApiError("NOT_FOUND");

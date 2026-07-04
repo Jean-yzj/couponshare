@@ -2,10 +2,12 @@ import { prisma } from "@/lib/db";
 import { route, jsonOk } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { feedCoupon, transactionView } from "@/lib/serialize";
+import { ensureRanks } from "@/lib/ranks";
 
 // Backs the "My Wallet" page — listed / applied / received / transactions.
 export const GET = route(async () => {
   const user = await requireUser();
+  await ensureRanks(); // top-3 cache for rank badges
 
   const [listed, applied, received, transactions] = await Promise.all([
     prisma.coupon.findMany({
