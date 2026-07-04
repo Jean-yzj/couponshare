@@ -162,8 +162,22 @@ function FeedView({
   const skippedInitialFeedRequest = useRef(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const autoLoadLocked = useRef(false);
-  const brandsData = { brands: initialBrands };
+  const [followedBrands, setFollowedBrands] = useState<string[]>(initialBrands);
   const expData = { data: initialExpiring };
+
+  async function unfollowBrand(b: string) {
+    // Optimistic remove; put it back if the request fails.
+    setFollowedBrands((prev) => prev.filter((x) => x !== b));
+    if (brand === b) setBrand("");
+    try {
+      await apiFetch("/api/v1/brands/unfollow", {
+        method: "POST",
+        body: JSON.stringify({ brand: b }),
+      });
+    } catch {
+      setFollowedBrands((prev) => (prev.includes(b) ? prev : [...prev, b]));
+    }
+  }
   const noFilters = category === "ALL" && redeemKind === "ALL" && type === "ALL" && !debounced;
   const typeLabel = TYPES.find((t) => t.value === type)?.label ?? "全部";
   const sortLabel = SORTS.find((s) => s.value === sort)?.label ?? "最新";
@@ -308,18 +322,31 @@ function FeedView({
           ))}
         </div>
 
-        {signedIn && brandsData && brandsData.brands.length > 0 && (
+        {signedIn && followedBrands.length > 0 && (
           <div className="no-scrollbar -mx-1 flex items-center gap-1.5 overflow-x-auto px-1">
             <span className="shrink-0 text-xs font-medium text-ink-faint">追蹤中</span>
-            {brandsData.brands.map((b) => (
-              <button
+            {followedBrands.map((b) => (
+              <span
                 key={b}
-                onClick={() => setBrand(b)}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-accent-tint px-3 py-1.5 text-sm font-medium text-accent-press"
+                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-accent-tint py-1 pl-3 pr-1 text-sm font-medium text-accent-press"
               >
-                <Icon name="bell" size={12} />
-                {b}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setBrand(b)}
+                  className="inline-flex items-center gap-1"
+                >
+                  <Icon name="bell" size={12} />
+                  {b}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => unfollowBrand(b)}
+                  aria-label={`取消追蹤 ${b}`}
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-accent-press/55 transition-colors hover:bg-accent/15 hover:text-accent-press"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </span>
             ))}
           </div>
         )}
