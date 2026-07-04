@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
 import { Landing } from "@/components/Landing";
-import { Button, Input, Skeleton, EmptyState, LoadFailed } from "@/components/ui";
+import { Button, Input, Skeleton, EmptyState, LoadFailed, Spinner } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/display";
 import { CATEGORIES } from "@/lib/categories";
@@ -78,6 +78,8 @@ function FeedView({
   const [loadErr, setLoadErr] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
   const skippedInitialFeedRequest = useRef(false);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const autoLoadLocked = useRef(false);
   const brandsData = { brands: initialBrands };
   const expData = { data: initialExpiring };
   const noFilters = category === "ALL" && type === "ALL" && !debounced;
@@ -90,6 +92,7 @@ function FeedView({
   }, [brand]);
 
   useEffect(() => {
+    autoLoadLocked.current = false;
     setPage(1);
   }, [debounced, type, sort, category]);
 
@@ -129,7 +132,10 @@ function FeedView({
         if (!cancelled && !cached) setLoadErr(true);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          autoLoadLocked.current = false;
+        }
       });
     return () => {
       cancelled = true;
@@ -138,6 +144,23 @@ function FeedView({
 
   const canLoadMore = items.length < total;
   const firstLoad = loading && page === 1;
+
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el || !canLoadMore || firstLoad || loadErr) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting || loading || autoLoadLocked.current) return;
+        autoLoadLocked.current = true;
+        setPage((p) => p + 1);
+      },
+      { rootMargin: "360px 0px" },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [canLoadMore, firstLoad, loadErr, loading]);
 
   return (
     <div>
@@ -273,10 +296,8 @@ function FeedView({
             ))}
           </div>
           {canLoadMore && (
-            <div className="mt-8 flex justify-center">
-              <Button variant="outline" loading={loading} onClick={() => setPage((p) => p + 1)}>
-                載入更多
-              </Button>
+            <div ref={loadMoreRef} className="mt-8 flex justify-center py-2">
+              {loading && <Spinner className="text-ink-faint" />}
             </div>
           )}
         </>

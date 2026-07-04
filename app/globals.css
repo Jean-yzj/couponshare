@@ -35,8 +35,7 @@
   --color-danger: #e5484d;
   --color-danger-tint: #fdecec;
 
-  --font-sans: var(--font-round), "PingFang TC", "Noto Sans TC", "Microsoft JhengHei",
-    system-ui, sans-serif;
+  --font-sans: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
   --font-display: var(--font-round), "PingFang TC", "Noto Sans TC", "Microsoft JhengHei",
     system-ui, sans-serif;
 

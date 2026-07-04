@@ -11,14 +11,14 @@ import { cn } from "@/lib/display";
 
 const STEPS: { icon: IconName; title: string; body: string }[] = [
   { icon: "ticket", title: "上架你用不到的券", body: "把還沒時間兌換的飲料券、超商購物金拍照上傳，幾秒就能分享出去。" },
-  { icon: "send", title: "讓需要的人留言申請", body: "想要的人會留下一段話，由你親手挑選分享給誰，而不是被秒搶。" },
+  { icon: "send", title: "讓需要的人留言申請", body: "你可以親手挑選分享給誰，也可以設定直接送給第一個申請的人。" },
   { icon: "heart", title: "完成，並讓善意流動", body: "送出或交換完成後互道感謝，你也累積貢獻值，成為社群裡更被信任的人。" },
 ];
 
 type FeatureKind = "explore" | "share" | "exchange" | "level" | "expiring" | "wallet";
 const FEATURES: { kind: FeatureKind; icon: IconName; title: string; body: string }[] = [
   { kind: "explore", icon: "compass", title: "探索票券", body: "依分類、品牌、即將到期快速找券；追蹤喜歡的品牌，有新券馬上通知你。" },
-  { kind: "share", icon: "heart", title: "親手分享，不被秒搶", body: "想要的人留言申請，由你決定分享給誰，讓券真正到對的人手上。" },
+  { kind: "share", icon: "heart", title: "彈性分享，不被秒搶", body: "想要的人留言申請，你可自己決定給誰，也可快速送給第一位申請者。" },
   { kind: "exchange", icon: "swap", title: "安全交換，雙方亮碼", body: "想交換？雙方都確認後系統才同時亮出條碼，沒人能拿了就跑。" },
   { kind: "level", icon: "medal", title: "貢獻值與等級", body: "每次成功分享都累積貢獻值，等級越高越被信任，也解鎖更多每日額度。" },
   { kind: "expiring", icon: "clock", title: "快過期？幫忙領走", body: "即將到期的券會被推到最前面，別讓任何好康白白浪費掉。" },

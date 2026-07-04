@@ -43,6 +43,7 @@ type Detail = {
   exchange_target: string | null;
   expiry_date: string | null;
   status: string;
+  unlock_policy: string;
   visibility_level: string;
   view_count: number;
   claim_request_count: number;
@@ -435,7 +436,9 @@ export default function CouponDetailPage() {
                     {coupon.type === "GIFT" ? "我要領取" : "我要交換"}
                   </Button>
                   <p className="mt-2 text-center text-xs text-ink-faint">
-                    送出申請不代表已取得票券，需由持有者選擇。
+                    {coupon.unlock_policy === "AUTO_REVEAL_AFTER_MESSAGE"
+                      ? "這張券會送給第一個申請的人，送出後若仍可領取就會直接取得。"
+                      : "送出申請不代表已取得票券，需由持有者選擇。"}
                   </p>
                   {me.apply_remaining !== undefined && (
                     <p className="mt-1.5 text-center text-xs font-medium text-ink-faint">

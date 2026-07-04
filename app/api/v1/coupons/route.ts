@@ -18,7 +18,7 @@ export const POST = route(async (req) => {
       expiryDate: body.expiry_date ?? null,
       type: body.type,
       exchangeTarget: body.exchange_target ?? null,
-      unlockPolicy: body.unlock_policy ?? "OWNER_APPROVAL",
+      unlockPolicy: body.type === "GIFT" ? (body.unlock_policy ?? "OWNER_APPROVAL") : "OWNER_APPROVAL",
       visibilityLevel: body.visibility_level ?? "PUBLIC",
       status: "DRAFT",
     },

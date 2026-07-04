@@ -36,6 +36,7 @@ export default function NewCouponPage() {
   const [expiry, setExpiry] = useState(defaultExpiry);
   const [noExpiry, setNoExpiry] = useState(false);
   const [type, setType] = useState<"GIFT" | "EXCHANGE">("GIFT");
+  const [giveToFirstApplicant, setGiveToFirstApplicant] = useState(false);
   const [exchangeTarget, setExchangeTarget] = useState("");
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState("PUBLIC");
@@ -98,6 +99,10 @@ export default function NewCouponPage() {
             expiry_date: noExpiry ? null : new Date(expiry).toISOString(),
             type,
             exchange_target: type === "EXCHANGE" ? exchangeTarget.trim() : null,
+            unlock_policy:
+              type === "GIFT" && giveToFirstApplicant
+                ? "AUTO_REVEAL_AFTER_MESSAGE"
+                : "OWNER_APPROVAL",
             directly_redeemable: true,
             visibility_level: visibility,
           }),
@@ -262,6 +267,21 @@ export default function NewCouponPage() {
                 placeholder="例如：想換一杯手搖飲折價券"
               />
             </Field>
+          )}
+
+          {type === "GIFT" && (
+            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-canvas/50 p-4">
+              <input
+                type="checkbox"
+                checked={giveToFirstApplicant}
+                onChange={(e) => setGiveToFirstApplicant(e.target.checked)}
+                className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--color-accent)]"
+              />
+              <span className="text-sm leading-relaxed text-ink-soft">
+                <span className="font-semibold text-ink">送給第一個申請的人</span>
+                ，有人送出申請後會自動取得票券，不需要你再手動挑選。
+              </span>
+            </label>
           )}
 
           <Field label="使用限制 / 備註">

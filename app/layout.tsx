@@ -10,10 +10,12 @@ import { AppShell } from "@/components/AppShell";
 const round = localFont({
   src: "./fonts/gensen-rounded-bold.woff2",
   variable: "--font-round",
-  display: "swap",
-  weight: "400 800",
-  // Don't block/compete on first paint: text shows instantly in the system
-  // fallback (PingFang) via swap, then upgrades to the rounded font once loaded.
+  display: "optional",
+  weight: "700",
+  fallback: ["PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "system-ui"],
+  adjustFontFallback: false,
+  // Keep the 1MB CJK display font off the critical path; system Traditional
+  // Chinese fonts render body text with steadier glyph metrics.
   preload: false,
 });
 

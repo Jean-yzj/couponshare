@@ -25,6 +25,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  productionBrowserSourceMaps: false,
+  experimental: {
+    preloadEntriesOnStart: false,
+    webpackMemoryOptimizations: true,
+    serverSourceMaps: false,
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

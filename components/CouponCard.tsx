@@ -42,7 +42,7 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
   const applied = c.my_request_status ? APPLIED_META[c.my_request_status] : null;
 
   return (
-    <Link href={`/coupons/${c.id}`} className="group block">
+    <Link href={`/coupons/${c.id}`} prefetch={false} className="group block">
       <div
         className={cn(
           "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-paper shadow-soft transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lift",
