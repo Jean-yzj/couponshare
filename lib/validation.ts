@@ -13,6 +13,37 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+export const nativeGoogleSchema = z.object({
+  id_token: z.string().min(20),
+});
+
+export const appleLoginSchema = z.object({
+  identity_token: z.string().min(20),
+  full_name: z
+    .union([
+      z.string().trim().min(1).max(80),
+      z.object({
+        givenName: z.string().trim().max(40).optional().nullable(),
+        familyName: z.string().trim().max(40).optional().nullable(),
+      }),
+    ])
+    .optional()
+    .nullable(),
+});
+
+export const pushTokenSchema = z.object({
+  token: z.string().min(10).max(300),
+  platform: z.literal("ios"),
+});
+
+export const deletePushTokenSchema = z.object({
+  token: z.string().min(10).max(300).optional(),
+});
+
+export const blockUserSchema = z.object({
+  user_id: z.string().min(1),
+});
+
 export const createCouponSchema = z.object({
   title: z.string().min(1).max(80),
   brand: z.string().min(1).max(40),

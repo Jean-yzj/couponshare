@@ -6,6 +6,7 @@ import { notify } from "@/lib/notify";
 import { transactionMessageSchema } from "@/lib/validation";
 import { sniffImageType } from "@/lib/image";
 import { throttle } from "@/lib/throttle";
+import { hasBlockBetween } from "@/lib/blocks";
 
 function validateMessageImage(image: string | null | undefined): string | null {
   if (!image) return null;
@@ -34,6 +35,7 @@ export const POST = route(async (req, ctx) => {
   const t = await prisma.transaction.findUnique({ where: { id } });
   if (!t) throw new ApiError("NOT_FOUND");
   if (t.ownerId !== user.id && t.claimantId !== user.id) throw new ApiError("FORBIDDEN");
+  if (await hasBlockBetween(prisma, t.ownerId, t.claimantId)) throw new ApiError("FORBIDDEN");
 
   const msg = await prisma.transactionMessage.create({
     data: { transactionId: id, senderId: user.id, message, imageUrl },

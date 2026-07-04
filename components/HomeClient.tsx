@@ -32,16 +32,81 @@ type InitialFeed = {
   pagination: { total: number; has_more?: boolean };
 };
 
+export type FeedFilters = {
+  brand: string;
+  category: string;
+  type: "ALL" | "GIFT" | "EXCHANGE";
+  sort: "latest" | "expiry_soon" | "popular";
+};
+
+export const DEFAULT_FEED_FILTERS: FeedFilters = {
+  brand: "",
+  category: "ALL",
+  type: "ALL",
+  sort: "latest",
+};
+
+// Session-scoped filter memory. The URL is updated via raw history.replaceState
+// below (nice for copy/share), but Next.js's App Router does not reliably keep
+// that in sync with its own soft-navigation history for a client-side back
+// navigation (verified: after searching, then visiting a coupon and returning,
+// the address bar reverts to no filters even though nothing was typed again) —
+// so the URL can't be trusted as the source of truth for "what was I looking
+// at." sessionStorage survives that unaffected and is what actually drives
+// restoring the list when you come back from a coupon's detail page.
+const FILTERS_STORAGE_KEY = "cs-explore-filters-v1";
+
+function isDefaultFilters(f: FeedFilters): boolean {
+  return f.brand === "" && f.category === "ALL" && f.type === "ALL" && f.sort === "latest";
+}
+
+function loadStoredFilters(): FeedFilters | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(FILTERS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.brand !== "string") return null;
+    return {
+      brand: parsed.brand,
+      category: typeof parsed.category === "string" ? parsed.category : "ALL",
+      type: parsed.type === "GIFT" || parsed.type === "EXCHANGE" ? parsed.type : "ALL",
+      sort:
+        parsed.sort === "expiry_soon" || parsed.sort === "popular" ? parsed.sort : "latest",
+    };
+  } catch {
+    return null;
+  }
+}
+
+// A non-default server-derived filter (e.g. a shared /?brand=X link, or a hard
+// refresh) always wins — it's an explicit signal from the URL. Only when the
+// URL carries nothing do we fall back to "what was I last looking at."
+function resolveInitialFilters(serverFilters: FeedFilters): FeedFilters {
+  if (!isDefaultFilters(serverFilters)) return serverFilters;
+  return loadStoredFilters() ?? serverFilters;
+}
+
+function feedQueryKey(filters: FeedFilters, page: number) {
+  const qs = new URLSearchParams({ sort: filters.sort, page: String(page), limit: String(LIMIT) });
+  if (filters.brand) qs.set("brand", filters.brand);
+  if (filters.type !== "ALL") qs.set("type", filters.type);
+  if (filters.category !== "ALL") qs.set("category", filters.category);
+  return qs.toString();
+}
+
 export function HomeClient({
   signedIn,
   initialFeed,
   initialExpiring,
   initialBrands,
+  initialFilters = DEFAULT_FEED_FILTERS,
 }: {
   signedIn: boolean;
   initialFeed: InitialFeed;
   initialExpiring: FeedCoupon[];
   initialBrands: string[];
+  initialFilters?: FeedFilters;
 }) {
   if (!signedIn) return <Landing />;
   return (
@@ -50,6 +115,7 @@ export function HomeClient({
       initialFeed={initialFeed}
       initialExpiring={initialExpiring}
       initialBrands={initialBrands}
+      initialFilters={initialFilters}
     />
   );
 }
@@ -59,17 +125,22 @@ function FeedView({
   initialFeed,
   initialExpiring,
   initialBrands,
+  initialFilters,
 }: {
   signedIn: boolean;
   initialFeed: InitialFeed;
   initialExpiring: FeedCoupon[];
   initialBrands: string[];
+  initialFilters: FeedFilters;
 }) {
-  const [brand, setBrand] = useState("");
-  const [debounced, setDebounced] = useState("");
-  const [category, setCategory] = useState<string>("ALL");
-  const [type, setType] = useState<"ALL" | "GIFT" | "EXCHANGE">("ALL");
-  const [sort, setSort] = useState<"latest" | "expiry_soon" | "popular">("latest");
+  // Computed once on mount: prefers a stored search over the (possibly stale)
+  // server-derived default — see resolveInitialFilters above.
+  const [resolved] = useState(() => resolveInitialFilters(initialFilters));
+  const [brand, setBrand] = useState(resolved.brand);
+  const [debounced, setDebounced] = useState(resolved.brand);
+  const [category, setCategory] = useState<string>(resolved.category);
+  const [type, setType] = useState<"ALL" | "GIFT" | "EXCHANGE">(resolved.type);
+  const [sort, setSort] = useState<"latest" | "expiry_soon" | "popular">(resolved.sort);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [items, setItems] = useState<FeedCoupon[]>(initialFeed.data);
   const [total, setTotal] = useState(initialFeed.pagination.total);
@@ -92,6 +163,29 @@ function FeedView({
   }, [brand]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const current: FeedFilters = { brand: debounced, category, type, sort };
+
+    // The reliable mechanism (see FILTERS_STORAGE_KEY comment above) — this is
+    // what actually restores your search when you come back from a coupon.
+    try {
+      if (isDefaultFilters(current)) sessionStorage.removeItem(FILTERS_STORAGE_KEY);
+      else sessionStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(current));
+    } catch {
+      /* storage unavailable (private mode, quota) — degrade silently */
+    }
+
+    // Best-effort address-bar sync for copy/share; not load-bearing for restore.
+    const qs = new URLSearchParams();
+    if (debounced) qs.set("brand", debounced);
+    if (category !== "ALL") qs.set("category", category);
+    if (type !== "ALL") qs.set("type", type);
+    if (sort !== "latest") qs.set("sort", sort);
+    const nextUrl = qs.toString() ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }, [debounced, category, type, sort]);
+
+  useEffect(() => {
     autoLoadLocked.current = false;
     setPage(1);
   }, [debounced, type, sort, category]);
@@ -99,13 +193,10 @@ function FeedView({
   useEffect(() => {
     let cancelled = false;
     setLoadErr(false);
-    const qs = new URLSearchParams({ sort, page: String(page), limit: String(LIMIT) });
-    if (debounced) qs.set("brand", debounced);
-    if (type !== "ALL") qs.set("type", type);
-    if (category !== "ALL") qs.set("category", category);
-    const key = qs.toString();
+    const key = feedQueryKey({ brand: debounced, category, type, sort }, page);
+    const initialKey = feedQueryKey(initialFilters, 1);
 
-    if (!skippedInitialFeedRequest.current && page === 1 && key === `sort=latest&page=1&limit=${LIMIT}`) {
+    if (!skippedInitialFeedRequest.current && page === 1 && key === initialKey) {
       skippedInitialFeedRequest.current = true;
       feedCache.set(key, { items: initialFeed.data, total: initialFeed.pagination.total });
       return;
@@ -121,7 +212,7 @@ function FeedView({
       setLoading(true);
     }
 
-    apiFetch<{ data: FeedCoupon[]; pagination: { total: number } }>(`/api/v1/coupons/feed?${qs}`)
+    apiFetch<{ data: FeedCoupon[]; pagination: { total: number } }>(`/api/v1/coupons/feed?${key}`)
       .then((r) => {
         if (page === 1) feedCache.set(key, { items: r.data, total: r.pagination.total });
         if (cancelled) return;
@@ -140,7 +231,7 @@ function FeedView({
     return () => {
       cancelled = true;
     };
-  }, [debounced, type, sort, category, page, retryNonce, initialFeed]);
+  }, [debounced, type, sort, category, page, retryNonce, initialFeed, initialFilters]);
 
   const canLoadMore = items.length < total;
   const firstLoad = loading && page === 1;

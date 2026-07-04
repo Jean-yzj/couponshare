@@ -38,7 +38,9 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -109,6 +111,20 @@ export default function SettingsPage() {
     }
   }
 
+  async function deleteAccount() {
+    const input = window.prompt("刪除後無法復原。若確定要刪除帳號，請輸入「刪除帳號」。");
+    if (input !== "刪除帳號") return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      await apiFetch("/api/v1/me", { method: "DELETE" });
+      window.location.href = "/";
+    } catch (err) {
+      setDeleteError(err instanceof ApiErr ? err.message : "刪除失敗，請稍後再試");
+      setDeleteBusy(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-lg">
       <PageHeader eyebrow="Settings" title="個人設定" subtitle="更新你的暱稱與頭像。" />
@@ -171,6 +187,21 @@ export default function SettingsPage() {
               </Button>
             )}
           </div>
+        </div>
+      </Card>
+
+      <Card className="mt-4 border-danger/20 p-5">
+        <div className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-lg font-extrabold text-danger">刪除帳號</h2>
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+              刪除後會清除 Email、密碼與頭像，正在分享的票券會下架；既有交易紀錄仍會保留給交易雙方查詢。
+            </p>
+          </div>
+          {deleteError && <Banner tone="warn" icon="info">{deleteError}</Banner>}
+          <Button full variant="danger" loading={deleteBusy} onClick={deleteAccount}>
+            永久刪除帳號
+          </Button>
         </div>
       </Card>
     </div>

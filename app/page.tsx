@@ -1,9 +1,11 @@
-import { HomeClient } from "@/components/HomeClient";
+import { DEFAULT_FEED_FILTERS, HomeClient, type FeedFilters } from "@/components/HomeClient";
 import { getCurrentUser } from "@/lib/auth";
+import { CATEGORY_KEYS } from "@/lib/categories";
 import { prisma } from "@/lib/db";
 import { getCouponFeed } from "@/lib/feed";
 
 const LIMIT = 12;
+type SearchParams = { [key: string]: string | string[] | undefined };
 
 async function getFollowedBrands(userId: string): Promise<string[]> {
   const follows = await prisma.brandFollow.findMany({
@@ -14,8 +16,31 @@ async function getFollowedBrands(userId: string): Promise<string[]> {
   return follows.map((f) => f.brand);
 }
 
-export default async function HomePage() {
+function single(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function parseFilters(params: SearchParams): FeedFilters {
+  const brand = single(params.brand)?.trim().slice(0, 60) ?? "";
+  const category = single(params.category);
+  const type = single(params.type);
+  const sort = single(params.sort);
+
+  return {
+    brand,
+    category: category && (CATEGORY_KEYS as readonly string[]).includes(category) ? category : "ALL",
+    type: type === "GIFT" || type === "EXCHANGE" ? type : "ALL",
+    sort: sort === "expiry_soon" || sort === "popular" ? sort : "latest",
+  };
+}
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const viewer = await getCurrentUser();
+  const filters = parseFilters(await searchParams);
 
   if (!viewer) {
     return (
@@ -24,12 +49,21 @@ export default async function HomePage() {
         initialFeed={{ data: [], pagination: { total: 0, has_more: false } }}
         initialExpiring={[]}
         initialBrands={[]}
+        initialFilters={DEFAULT_FEED_FILTERS}
       />
     );
   }
 
   const [initialFeed, expiringFeed, initialBrands] = await Promise.all([
-    getCouponFeed({ viewer, sort: "latest", page: 1, limit: LIMIT }),
+    getCouponFeed({
+      viewer,
+      brand: filters.brand,
+      type: filters.type,
+      category: filters.category,
+      sort: filters.sort,
+      page: 1,
+      limit: LIMIT,
+    }),
     getCouponFeed({ viewer, sort: "expiry_soon", withinHours: 48, page: 1, limit: 4 }),
     getFollowedBrands(viewer.id),
   ]);
@@ -40,6 +74,7 @@ export default async function HomePage() {
       initialFeed={initialFeed}
       initialExpiring={expiringFeed.data}
       initialBrands={initialBrands}
+      initialFilters={filters}
     />
   );
 }

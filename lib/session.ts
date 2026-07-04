@@ -3,6 +3,7 @@ import { sign, safeEqual } from "./crypto";
 
 const COOKIE = "cs_session";
 const MAX_AGE_S = 60 * 60 * 24 * 30; // 30 days
+const TOKEN_MAX_AGE_S = 60 * 60 * 24 * 90; // 90 days for native apps
 
 function secret(): string {
   const s = process.env.SESSION_SECRET;
@@ -13,10 +14,18 @@ function secret(): string {
   return "insecure-dev-secret";
 }
 
-export async function createSession(userId: string): Promise<void> {
-  const payload = { uid: userId, exp: Date.now() + MAX_AGE_S * 1000 };
+function createSignedSessionToken(userId: string, maxAgeS: number): string {
+  const payload = { uid: userId, exp: Date.now() + maxAgeS * 1000 };
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const token = `${body}.${sign(body, secret())}`;
+  return `${body}.${sign(body, secret())}`;
+}
+
+export function createBearerToken(userId: string): string {
+  return createSignedSessionToken(userId, TOKEN_MAX_AGE_S);
+}
+
+export async function createSession(userId: string): Promise<void> {
+  const token = createSignedSessionToken(userId, MAX_AGE_S);
   const store = await cookies();
   store.set(COOKIE, token, {
     httpOnly: true,
@@ -31,8 +40,7 @@ export async function destroySession(): Promise<void> {
   (await cookies()).delete(COOKIE);
 }
 
-export async function getSessionUserId(): Promise<string | null> {
-  const token = (await cookies()).get(COOKIE)?.value;
+export function verifySessionToken(token: string | null | undefined): string | null {
   if (!token) return null;
   const [body, sig] = token.split(".");
   if (!body || !sig) return null;
@@ -47,4 +55,8 @@ export async function getSessionUserId(): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+export async function getSessionUserId(): Promise<string | null> {
+  return verifySessionToken((await cookies()).get(COOKIE)?.value);
 }

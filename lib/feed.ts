@@ -9,6 +9,7 @@ import type {
 import { prisma } from "@/lib/db";
 import { feedCoupon } from "@/lib/serialize";
 import { CATEGORY_KEYS } from "@/lib/categories";
+import { blockedUserIds } from "@/lib/blocks";
 
 const ownerSelect = {
   id: true,
@@ -72,12 +73,14 @@ export async function getCouponFeed(params: CouponFeedParams) {
   const sort = params.sort || "latest";
   const brand = params.brand?.trim() || undefined;
   const viewer = params.viewer;
+  const hiddenOwnerIds = viewer ? await blockedUserIds(prisma, viewer.id) : [];
 
   const now = new Date();
   const where: Prisma.CouponWhereInput = {
     status: "AVAILABLE",
     visibilityLevel: { in: allowedVisibilities(viewer?.userLevel ?? null) },
   };
+  if (hiddenOwnerIds.length) where.ownerId = { notIn: hiddenOwnerIds };
 
   if (within > 0) {
     where.expiryDate = { gt: now, lt: new Date(now.getTime() + within * 3_600_000) };

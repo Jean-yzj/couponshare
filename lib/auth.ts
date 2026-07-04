@@ -1,10 +1,21 @@
 import type { User } from "@prisma/client";
+import { headers } from "next/headers";
 import { prisma } from "./db";
-import { getSessionUserId } from "./session";
+import { getSessionUserId, verifySessionToken } from "./session";
 import { ApiError } from "./errors";
 
+export async function getBearerSession(): Promise<{ present: boolean; uid: string | null }> {
+  const auth = (await headers()).get("authorization") || "";
+  const m = /^Bearer\s+(.+)$/i.exec(auth);
+  if (!m) return { present: false, uid: null };
+  return { present: true, uid: verifySessionToken(m[1]) };
+}
+
 export async function getCurrentUser(): Promise<User | null> {
-  const uid = await getSessionUserId();
+  let uid = await getSessionUserId();
+  if (!uid) {
+    uid = (await getBearerSession()).uid;
+  }
   if (!uid) return null;
   const user = await prisma.user.findUnique({ where: { id: uid } });
   if (!user || user.status === "DELETED") return null;

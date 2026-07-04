@@ -8,6 +8,7 @@ import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
 import { claimRequestView } from "@/lib/serialize";
 import { claimRequestSchema } from "@/lib/validation";
+import { hasBlockBetween } from "@/lib/blocks";
 import { assertTransition } from "@/lib/coupon-state";
 import { applyScore, SCORE_RULES } from "@/lib/score";
 
@@ -20,6 +21,7 @@ export const POST = route(async (req, ctx) => {
   const coupon = await prisma.coupon.findUnique({ where: { id: couponId } });
   if (!coupon) throw new ApiError("COUPON_NOT_FOUND");
   if (coupon.ownerId === user.id) throw new ApiError("CANNOT_CLAIM_OWN_COUPON");
+  if (await hasBlockBetween(prisma, coupon.ownerId, user.id)) throw new ApiError("FORBIDDEN");
   if (coupon.status !== "AVAILABLE") throw new ApiError("COUPON_NOT_AVAILABLE");
   if (coupon.expiryDate && coupon.expiryDate <= new Date()) throw new ApiError("COUPON_EXPIRED");
   if (body.request_type !== coupon.type) {

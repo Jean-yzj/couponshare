@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { route, jsonOk } from "@/lib/api";
-import { getCurrentUser } from "@/lib/auth";
+import { getBearerSession, getCurrentUser } from "@/lib/auth";
+import { ApiError } from "@/lib/errors";
 import { LEVELS, nextLevelTarget } from "@/lib/levels";
 import { monthlyGiftCount } from "@/lib/leveling";
 import { applyQuota } from "@/lib/share-gate";
@@ -8,6 +9,9 @@ import { avatarRef } from "@/lib/serialize";
 import { isAdmin } from "@/lib/admin";
 
 export const GET = route(async () => {
+  const bearer = await getBearerSession();
+  if (bearer.present && !bearer.uid) throw new ApiError("UNAUTHORIZED");
+
   const user = await getCurrentUser();
   if (!user) return jsonOk({ user: null });
 

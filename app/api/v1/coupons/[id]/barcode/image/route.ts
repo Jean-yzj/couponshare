@@ -10,9 +10,8 @@ export const runtime = "nodejs";
 
 // Streams the decrypted barcode image with re-validated owner/claimant authority.
 // Never cached. PRD §8.1. Authorizes via EITHER a short-lived signed token OR the
-// session cookie — same-origin <img> requests carry the cookie automatically, so
-// the client can point <img src> straight here and skip the "issue signed URL"
-// round-trip. That single-hop path is what makes a received ticket appear instantly.
+// session cookie / Bearer auth — same-origin <img> requests carry the cookie
+// automatically, while React Native can pass Authorization headers.
 export const GET = route(async (req, ctx) => {
   const { id } = await ctx.params;
   const token = new URL(req.url).searchParams.get("token") || "";
