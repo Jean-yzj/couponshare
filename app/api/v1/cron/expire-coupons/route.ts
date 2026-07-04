@@ -40,7 +40,39 @@ async function run(req: NextRequest) {
     });
   }
 
-  return jsonOk({ expired: expiring.length });
+  // Phase 2: auto-delist coupons that got zero applications after 7 days on the
+  // shelf. Stops the feed filling with dead coupons — especially no-expiry ones
+  // that would otherwise live forever. Owner is notified so they can re-share.
+  const STALE_DAYS = 7;
+  const staleBefore = new Date(now.getTime() - STALE_DAYS * 86_400_000);
+  const stale = await prisma.coupon.findMany({
+    where: { status: "AVAILABLE", claimRequestCount: 0, createdAt: { lt: staleBefore } },
+    select: { id: true, ownerId: true, title: true },
+    take: 500,
+  });
+
+  for (const c of stale) {
+    await prisma.$transaction(async (tx) => {
+      await tx.coupon.update({ where: { id: c.id }, data: { status: "EXPIRED" } });
+      await notify(tx, {
+        userId: c.ownerId,
+        type: "COUPON_EXPIRED",
+        title: "票券已自動下架",
+        body: `「${c.title}」上架 7 天都沒有人申請，已自動下架，避免占用版面。若仍然有效，歡迎重新上傳一張。`,
+        referenceType: "coupon",
+        referenceId: c.id,
+      });
+      await writeAudit(tx, {
+        action: "coupon.auto_delist_stale",
+        targetType: "coupon",
+        targetId: c.id,
+        before: { status: "AVAILABLE" },
+        after: { status: "EXPIRED" },
+      });
+    });
+  }
+
+  return jsonOk({ expired: expiring.length, delisted_stale: stale.length });
 }
 
 export const GET = route(run);
