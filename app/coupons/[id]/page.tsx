@@ -88,7 +88,7 @@ export default function CouponDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { me, refetch: refetchMe } = useMe();
-  const { data: coupon, loading, refetch } = useApi<Detail>(`/api/v1/coupons/${id}`);
+  const { data: coupon, loading, refetch, setData: setCoupon } = useApi<Detail>(`/api/v1/coupons/${id}`);
   const reqs = useApi<{ data: CR[] }>(coupon?.is_owner ? `/api/v1/coupons/${id}/claim-requests` : null);
 
   const [claimOpen, setClaimOpen] = useState(false);
@@ -187,7 +187,10 @@ export default function CouponDetailPage() {
         method: "POST",
         body: JSON.stringify({ reason: reason.trim() || undefined }),
       });
-      await refetch();
+      // Optimistic: we know the coupon is now SUSPENDED, so update locally instead
+      // of re-fetching the whole detail — that extra round-trip is what made this
+      // feel slow on mobile (every hop is 400-800ms on cellular).
+      setCoupon((prev) => (prev ? { ...prev, status: "SUSPENDED" } : prev));
     } catch (e) {
       alert(e instanceof ApiErr ? e.message : "下架失敗");
     } finally {
@@ -207,7 +210,9 @@ export default function CouponDetailPage() {
         method: "POST",
         body: JSON.stringify({ reason: reason.trim() || undefined }),
       });
-      await refetch();
+      // Optimistic: suspending the owner delists this coupon too — reflect it
+      // locally instead of paying another mobile round-trip to re-fetch.
+      setCoupon((prev) => (prev ? { ...prev, status: "SUSPENDED" } : prev));
     } catch (e) {
       alert(e instanceof ApiErr ? e.message : "停權失敗");
     } finally {

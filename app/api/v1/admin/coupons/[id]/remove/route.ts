@@ -17,7 +17,12 @@ export const POST = route(async (req, ctx) => {
   const admin = await requireAdmin();
   const { reason } = await readBody(req, schema);
 
-  const coupon = await prisma.coupon.findUnique({ where: { id } });
+  // Only the fields this route needs — never load barcodeEncryptedData (up to
+  // ~6.7MB), which would add pointless latency to the one round-trip that matters.
+  const coupon = await prisma.coupon.findUnique({
+    where: { id },
+    select: { status: true, ownerId: true, title: true },
+  });
   if (!coupon) throw new ApiError("COUPON_NOT_FOUND");
   if (!["AVAILABLE", "PENDING", "REPORTED", "DRAFT"].includes(coupon.status)) {
     throw new ApiError("INVALID_STATUS_TRANSITION", {
