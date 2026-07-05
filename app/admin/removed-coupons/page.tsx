@@ -3,28 +3,29 @@
 import { useState } from "react";
 import Link from "next/link";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
-import { Button, Card, Avatar, Skeleton, EmptyState, NeedLogin, Eyebrow, Pill } from "@/components/ui";
+import { Button, Card, Skeleton, EmptyState, NeedLogin, Eyebrow, Pill } from "@/components/ui";
 import { relativeTime } from "@/lib/display";
 
-type SuspendedUser = {
+type RemovedCoupon = {
   id: string;
-  display_name: string;
-  email: string | null;
-  avatar_url: string | null;
-  provider: string;
-  contribution_score: number;
-  level_name: string;
-  risk_flag: boolean;
+  title: string;
+  brand: string;
+  type: string;
+  category: string | null;
+  status: string;
+  report_count: number;
+  view_count: number;
   created_at: string;
   updated_at: string;
-  suspend_reason: string;
-  suspended_at: string | null;
+  owner: { id: string; display_name: string } | null;
 };
 
-export default function AdminSuspendedPage() {
+const TYPE_LABEL: Record<string, string> = { GIFT: "免費贈送", EXCHANGE: "交換" };
+
+export default function AdminRemovedCouponsPage() {
   const { me, loading: meLoading } = useMe();
-  const { data, loading, refetch } = useApi<{ data: SuspendedUser[] }>(
-    me?.is_admin ? "/api/v1/admin/users?status=SUSPENDED" : null,
+  const { data, loading, refetch } = useApi<{ data: RemovedCoupon[] }>(
+    me?.is_admin ? "/api/v1/admin/coupons?status=SUSPENDED" : null,
   );
   const [acting, setActing] = useState<string | null>(null);
 
@@ -46,11 +47,11 @@ export default function AdminSuspendedPage() {
       </div>
     );
 
-  async function restore(id: string, name: string) {
-    if (!confirm(`恢復「${name}」的帳號並重新上架其票券？`)) return;
+  async function restore(id: string, title: string) {
+    if (!confirm(`把「${title}」重新上架？`)) return;
     setActing(id);
     try {
-      await apiFetch(`/api/v1/admin/users/${id}/restore`, { method: "POST" });
+      await apiFetch(`/api/v1/admin/coupons/${id}/restore`, { method: "POST" });
       await refetch();
     } catch (e) {
       alert(e instanceof ApiErr ? e.message : "操作失敗");
@@ -64,48 +65,56 @@ export default function AdminSuspendedPage() {
   return (
     <div>
       <Eyebrow>Admin</Eyebrow>
-      <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-ink">被停權的帳號</h1>
+      <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-ink">被下架的票券</h1>
       <p className="mt-1 text-sm text-ink-soft">
-        目前被停權的帳號共 {rows.length} 個。若是誤判（例如被集體亂檢舉），可一鍵恢復。
+        目前被下架、但持有者仍正常的票券共 {rows.length} 張。若是被亂檢舉誤下架，可一鍵重新上架。
+        （帳號被停權者的票券請到「被停權帳號」恢復帳號，會一併上架。）
       </p>
 
       <div className="mt-6 space-y-3">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)
         ) : rows.length === 0 ? (
-          <EmptyState icon="shield" title="沒有被停權的帳號" hint="目前所有帳號都正常。" />
+          <EmptyState icon="ticket" title="沒有被下架的票券" hint="目前沒有需要處理的下架票券。" />
         ) : (
-          rows.map((u) => (
-            <Card key={u.id} className="p-4">
+          rows.map((c) => (
+            <Card key={c.id} className="p-4">
               <div className="flex flex-wrap items-center gap-3">
-                <Avatar name={u.display_name} url={u.avatar_url} size={40} />
                 <div className="min-w-0 flex-1">
                   <Link
-                    href={`/users/${u.id}`}
+                    href={`/coupons/${c.id}`}
                     className="truncate font-semibold text-ink hover:text-accent"
                   >
-                    {u.display_name}
+                    {c.brand}｜{c.title}
                   </Link>
                   <p className="truncate text-xs text-ink-faint">
-                    {u.email || "（無 Email）"} · {u.provider} · {u.level_name} · {u.contribution_score} 分
+                    {TYPE_LABEL[c.type] || c.type}
+                    {c.category ? ` · ${c.category}` : ""} · 持有者：
+                    {c.owner ? (
+                      <Link href={`/users/${c.owner.id}`} className="hover:text-accent">
+                        {c.owner.display_name}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
                   </p>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
                   icon="check"
-                  loading={acting === u.id}
-                  onClick={() => restore(u.id, u.display_name)}
+                  loading={acting === c.id}
+                  onClick={() => restore(c.id, c.title)}
                 >
-                  解除停權
+                  重新上架
                 </Button>
               </div>
               <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-line pt-2.5 text-xs text-ink-soft">
-                <Pill className="bg-danger-tint text-danger">{u.suspend_reason}</Pill>
-                {u.risk_flag && <Pill className="bg-danger-tint text-danger">風險標記</Pill>}
+                <Pill className={c.report_count >= 3 ? "bg-danger-tint text-danger" : "bg-sand text-ink-soft"}>
+                  被檢舉 {c.report_count} 次
+                </Pill>
                 <span className="text-ink-faint">
-                  停權於 {u.suspended_at ? relativeTime(u.suspended_at) : relativeTime(u.updated_at)}
-                  　·　註冊於 {relativeTime(u.created_at)}
+                  下架於 {relativeTime(c.updated_at)}　·　上架於 {relativeTime(c.created_at)}　·　瀏覽 {c.view_count}
                 </span>
               </div>
             </Card>

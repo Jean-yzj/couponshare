@@ -97,15 +97,6 @@ export default function AdminDashboardPage() {
         <p className="mt-1 text-sm text-ink-soft">
           CouponShare 營運數據與趨勢　·　更新於 {relativeTime(data.generated_at)}
         </p>
-        <div className="mt-3 flex flex-wrap gap-2 text-sm">
-          <Link href="/admin/reports" className="text-accent hover:underline">
-            檢舉複核{o.reports.pending > 0 ? `（${o.reports.pending}）` : ""}
-          </Link>
-          <span className="text-ink-faint">·</span>
-          <Link href="/admin/suspended" className="text-accent hover:underline">
-            被停權帳號{o.users.suspended > 0 ? `（${o.users.suspended}）` : ""}
-          </Link>
-        </div>
       </div>
 
       {/* KPI cards */}

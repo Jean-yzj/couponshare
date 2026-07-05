@@ -36,6 +36,7 @@ type ReportDetail = {
   id: string;
   reason: string;
   description: string | null;
+  offender_strikes: number;
   evidence_image_url: string | null;
   reporter: { id: string; display_name: string; contribution_score: number; created_at: string } | null;
   reported_user: {
@@ -124,12 +125,14 @@ export default function AdminReportsPage() {
 
   async function act(
     id: string,
-    action: "dismiss" | "remove_coupon" | "suspend_user" | "dismiss_malicious",
+    action: "dismiss" | "remove_coupon" | "suspend_user" | "dismiss_malicious" | "strike_user",
   ) {
     const prompts: Record<typeof action, string> = {
       dismiss: "駁回這則檢舉（判定無違規）？可填備註。",
       dismiss_malicious:
         "判定這是惡意 / 不實檢舉？檢舉者會記一次違規，累積 3 次自動停權。可填備註。",
+      strike_user:
+        "這則檢舉成立、但還不到停權？被檢舉者記一次違規，累積 3 次系統自動停權。可填備註。",
       remove_coupon: "下架這張被檢舉的票券？可填原因（會通知持有者）。",
       suspend_user: "停權這位使用者並下架其所有票券？可填原因（會通知對方）。",
     };
@@ -149,21 +152,27 @@ export default function AdminReportsPage() {
     }
   }
 
+  // Undo a wrongful takedown straight from the report (also available on the
+  // 被下架票券 page). Keyed on the coupon id for the busy state.
+  async function restoreCoupon(couponId: string, title: string) {
+    if (!confirm(`把「${title}」重新上架？`)) return;
+    setActing(couponId);
+    try {
+      await apiFetch(`/api/v1/admin/coupons/${couponId}/restore`, { method: "POST" });
+      await refetch();
+    } catch (e) {
+      alert(e instanceof ApiErr ? e.message : "操作失敗");
+    } finally {
+      setActing(null);
+    }
+  }
+
   const rows = data?.data ?? [];
 
   return (
     <div>
       <h1 className="text-2xl font-extrabold tracking-tight text-ink">檢舉複核</h1>
-      <p className="mt-1 text-sm text-ink-soft">逐筆審核使用者檢舉，可駁回、下架票券或停權帳號。</p>
-      <div className="mt-3 flex gap-2 text-sm">
-        <Link href="/admin" className="text-accent hover:underline">
-          數據總覽
-        </Link>
-        <span className="text-ink-faint">·</span>
-        <Link href="/admin/suspended" className="text-accent hover:underline">
-          被停權帳號
-        </Link>
-      </div>
+      <p className="mt-1 text-sm text-ink-soft">逐筆審核使用者檢舉，可駁回、記檢舉、下架票券或停權帳號。</p>
 
       <div className="no-scrollbar -mx-4 mt-5 flex gap-1.5 overflow-x-auto px-4 pb-1">
         {TABS.map((t) => (
@@ -253,6 +262,9 @@ export default function AdminReportsPage() {
                   <Button size="sm" variant="outline" icon="flag" loading={acting === r.id} onClick={() => act(r.id, "dismiss_malicious")}>
                     判定惡意檢舉
                   </Button>
+                  <Button size="sm" variant="outline" icon="shieldCheck" loading={acting === r.id} onClick={() => act(r.id, "strike_user")}>
+                    記一次檢舉
+                  </Button>
                   {r.coupon && (
                     <Button size="sm" variant="outline" icon="ban" loading={acting === r.id} onClick={() => act(r.id, "remove_coupon")}>
                       下架此券
@@ -265,9 +277,22 @@ export default function AdminReportsPage() {
                   )}
                 </div>
               ) : (
-                <p className="mt-3 text-xs font-medium text-ink-faint">
-                  已{r.status === "RESOLVED" ? "處置" : "駁回"} · {r.resolved_at ? relativeTime(r.resolved_at) : ""}
-                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <p className="text-xs font-medium text-ink-faint">
+                    已{r.status === "RESOLVED" ? "處置" : "駁回"} · {r.resolved_at ? relativeTime(r.resolved_at) : ""}
+                  </p>
+                  {r.coupon && r.coupon.status === "SUSPENDED" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      icon="ticket"
+                      loading={acting === r.coupon.id}
+                      onClick={() => restoreCoupon(r.coupon!.id, r.coupon!.title)}
+                    >
+                      重新上架此券
+                    </Button>
+                  )}
+                </div>
               )}
             </Card>
           ))
@@ -296,6 +321,16 @@ function ReportDetailPanel({ detail, loading }: { detail: ReportDetail | null; l
   const c = detail.coupon;
   return (
     <div className="mt-2 space-y-3 rounded-xl border border-line bg-canvas/50 p-4 text-sm">
+      {detail.offender_strikes > 0 && (
+        <div
+          className={cn(
+            "rounded-lg px-3 py-2 text-xs font-medium",
+            detail.offender_strikes >= 2 ? "bg-danger-tint text-danger" : "bg-sand text-ink-soft",
+          )}
+        >
+          此對象已累積 {detail.offender_strikes} 次成立檢舉（滿 3 次自動停權）
+        </div>
+      )}
       {c && (
         <section>
           <p className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-faint">被檢舉的券</p>

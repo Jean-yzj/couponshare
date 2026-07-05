@@ -62,6 +62,16 @@ export const GET = route(async (req, ctx) => {
     };
   }
 
+  // How many admin-confirmed strikes the accountable party already has (offender =
+  // named user, else coupon owner) — shows the admin how close 累積檢舉 is to the
+  // auto-suspend threshold before they add another.
+  const offenderId = report.reportedUserId ?? report.coupon?.ownerId ?? null;
+  const offenderStrikes = offenderId
+    ? await prisma.auditLog.count({
+        where: { actorId: offenderId, action: "report.confirmed_strike" },
+      })
+    : 0;
+
   const c = report.coupon;
   return jsonOk({
     id: report.id,
@@ -69,6 +79,7 @@ export const GET = route(async (req, ctx) => {
     description: report.description,
     status: report.status,
     admin_note: report.adminNote,
+    offender_strikes: offenderStrikes,
     evidence_image_url: report.evidenceImageUrl,
     transaction_id: report.transactionId,
     created_at: report.createdAt,

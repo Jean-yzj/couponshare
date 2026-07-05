@@ -7,12 +7,16 @@ import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
 
 const schema = z.object({
-  action: z.enum(["dismiss", "remove_coupon", "suspend_user", "dismiss_malicious"]),
+  action: z.enum(["dismiss", "remove_coupon", "suspend_user", "dismiss_malicious", "strike_user"]),
   note: z.string().max(300).optional(),
 });
 
 // A reporter who racks up this many malicious/false reports gets auto-suspended.
 const MALICIOUS_REPORT_LIMIT = 3;
+// A reported user who racks up this many admin-confirmed (成立) reports gets
+// auto-suspended — the "累積檢舉" path for violations that aren't severe enough
+// to suspend on the first strike.
+const CONFIRMED_STRIKE_LIMIT = 3;
 
 // Admin decides a report. dismiss = no violation (re-list the coupon if it had
 // been auto-flagged REPORTED); remove_coupon = take that listing down;
@@ -28,6 +32,8 @@ export const POST = route(async (req, ctx) => {
   if (!["PENDING", "REVIEWING"].includes(report.status)) {
     throw new ApiError("VALIDATION_ERROR", { message: "此檢舉已處理" });
   }
+  // Who is accountable for this report: the named user, else the coupon's owner.
+  const offenderId = report.reportedUserId ?? report.coupon?.ownerId ?? null;
 
   await prisma.$transaction(async (tx) => {
     if (action === "dismiss") {
@@ -74,6 +80,31 @@ export const POST = route(async (req, ctx) => {
         body: `「${report.coupon.title}」因違反平台規範已被下架${note ? `：${note}` : ""}。如有疑問請聯繫客服。`,
         referenceType: "coupon",
         referenceId: report.coupon.id,
+      });
+    } else if (action === "strike_user") {
+      // 累積檢舉：a confirmed but not-severe violation. Record ONE strike against
+      // the accountable user (named user, else the coupon owner). The listing
+      // isn't pulled down here — re-list it if it was only auto-flagged REPORTED,
+      // because the strike is on the person, not this one coupon. At
+      // CONFIRMED_STRIKE_LIMIT strikes the account auto-suspends (after the tx,
+      // mirroring the malicious-reporter path).
+      if (!offenderId) throw new ApiError("VALIDATION_ERROR", { message: "此檢舉沒有對應使用者" });
+      await tx.report.update({
+        where: { id },
+        data: { status: "RESOLVED", adminNote: note ?? null, resolvedAt: new Date() },
+      });
+      if (report.coupon && report.coupon.status === "REPORTED") {
+        await tx.coupon.update({ where: { id: report.coupon.id }, data: { status: "AVAILABLE" } });
+      }
+      // Strike is keyed on the offender (actorId) so we can count their history.
+      await writeAudit(tx, {
+        actorId: offenderId,
+        action: "report.confirmed_strike",
+        targetType: "report",
+        targetId: id,
+        after: { judged_by: admin.id, note: note ?? null },
+        ip: meta.ip,
+        ua: meta.ua,
       });
     } else {
       // suspend_user
@@ -140,6 +171,41 @@ export const POST = route(async (req, ctx) => {
             targetType: "user",
             targetId: report.reporterId,
             after: { malicious_strikes: strikes },
+          });
+        });
+      }
+    }
+  }
+
+  // A reported user judged 成立 (confirmed) CONFIRMED_STRIKE_LIMIT times gets
+  // auto-suspended. Each strike is a distinct report an admin explicitly confirmed.
+  if (action === "strike_user" && offenderId) {
+    const strikes = await prisma.auditLog.count({
+      where: { actorId: offenderId, action: "report.confirmed_strike" },
+    });
+    if (strikes >= CONFIRMED_STRIKE_LIMIT) {
+      const offender = await prisma.user.findUnique({
+        where: { id: offenderId },
+        select: { status: true },
+      });
+      if (offender?.status === "ACTIVE") {
+        await prisma.$transaction(async (tx) => {
+          await tx.user.update({ where: { id: offenderId }, data: { status: "SUSPENDED" } });
+          await tx.coupon.updateMany({
+            where: { ownerId: offenderId, status: { in: ["AVAILABLE", "PENDING", "REPORTED"] } },
+            data: { status: "SUSPENDED" },
+          });
+          await notify(tx, {
+            userId: offenderId,
+            type: "REPORT_UPDATED",
+            title: "你的帳號已被暫停",
+            body: "你已累積多次被判定成立的檢舉，帳號已暫停、相關票券已下架。如有疑問可提出申訴。",
+          });
+          await writeAudit(tx, {
+            action: "user.suspend_confirmed_strikes",
+            targetType: "user",
+            targetId: offenderId,
+            after: { confirmed_strikes: strikes },
           });
         });
       }
