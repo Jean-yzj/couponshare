@@ -16,10 +16,11 @@ export const POST = route(async (req) => {
   throttle(req, "report", 20, 60 * 60_000);
   const user = await requireActiveUser();
   const body = await readBody(req, reportSchema);
-  // Accept a data-URI screenshot (or an http URL passes through untouched).
+  // Only accept an inline data-URI screenshot. An external URL is dropped: rendered
+  // in the admin console it would act as a tracking pixel leaking the admin's IP/UA.
   const evidenceImageUrl = body.evidence_image_url?.startsWith("data:")
     ? validateDataUriImage(body.evidence_image_url)
-    : (body.evidence_image_url ?? null);
+    : null;
 
   if (!body.coupon_id && !body.transaction_id && !body.reported_user_id) {
     throw new ApiError("VALIDATION_ERROR", { message: "檢舉必須指定票券、交易或使用者" });

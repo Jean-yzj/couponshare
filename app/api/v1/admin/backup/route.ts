@@ -79,14 +79,12 @@ async function* generate(startIdx: number, startId: string | undefined): AsyncGe
 }
 
 export async function GET(req: NextRequest) {
-  // Dedicated BACKUP_SECRET (x-backup-secret) so a full-DB download isn't tied to
-  // the cron secret. Still accepts the cron secret during the transition; drop
-  // that once BACKUP_SECRET is set everywhere. Fail closed if neither is set.
+  // A full-DB export is gated on its OWN dedicated high-entropy secret only — never
+  // the lower-scope cron secret, so leaking CRON_SECRET can't turn into a database
+  // dump. Fail closed if BACKUP_SECRET isn't set.
   const bk = process.env.BACKUP_SECRET;
-  const cs = process.env.CRON_SECRET;
   const okBackup = !!bk && req.headers.get("x-backup-secret") === bk;
-  const okCron = !!cs && req.headers.get("x-cron-secret") === cs;
-  if (!okBackup && !okCron) {
+  if (!okBackup) {
     return new Response("unauthorized\n", { status: 401 });
   }
 

@@ -59,8 +59,10 @@ export function utmFromSearchParams(params: URLSearchParams, pathname = ""): Utm
     if (v) out[key] = v;
   }
   if (Object.keys(out).length > 0) {
-    const query = params.toString();
-    out.landing_path = clean(`${pathname}${query ? `?${query}` : ""}`, LIMITS.landing_path);
+    // Store only the landing PATH, never the raw query string. The UTM params are
+    // already captured in their own fields; the rest of the query can carry
+    // unrelated or sensitive parameters we have no reason to persist to a user row.
+    out.landing_path = clean(pathname, LIMITS.landing_path);
   }
   return out;
 }

@@ -152,7 +152,8 @@ export const disputeSchema = z.object({
     "OTHER",
   ]),
   description: z.string().max(1000).optional().nullable(),
-  evidence_image_url: z.string().url().optional().nullable(),
+  // Bounded like the report schema — the route keeps only inline data-URI images.
+  evidence_image_url: z.string().max(700_000).optional().nullable(),
 });
 
 export const transactionMessageSchema = z.object({

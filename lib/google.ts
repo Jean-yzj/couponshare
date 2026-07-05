@@ -56,7 +56,7 @@ export async function exchangeCode(code: string, redirectUri: string): Promise<s
 
 export async function fetchGoogleProfile(
   accessToken: string,
-): Promise<{ sub: string; email: string; name: string; picture: string | null }> {
+): Promise<{ sub: string; email: string; emailVerified: boolean; name: string; picture: string | null }> {
   const res = await fetch(USERINFO_URL, {
     headers: { Authorization: `Bearer ${accessToken}` },
     signal: withDeadline(10_000),
@@ -65,8 +65,17 @@ export async function fetchGoogleProfile(
   const p = (await res.json()) as {
     sub: string;
     email?: string;
+    email_verified?: boolean;
     name?: string;
     picture?: string;
   };
-  return { sub: p.sub, email: p.email ?? "", name: p.name || p.email || "Google 使用者", picture: p.picture ?? null };
+  return {
+    sub: p.sub,
+    email: p.email ?? "",
+    // Only a Google-verified email may be used to link to an existing account —
+    // otherwise an attacker's unverified email could attach to someone else's user.
+    emailVerified: p.email_verified === true,
+    name: p.name || p.email || "Google 使用者",
+    picture: p.picture ?? null,
+  };
 }

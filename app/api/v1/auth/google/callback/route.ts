@@ -49,6 +49,12 @@ export const GET = route(async (req) => {
     const existing = await prisma.user.findFirst({
       where: { email: { equals: email, mode: "insensitive" } },
     });
+    // Account-takeover guard: only log in as an EXISTING account when Google has
+    // verified this email. An unverified email must not be able to attach to (and
+    // sign in as) someone else's account. New signups are unaffected.
+    if (existing && !profile.emailVerified) {
+      return NextResponse.redirect(`${origin}/login?error=email_unverified`);
+    }
     const user = existing
       ? await prisma.user.update({
           where: { id: existing.id },

@@ -5,6 +5,7 @@ import { requireActiveUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
 import { disputeSchema } from "@/lib/validation";
+import { validateDataUriImage } from "@/lib/image";
 
 // A party reports that the code they received is fake / used / invalid. The swap
 // already happened (codes revealed), so this can't be used to "dispute and steal".
@@ -29,6 +30,11 @@ export const POST = route(async (req, ctx) => {
 
   const accusedId = isOwner ? t.claimantId : t.ownerId;
   const meta = clientMeta(req);
+  // Data-URI evidence only — an external URL would be a tracking pixel firing when
+  // an admin opens the dispute. Drop anything that isn't an inline image.
+  const evidenceImageUrl = body.evidence_image_url?.startsWith("data:")
+    ? validateDataUriImage(body.evidence_image_url)
+    : null;
 
   await prisma.$transaction(async (tx) => {
     await tx.transaction.update({
@@ -42,7 +48,7 @@ export const POST = route(async (req, ctx) => {
         reportedUserId: accusedId,
         reason: body.reason,
         description: body.description ?? null,
-        evidenceImageUrl: body.evidence_image_url ?? null,
+        evidenceImageUrl,
         status: "PENDING",
       },
     });

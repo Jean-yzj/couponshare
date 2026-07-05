@@ -57,6 +57,8 @@ export default function LoginPage() {
     const err = params.get("error");
     if (err === "google_not_configured") setError("Google 登入尚未設定，請改用 Email 註冊或登入");
     else if (err === "google_failed") setError("Google 登入失敗，請再試一次");
+    else if (err === "email_unverified")
+      setError("這個 Google 帳號的信箱尚未驗證，為了帳號安全無法登入；請先於 Google 完成信箱驗證，或改用 Email 註冊。");
     const r = params.get("ref");
     if (r) {
       setRef(r);
