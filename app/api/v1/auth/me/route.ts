@@ -41,6 +41,9 @@ export const GET = route(async () => {
       apply_remaining: quota.remaining,
       apply_limit: quota.limit,
       apply_base: quota.base,
+      // Whether publishing one more coupon would actually raise today's limit — so
+      // the UI only promises "share for +3" when it's true, not at the hard ceiling.
+      apply_can_share_for_more: quota.canShareForMore,
       must_share_first: !quota.hasShared && quota.remaining === 0,
     },
   });

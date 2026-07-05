@@ -468,15 +468,25 @@ export default function CouponDetailPage() {
                     <Icon name="gift" size={24} />
                   </span>
                   <p className="font-bold text-ink">
-                    {me.has_shared ? "今日申請額度已用完" : "先分享一張券，再繼續申請"}
+                    {!me.has_shared
+                      ? "先分享一張券，再繼續申請"
+                      : me.apply_can_share_for_more === false
+                        ? "今日申請已達每日上限"
+                        : "今日申請額度已用完"}
                   </p>
                   <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-ink-soft">
-                    {me.has_shared
-                      ? "分享一張你用不到的券，就能立即再獲得 3 次申請機會。"
-                      : "你已用完前 3 次體驗申請。分享一張自己用不到的券，之後就能依等級每天申請，額度用完再分享還能 +3 次。"}
+                    {!me.has_shared
+                      ? "你已用完前 3 次體驗申請。分享一張自己用不到的券，之後就能依等級每天申請，用完還能靠分享加碼。"
+                      : me.apply_can_share_for_more === false
+                        ? "今天的申請次數用完了，明天再來看看新的好康。分享券不受限制，隨時可以把好康傳給需要的人。"
+                        : "分享一張你用不到的券，就能立即再獲得 3 次申請機會。"}
                   </p>
                   <Button full size="lg" icon="plus" href="/new" className="mt-4">
-                    {me.has_shared ? "分享一張券，+3 次申請" : "分享一張券"}
+                    {!me.has_shared
+                      ? "分享一張券"
+                      : me.apply_can_share_for_more === false
+                        ? "分享一張券給別人"
+                        : "分享一張券，+3 次申請"}
                   </Button>
                 </div>
               ) : (

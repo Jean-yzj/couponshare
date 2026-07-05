@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireActiveUser, requireUser } from "@/lib/auth";
-import { applyQuota } from "@/lib/share-gate";
+import { applyQuota, CLAIM_MIN_INTERVAL_MS } from "@/lib/share-gate";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
 import { claimRequestView } from "@/lib/serialize";
@@ -40,11 +40,33 @@ export const POST = route(async (req, ctx) => {
     throw new ApiError("FORBIDDEN", { message: "此票券僅限傳奇會員申請" });
   }
 
-  // Application quota: 3 total before the first share, then a daily limit by level
-  // (+3 for each coupon shared today). PRD §8.2 + user request.
+  // Anti-burst: at most one application per CLAIM_MIN_INTERVAL_MS from the same user.
+  // A bot firing the instant a coupon drops gets throttled; a human's browsing pace
+  // never trips it. Keyed by user (not IP) so shared mobile networks / CGNAT — very
+  // common in Taiwan — don't punish real people applying from the same carrier.
+  const lastClaim = await prisma.claimRequest.findFirst({
+    where: { requesterId: user.id },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+  if (lastClaim) {
+    const sinceMs = Date.now() - lastClaim.createdAt.getTime();
+    if (sinceMs < CLAIM_MIN_INTERVAL_MS) {
+      throw new ApiError("RATE_LIMITED", {
+        retry_after_seconds: Math.ceil((CLAIM_MIN_INTERVAL_MS - sinceMs) / 1000),
+      });
+    }
+  }
+
+  // Application quota: a lifetime 3 before the first share, then a per-level daily
+  // limit plus capped share/referral bonuses, all under a hard daily ceiling
+  // (MAX_DAILY_CLAIMS) so nobody can farm unlimited claims. PRD §8.2 + user request.
   const quota = await applyQuota(user);
   if (quota.remaining <= 0) {
-    throw new ApiError(quota.hasShared ? "DAILY_CLAIM_LIMIT_EXCEEDED" : "SHARE_FIRST");
+    if (!quota.hasShared) throw new ApiError("SHARE_FIRST");
+    // Only nudge "share for +3" when sharing would actually help; otherwise the user
+    // has hit the hard daily ceiling and should just come back tomorrow.
+    throw new ApiError(quota.canShareForMore ? "DAILY_CLAIM_LIMIT_EXCEEDED" : "DAILY_CLAIM_HARD_CAP");
   }
 
   try {
