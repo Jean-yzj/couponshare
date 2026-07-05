@@ -4,15 +4,12 @@ import { randomBytes } from "node:crypto";
 import { route, publicOrigin } from "@/lib/api";
 import { googleConfigured, googleAuthUrl } from "@/lib/google";
 import { REF_COOKIE } from "@/lib/referral";
-import { UTM_COOKIE, normalizeUtm, utmToQuery } from "@/lib/utm";
 
 export const runtime = "nodejs";
 
 export const GET = route(async (req) => {
   const origin = publicOrigin(req);
-  const url = new URL(req.url);
-  const ref = url.searchParams.get("ref")?.trim() || "";
-  const utm = normalizeUtm(Object.fromEntries(url.searchParams));
+  const ref = new URL(req.url).searchParams.get("ref")?.trim() || "";
   if (!googleConfigured()) {
     return NextResponse.redirect(`${origin}/login?error=google_not_configured`);
   }
@@ -25,11 +22,8 @@ export const GET = route(async (req) => {
   const canonical = process.env.APP_ORIGIN?.replace(/\/+$/, "");
   if (canonical && origin !== canonical) {
     // Carry the invite ref across the host bounce so it survives to the callback.
-    const params = new URLSearchParams(utmToQuery(utm));
-    if (ref) params.set("ref", ref);
-    const qs = params.toString();
     return NextResponse.redirect(
-      `${canonical}/api/v1/auth/google${qs ? `?${qs}` : ""}`,
+      `${canonical}/api/v1/auth/google${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`,
     );
   }
 
@@ -45,15 +39,6 @@ export const GET = route(async (req) => {
   // Stash the invite ref for the callback (only used if a new account is created).
   if (ref) {
     store.set(REF_COOKIE, ref, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 600,
-    });
-  }
-  if (Object.keys(utm).length > 0) {
-    store.set(UTM_COOKIE, JSON.stringify(utm), {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",

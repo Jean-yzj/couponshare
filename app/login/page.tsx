@@ -6,7 +6,6 @@ import { apiFetch, ApiErr } from "@/lib/client";
 import { Button, Card, Field, Input, Banner } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/display";
-import { UTM_STORAGE_KEY, type UtmPayload, utmFromSearchParams, utmToQuery } from "@/lib/utm";
 
 function GoogleG({ size = 18 }: { size?: number }) {
   return (
@@ -40,20 +39,10 @@ export default function LoginPage() {
   const [inApp, setInApp] = useState(false);
   const [copied, setCopied] = useState(false);
   const [ref, setRef] = useState("");
-  const [birthYear, setBirthYear] = useState("");
-  const [utm, setUtm] = useState<UtmPayload>({});
 
   useEffect(() => {
     setInApp(isInAppBrowser());
     const params = new URLSearchParams(window.location.search);
-    const currentUtm = utmFromSearchParams(params, window.location.pathname);
-    let storedUtm: UtmPayload = {};
-    try {
-      storedUtm = JSON.parse(sessionStorage.getItem(UTM_STORAGE_KEY) || "{}") as UtmPayload;
-    } catch {
-      storedUtm = {};
-    }
-    setUtm(Object.keys(currentUtm).length > 0 ? currentUtm : storedUtm);
     const err = params.get("error");
     if (err === "google_not_configured") setError("Google 登入尚未設定，請改用 Email 註冊或登入");
     else if (err === "google_failed") setError("Google 登入失敗，請再試一次");
@@ -87,14 +76,7 @@ export default function LoginPage() {
       } else {
         await apiFetch("/api/v1/auth/register", {
           method: "POST",
-          body: JSON.stringify({
-            email,
-            password,
-            display_name: displayName,
-            birth_year: birthYear ? Number(birthYear) : undefined,
-            ref: ref || undefined,
-            utm: Object.keys(utm).length > 0 ? utm : undefined,
-          }),
+          body: JSON.stringify({ email, password, display_name: displayName, ref: ref || undefined }),
         });
       }
       window.location.href = "/";
@@ -152,10 +134,9 @@ export default function LoginPage() {
         )}
         <button
           onClick={() => {
-            const params = new URLSearchParams(utmToQuery(utm));
-            if (ref) params.set("ref", ref);
-            const qs = params.toString();
-            window.location.href = `/api/v1/auth/google${qs ? `?${qs}` : ""}`;
+            window.location.href = ref
+              ? `/api/v1/auth/google?ref=${encodeURIComponent(ref)}`
+              : "/api/v1/auth/google";
           }}
           className="flex w-full items-center justify-center gap-2.5 rounded-full border border-line bg-paper py-2.5 text-[15px] font-medium text-ink transition-colors hover:bg-canvas-2"
         >
@@ -189,27 +170,14 @@ export default function LoginPage() {
 
         <form onSubmit={submit} className="space-y-4">
           {mode === "register" && (
-            <>
-              <Field label="顯示名稱" required>
-                <Input
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="想讓大家怎麼稱呼你？"
-                  required
-                />
-              </Field>
-              <Field label="出生年份" hint="用於後台年齡層統計，不會公開顯示。">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min={new Date().getFullYear() - 100}
-                  max={new Date().getFullYear() - 13}
-                  value={birthYear}
-                  onChange={(e) => setBirthYear(e.target.value)}
-                  placeholder="例如 1998"
-                />
-              </Field>
-            </>
+            <Field label="顯示名稱" required>
+              <Input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="想讓大家怎麼稱呼你？"
+                required
+              />
+            </Field>
           )}
           <Field label="Email" required>
             <Input

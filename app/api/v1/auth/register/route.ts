@@ -7,7 +7,6 @@ import { writeAudit } from "@/lib/audit";
 import { registerSchema } from "@/lib/validation";
 import { throttle } from "@/lib/throttle";
 import { resolveReferrer } from "@/lib/referral";
-import { utmCreateData } from "@/lib/utm";
 
 export const POST = route(async (req) => {
   // Throttle account creation per IP — also makes email-enumeration probing impractical.
@@ -26,8 +25,6 @@ export const POST = route(async (req) => {
       displayName: body.display_name,
       loginProvider: "EMAIL",
       lastLoginAt: new Date(),
-      birthYear: body.birth_year ?? undefined,
-      ...utmCreateData(body.utm),
       referredById,
     },
   });

@@ -168,13 +168,6 @@ model User {
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
   lastLoginAt       DateTime?     @map("last_login_at")
-  birthYear         Int?          @map("birth_year")
-  utmSource         String?       @map("utm_source")
-  utmMedium         String?       @map("utm_medium")
-  utmCampaign       String?       @map("utm_campaign")
-  utmContent        String?       @map("utm_content")
-  utmTerm           String?       @map("utm_term")
-  landingPath       String?       @map("landing_path")
   // Who invited this user (their user id). Plain scalar — we only ever count
   // "signups referred by X today" for the invite bonus, no relation needed.
   referredById      String?       @map("referred_by_id")
@@ -198,9 +191,6 @@ model User {
   blocksReceived       Block[]              @relation("BlocksReceived")
 
   @@index([referredById, createdAt])
-  @@index([birthYear])
-  @@index([utmSource, createdAt])
-  @@index([utmCampaign, createdAt])
   @@map("users")
 }
 
