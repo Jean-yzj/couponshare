@@ -6,6 +6,7 @@ import { LEVELS } from "@/lib/levels";
 export const runtime = "nodejs";
 
 const DAY = 86_400_000;
+const SIGNUP_WINDOWS = [3, 6, 12, 24, 48] as const;
 
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
@@ -13,13 +14,33 @@ function dayKey(d: Date): string {
   ).padStart(2, "0")}`;
 }
 
+function signupWindowFromReq(req: Request): (typeof SIGNUP_WINDOWS)[number] {
+  const raw = Number(new URL(req.url).searchParams.get("signup_hours") || 24);
+  return SIGNUP_WINDOWS.includes(raw as (typeof SIGNUP_WINDOWS)[number])
+    ? (raw as (typeof SIGNUP_WINDOWS)[number])
+    : 24;
+}
+
+function ageRangeForBirthYear(birthYear: number | null, now: Date): string {
+  if (!birthYear) return "未填";
+  const age = now.getFullYear() - birthYear;
+  if (age < 18) return "13–17";
+  if (age < 25) return "18–24";
+  if (age < 35) return "25–34";
+  if (age < 45) return "35–44";
+  if (age < 55) return "45–54";
+  return "55+";
+}
+
 // Admin analytics: registrations, coupons, transactions, breakdowns,
 // 30-day trends, leaderboards and recent activity. Admin-only.
-export const GET = route(async () => {
+export const GET = route(async (req) => {
   await requireAdmin();
 
   const now = new Date();
+  const signupHours = signupWindowFromReq(req);
   const since = (days: number) => new Date(now.getTime() - days * DAY);
+  const signupWindowStart = new Date(now.getTime() - signupHours * 60 * 60 * 1000);
   const windowStart = new Date(now.getTime() - 29 * DAY);
   windowStart.setHours(0, 0, 0, 0);
 
@@ -59,8 +80,14 @@ export const GET = route(async () => {
     couponTs,
     txnTs,
     userNew3h,
+    userNew6h,
+    userNew12h,
     userNew48h,
+    userNewSelected,
     hourHeatRaw,
+    byBirthYear,
+    byUtmSource,
+    utmPostRaw,
     dailyClaimersRaw,
     dailySharersRaw,
     dauRaw,
@@ -150,9 +177,41 @@ export const GET = route(async () => {
       select: { createdAt: true },
     }),
     prisma.user.count({ where: { createdAt: { gte: since(0.125) } } }),
+    prisma.user.count({ where: { createdAt: { gte: since(0.25) } } }),
+    prisma.user.count({ where: { createdAt: { gte: since(0.5) } } }),
     prisma.user.count({ where: { createdAt: { gte: since(2) } } }),
-    // Registration-by-hour heatmap in Taipei time (UTC+8). DB-side aggregation.
-    prisma.$queryRaw<{ h: number; c: number }[]>`SELECT EXTRACT(HOUR FROM created_at + interval '8 hours')::int AS h, COUNT(*)::int AS c FROM users GROUP BY 1 ORDER BY 1`,
+    prisma.user.count({ where: { createdAt: { gte: signupWindowStart } } }),
+    // Registration-by-hour heatmap in Taipei time (UTC+8), scoped to the selected window.
+    prisma.$queryRaw<{ h: number; c: number }[]>`
+      SELECT EXTRACT(HOUR FROM created_at + interval '8 hours')::int AS h,
+             COUNT(*)::int AS c
+      FROM users
+      WHERE created_at >= ${signupWindowStart}
+      GROUP BY 1
+      ORDER BY 1
+    `,
+    prisma.user.groupBy({ by: ["birthYear"], _count: true }),
+    prisma.user.groupBy({
+      by: ["utmSource"],
+      where: { utmSource: { not: null } },
+      _count: true,
+      orderBy: { _count: { utmSource: "desc" } },
+      take: 8,
+    }),
+    prisma.$queryRaw<{ source: string | null; medium: string | null; campaign: string | null; content: string | null; c: number }[]>`
+      SELECT utm_source AS source,
+             utm_medium AS medium,
+             utm_campaign AS campaign,
+             utm_content AS content,
+             COUNT(*)::int AS c
+      FROM users
+      WHERE utm_source IS NOT NULL
+         OR utm_campaign IS NOT NULL
+         OR utm_content IS NOT NULL
+      GROUP BY 1, 2, 3, 4
+      ORDER BY c DESC
+      LIMIT 10
+    `,
     // Distinct users who applied for a coupon, per day (30-day window).
     prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT requester_id)::int AS c FROM claim_requests WHERE created_at >= ${windowStart} GROUP BY 1`,
     // Distinct users who published a coupon, per day. JOIN users so audit rows
@@ -211,11 +270,28 @@ export const GET = route(async () => {
   for (const r of hourHeatRaw) heatmapHours[Number(r.h)] = Number(r.c);
   const dauSeries = dailyBucket(dauRaw);
 
+  const ageOrder = ["13–17", "18–24", "25–34", "35–44", "45–54", "55+", "未填"];
+  const ageCounts = new Map(ageOrder.map((label) => [label, 0]));
+  for (const r of byBirthYear) {
+    const label = ageRangeForBirthYear(r.birthYear, now);
+    ageCounts.set(label, (ageCounts.get(label) ?? 0) + r._count);
+  }
+  const byAge = ageOrder.map((label) => ({ key: label, count: ageCounts.get(label) ?? 0 }));
+
   type Group = { _count: number };
   const grp = <T extends Group>(rows: T[], field: keyof T) =>
     rows
       .map((r) => ({ key: String(r[field]), count: r._count }))
       .sort((a, b) => b.count - a.count);
+
+  const utmPosts = utmPostRaw.map((r) => ({
+    source: r.source,
+    medium: r.medium,
+    campaign: r.campaign,
+    content: r.content,
+    post: r.content || r.campaign || "未命名貼文",
+    count: Number(r.c),
+  }));
 
   // Build 8-slot weekly array (ISO week Monday labels as MM/DD).
   const weeklyCompleted: { label: string; count: number }[] = [];
@@ -240,6 +316,8 @@ export const GET = route(async () => {
         active: userActive,
         suspended: userSuspended,
         new_3h: userNew3h,
+        new_6h: userNew6h,
+        new_12h: userNew12h,
         new_24h: userNew24,
         new_48h: userNew48h,
         new_7d: userNew7,
@@ -262,6 +340,7 @@ export const GET = route(async () => {
     by_status: grp(byStatus, "status"),
     by_type: grp(byType, "type"),
     by_level: grp(byLevel, "userLevel"),
+    by_age: byAge,
     weekly_completed: weeklyCompleted,
     series: {
       days,
@@ -285,7 +364,17 @@ export const GET = route(async () => {
       organic: userTotal - referredCount,
       by_provider: grp(byProvider, "loginProvider"),
     },
+    signup_window: {
+      hours: signupHours,
+      started_at: signupWindowStart.toISOString(),
+      count: userNewSelected,
+    },
     heatmap_hours: heatmapHours,
+    utm: {
+      tracked: utmPosts.reduce((total, p) => total + p.count, 0),
+      by_source: grp(byUtmSource, "utmSource"),
+      top_posts: utmPosts,
+    },
     top_contributors: topContributors.map((u) => ({
       id: u.id,
       display_name: u.displayName,

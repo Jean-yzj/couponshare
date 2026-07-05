@@ -1,11 +1,25 @@
 import { z } from "zod";
 
 const emailSchema = z.string().trim().email().transform((v) => v.toLowerCase());
+const thisYear = new Date().getFullYear();
+
+const utmSchema = z
+  .object({
+    utm_source: z.string().trim().max(80).optional(),
+    utm_medium: z.string().trim().max(80).optional(),
+    utm_campaign: z.string().trim().max(120).optional(),
+    utm_content: z.string().trim().max(160).optional(),
+    utm_term: z.string().trim().max(120).optional(),
+    landing_path: z.string().trim().max(300).optional(),
+  })
+  .optional();
 
 export const registerSchema = z.object({
   email: emailSchema,
   password: z.string().min(6).max(200),
   display_name: z.string().trim().min(1).max(40),
+  birth_year: z.coerce.number().int().min(thisYear - 100).max(thisYear - 13).optional().nullable(),
+  utm: utmSchema,
   // Optional inviter user id from an invite link (?ref=). Rewards the inviter.
   ref: z.string().trim().max(40).optional(),
 });
