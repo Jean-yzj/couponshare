@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { cn, LEVEL_META, STATUS_META, typeMeta, avatarColor, initials } from "@/lib/display";
+import { cn, LEVEL_META, STATUS_META, typeMeta, avatarColor, initials, sizedAvatar } from "@/lib/display";
 import { Icon, type IconName } from "./icons";
 
 export function Spinner({ size = 18, className }: { size?: number; className?: string }) {
@@ -229,7 +229,13 @@ export function Avatar({
     >
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt={name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+        <img
+          src={sizedAvatar(url, size * 2)}
+          alt={name}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
       ) : (
         initials(name)
       )}

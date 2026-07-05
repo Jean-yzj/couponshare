@@ -55,6 +55,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-Hant" className={`${round.variable} h-full antialiased`}>
+      <head>
+        {/* Most avatars are Google account photos — open the TLS connection to
+            their CDN early so a feed of avatars doesn't each pay a cold handshake
+            (worst on mobile, where a new connection can cost hundreds of ms). */}
+        <link rel="preconnect" href="https://lh3.googleusercontent.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://lh3.googleusercontent.com" />
+      </head>
       <body className="min-h-full">
         <AppShell>{children}</AppShell>
       </body>

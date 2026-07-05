@@ -71,3 +71,17 @@ export function avatarColor(seed: string): string {
 export function initials(name: string): string {
   return (name.trim()[0] ?? "?").toUpperCase();
 }
+
+// Google account avatars (lh3.googleusercontent.com) default to a large image;
+// the `=sN-c` directive asks their CDN for an N-px square crop instead. A feed
+// full of avatars then downloads a few KB each rather than dozens of full-size
+// photos — a real win on mobile data. Non-Google URLs pass through untouched.
+export function sizedAvatar(
+  url: string | null | undefined,
+  px = 96,
+): string | undefined {
+  if (!url) return undefined;
+  if (!url.includes("googleusercontent.com")) return url;
+  // The size directive is always a trailing `=...`; drop any existing one first.
+  return `${url.split("=")[0]}=s${px}-c`;
+}
