@@ -7,9 +7,12 @@ import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
 
 const schema = z.object({
-  action: z.enum(["dismiss", "remove_coupon", "suspend_user"]),
+  action: z.enum(["dismiss", "remove_coupon", "suspend_user", "dismiss_malicious"]),
   note: z.string().max(300).optional(),
 });
+
+// A reporter who racks up this many malicious/false reports gets auto-suspended.
+const MALICIOUS_REPORT_LIMIT = 3;
 
 // Admin decides a report. dismiss = no violation (re-list the coupon if it had
 // been auto-flagged REPORTED); remove_coupon = take that listing down;
@@ -37,6 +40,26 @@ export const POST = route(async (req, ctx) => {
       if (report.coupon && report.coupon.status === "REPORTED") {
         await tx.coupon.update({ where: { id: report.coupon.id }, data: { status: "AVAILABLE" } });
       }
+    } else if (action === "dismiss_malicious") {
+      // Same as dismiss (no violation, re-list the coupon) BUT this report was
+      // judged malicious/false, so it counts as a strike against the REPORTER.
+      await tx.report.update({
+        where: { id },
+        data: { status: "REJECTED", adminNote: note ?? null, resolvedAt: new Date() },
+      });
+      if (report.coupon && report.coupon.status === "REPORTED") {
+        await tx.coupon.update({ where: { id: report.coupon.id }, data: { status: "AVAILABLE" } });
+      }
+      // Strike is keyed on the reporter (actorId) so we can count their history.
+      await writeAudit(tx, {
+        actorId: report.reporterId,
+        action: "report.malicious_strike",
+        targetType: "report",
+        targetId: id,
+        after: { judged_by: admin.id, note: note ?? null },
+        ip: meta.ip,
+        ua: meta.ua,
+      });
     } else if (action === "remove_coupon") {
       if (!report.coupon) throw new ApiError("VALIDATION_ERROR", { message: "此檢舉沒有對應票券" });
       await tx.coupon.update({ where: { id: report.coupon.id }, data: { status: "SUSPENDED" } });
@@ -83,6 +106,45 @@ export const POST = route(async (req, ctx) => {
       ua: meta.ua,
     });
   });
+
+  // A reporter judged malicious/false MALICIOUS_REPORT_LIMIT times gets
+  // auto-suspended. Each strike is a distinct report an admin explicitly flagged,
+  // so this can't be gamed by a single accuser.
+  if (action === "dismiss_malicious") {
+    const strikes = await prisma.auditLog.count({
+      where: { actorId: report.reporterId, action: "report.malicious_strike" },
+    });
+    if (strikes >= MALICIOUS_REPORT_LIMIT) {
+      const reporter = await prisma.user.findUnique({
+        where: { id: report.reporterId },
+        select: { status: true },
+      });
+      if (reporter?.status === "ACTIVE") {
+        await prisma.$transaction(async (tx) => {
+          await tx.user.update({
+            where: { id: report.reporterId },
+            data: { status: "SUSPENDED" },
+          });
+          await tx.coupon.updateMany({
+            where: { ownerId: report.reporterId, status: { in: ["AVAILABLE", "PENDING", "REPORTED"] } },
+            data: { status: "SUSPENDED" },
+          });
+          await notify(tx, {
+            userId: report.reporterId,
+            type: "REPORT_UPDATED",
+            title: "你的帳號已因濫用檢舉被暫停",
+            body: "你已累積多次被判定為惡意或不實的檢舉，帳號已暫停、相關票券已下架。如有疑問可提出申訴。",
+          });
+          await writeAudit(tx, {
+            action: "user.suspend_malicious_reporter",
+            targetType: "user",
+            targetId: report.reporterId,
+            after: { malicious_strikes: strikes },
+          });
+        });
+      }
+    }
+  }
 
   return jsonOk({ id, action });
 });

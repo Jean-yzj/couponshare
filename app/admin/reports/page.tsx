@@ -122,9 +122,14 @@ export default function AdminReportsPage() {
       </div>
     );
 
-  async function act(id: string, action: "dismiss" | "remove_coupon" | "suspend_user") {
+  async function act(
+    id: string,
+    action: "dismiss" | "remove_coupon" | "suspend_user" | "dismiss_malicious",
+  ) {
     const prompts: Record<typeof action, string> = {
       dismiss: "駁回這則檢舉（判定無違規）？可填備註。",
+      dismiss_malicious:
+        "判定這是惡意 / 不實檢舉？檢舉者會記一次違規，累積 3 次自動停權。可填備註。",
       remove_coupon: "下架這張被檢舉的票券？可填原因（會通知持有者）。",
       suspend_user: "停權這位使用者並下架其所有票券？可填原因（會通知對方）。",
     };
@@ -227,6 +232,9 @@ export default function AdminReportsPage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button size="sm" variant="ghost" icon="check" loading={acting === r.id} onClick={() => act(r.id, "dismiss")}>
                     駁回（無違規）
+                  </Button>
+                  <Button size="sm" variant="outline" icon="flag" loading={acting === r.id} onClick={() => act(r.id, "dismiss_malicious")}>
+                    判定惡意檢舉
                   </Button>
                   {r.coupon && (
                     <Button size="sm" variant="outline" icon="ban" loading={acting === r.id} onClick={() => act(r.id, "remove_coupon")}>

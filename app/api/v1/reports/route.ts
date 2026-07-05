@@ -25,6 +25,19 @@ export const POST = route(async (req) => {
   if (!body.coupon_id && !body.transaction_id && !body.reported_user_id) {
     throw new ApiError("VALIDATION_ERROR", { message: "檢舉必須指定票券、交易或使用者" });
   }
+  // Accountability gate: the reporter must acknowledge they stand behind the report.
+  if (!body.acknowledged) {
+    throw new ApiError("VALIDATION_ERROR", {
+      message: "請先勾選「我願意為這次檢舉的真實性負責」再送出",
+    });
+  }
+  // A coupon report needs proof — a screenshot showing it's really invalid / used /
+  // expired. This is what stops "I never even claimed it but I'll report it as fake."
+  if (body.coupon_id && !evidenceImageUrl) {
+    throw new ApiError("VALIDATION_ERROR", {
+      message: "檢舉票券請附上證明截圖（例如到店顯示已使用、已過期或無法兌換的畫面）",
+    });
+  }
 
   let coupon = null;
   if (body.coupon_id) {

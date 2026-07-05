@@ -136,8 +136,10 @@ export const reportSchema = z.object({
     "OTHER",
   ]),
   description: z.string().max(1000).optional().nullable(),
-  // A base64 data-URI screenshot (validated server-side) or an external URL.
+  // A base64 data-URI screenshot (validated server-side). External URLs are dropped.
   evidence_image_url: z.string().max(700_000).optional().nullable(),
+  // The reporter checked "I'll stand behind this report" — enforced in the route.
+  acknowledged: z.boolean().optional(),
 });
 
 export const demoLoginSchema = z.object({ user_id: z.string().min(1) });

@@ -36,10 +36,17 @@ export function ReportModal({
   const [reason, setReason] = useState(reportedUserId ? "NO_RESPONSE" : "INVALID_COUPON");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState<string | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Reporting a coupon needs proof — this is the abuse we're closing (reporting a
+  // coupon "invalid" without ever having claimed it). User reports (no-show etc.)
+  // can't always be screenshotted, so proof stays optional there.
+  const requireImage = !!couponId;
+  const canSubmit = acknowledged && (!requireImage || !!image);
 
   async function pickImage(f: File | null) {
     if (!f) return;
@@ -56,6 +63,14 @@ export function ReportModal({
   }
 
   async function submit() {
+    if (requireImage && !image) {
+      setError("檢舉票券請先附上證明截圖");
+      return;
+    }
+    if (!acknowledged) {
+      setError("請先勾選「我願意為這次檢舉負責」");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -67,6 +82,7 @@ export function ReportModal({
           reason,
           description: description.trim() || null,
           evidence_image_url: image,
+          acknowledged: true,
         }),
       });
       setDone(true);
@@ -84,7 +100,14 @@ export function ReportModal({
       title={title}
       footer={
         !done && (
-          <Button full variant="danger" loading={busy} icon="flag" onClick={submit}>
+          <Button
+            full
+            variant="danger"
+            loading={busy}
+            icon="flag"
+            onClick={submit}
+            disabled={!canSubmit}
+          >
             送出檢舉
           </Button>
         )
@@ -115,7 +138,9 @@ export function ReportModal({
             />
           </Field>
           <div>
-            <p className="mb-1.5 text-sm font-medium text-ink">證據截圖（選填）</p>
+            <p className="mb-1.5 text-sm font-medium text-ink">
+              證據截圖{requireImage ? "（必附）" : "（選填）"}
+            </p>
             <input
               ref={fileRef}
               type="file"
@@ -146,8 +171,20 @@ export function ReportModal({
               </button>
             )}
           </div>
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-line bg-canvas/50 p-3">
+            <input
+              type="checkbox"
+              checked={acknowledged}
+              onChange={(e) => setAcknowledged(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-danger"
+            />
+            <span className="text-sm leading-relaxed text-ink-soft">
+              我確認以上內容屬實、願意為這次檢舉負責。我了解
+              <span className="font-semibold text-ink">惡意或不實的檢舉一經查證，累積 3 次帳號將被停權</span>。
+            </span>
+          </label>
           <Banner tone="warn" icon="shield">
-            同一帳號被 3 位以上使用者檢舉，將自動停權並下架其票券。請據實檢舉。
+            檢舉會送平台人工複核。請據實檢舉，不要用來報復或干擾他人。
           </Banner>
           {error && <Banner tone="warn" icon="info">{error}</Banner>}
         </div>
