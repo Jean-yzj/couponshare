@@ -155,6 +155,15 @@ export default function AdminReportsPage() {
     <div>
       <h1 className="text-2xl font-extrabold tracking-tight text-ink">檢舉複核</h1>
       <p className="mt-1 text-sm text-ink-soft">逐筆審核使用者檢舉，可駁回、下架票券或停權帳號。</p>
+      <div className="mt-3 flex gap-2 text-sm">
+        <Link href="/admin" className="text-accent hover:underline">
+          數據總覽
+        </Link>
+        <span className="text-ink-faint">·</span>
+        <Link href="/admin/suspended" className="text-accent hover:underline">
+          被停權帳號
+        </Link>
+      </div>
 
       <div className="no-scrollbar -mx-4 mt-5 flex gap-1.5 overflow-x-auto px-4 pb-1">
         {TABS.map((t) => (
@@ -175,7 +184,15 @@ export default function AdminReportsPage() {
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)
         ) : rows.length === 0 ? (
-          <EmptyState icon="flag" title="沒有檢舉" hint="這個分頁目前是空的。" />
+          <EmptyState
+            icon="flag"
+            title={tab === "PENDING" ? "待處理的檢舉都清空了" : "這個分頁目前是空的"}
+            hint={
+              tab === "PENDING"
+                ? "處理過的檢舉不會消失，會移到上方「已處置」或「已駁回」分頁。"
+                : "還沒有這個狀態的檢舉。"
+            }
+          />
         ) : (
           rows.map((r) => (
             <Card key={r.id} className="p-4">
