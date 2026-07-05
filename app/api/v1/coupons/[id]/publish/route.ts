@@ -6,6 +6,7 @@ import { assertTransition } from "@/lib/coupon-state";
 import { writeAudit } from "@/lib/audit";
 import { notifyMany } from "@/lib/notify";
 import { applyScore, FIRST_SHARE_DELTA, FIRST_SHARE_DESCRIPTION } from "@/lib/score";
+import { canExchange } from "@/lib/trust";
 
 export const POST = route(async (req, ctx) => {
   const { id } = await ctx.params;
@@ -28,6 +29,11 @@ export const POST = route(async (req, ctx) => {
   }
   if (coupon.type === "EXCHANGE" && !coupon.exchangeTarget) {
     throw new ApiError("VALIDATION_ERROR", { message: "交換類型必須填寫交換目標" });
+  }
+  // Exchange fraud guard: only trusted accounts may list an exchange (both sides
+  // hand over a barcode). Gifting stays open to everyone.
+  if (coupon.type === "EXCHANGE" && !canExchange(user)) {
+    throw new ApiError("EXCHANGE_TRUST_REQUIRED");
   }
 
   // Uploading/sharing coupons is unlimited — giving is good. Only claims are capped.

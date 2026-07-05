@@ -38,6 +38,13 @@ type Msg = {
   image_url: string | null;
   created_at: string;
 };
+type UserTrust = {
+  joined_days_ago: number;
+  completed_count: number;
+  rating_avg: number | null;
+  rating_count: number;
+  is_new: boolean;
+};
 type Txn = {
   id: string;
   coupon_id: string;
@@ -56,6 +63,7 @@ type Txn = {
   role?: string;
   rated_by_viewer?: boolean;
   messages: Msg[];
+  counterpart_trust: UserTrust | null;
 };
 
 const GIFT_STEPS = ["持有者已把券送給你", "點「查看條碼」到店兌換", "完成後別忘了互相評價與感謝"];
@@ -271,6 +279,35 @@ export default function TransactionPage() {
             <LevelBadge level={counterpart.user_level} />
             <Icon name="chevronRight" size={16} className="text-ink-faint" />
           </Link>
+        )}
+        {t.counterpart_trust && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 px-1 text-xs text-ink-faint">
+            <span className="flex items-center gap-1">
+              <Icon name="clock" size={12} />
+              加入 {t.counterpart_trust.joined_days_ago} 天
+            </span>
+            <span className="text-ink-faint">·</span>
+            <span>完成 {t.counterpart_trust.completed_count} 筆</span>
+            {t.counterpart_trust.rating_count > 0 && t.counterpart_trust.rating_avg !== null && (
+              <>
+                <span className="text-ink-faint">·</span>
+                <span className="flex items-center gap-0.5">
+                  <Icon name="star" size={11} className="fill-gold text-gold" />
+                  {t.counterpart_trust.rating_avg.toFixed(1)}（{t.counterpart_trust.rating_count}）
+                </span>
+              </>
+            )}
+          </div>
+        )}
+        {t.counterpart_trust?.is_new && isExchange && (
+          <div className="mt-3 rounded-xl border border-danger/30 bg-danger/8 px-3.5 py-3">
+            <p className="flex items-start gap-2 text-sm leading-relaxed text-danger">
+              <Icon name="shield" size={16} className="mt-0.5 shrink-0" />
+              <span>
+                這是新帳號、交易紀錄還少。交換前建議先在聊天確認對方身分，並確認拿到的條碼可用後再按完成。
+              </span>
+            </p>
+          </div>
         )}
       </Card>
 

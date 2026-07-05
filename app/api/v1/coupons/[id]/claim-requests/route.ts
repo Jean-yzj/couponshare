@@ -4,6 +4,7 @@ import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireActiveUser, requireUser } from "@/lib/auth";
 import { applyQuota, CLAIM_MIN_INTERVAL_MS } from "@/lib/share-gate";
+import { canExchange } from "@/lib/trust";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
 import { claimRequestView } from "@/lib/serialize";
@@ -30,6 +31,11 @@ export const POST = route(async (req, ctx) => {
   }
   if (body.request_type === "EXCHANGE" && !body.exchange_offer_text) {
     throw new ApiError("VALIDATION_ERROR", { message: "交換申請必須填寫交換內容" });
+  }
+  // Exchange fraud guard: both sides hand over a barcode, so a throwaway account can
+  // scam. Require a little history before exchanging. Gifting stays open to everyone.
+  if (body.request_type === "EXCHANGE" && !canExchange(user)) {
+    throw new ApiError("EXCHANGE_TRUST_REQUIRED");
   }
 
   // Level-restricted coupons block low-tier users (PRD §8.3.7).
