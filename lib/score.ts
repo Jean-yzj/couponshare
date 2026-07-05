@@ -15,6 +15,12 @@ export const SCORE_RULES = {
   ABUSE_CONFIRMED: -30,
 } as const;
 
+// Phase 1: first-share bonus (+2). Uses ADMIN_ADJUSTMENT event type (the
+// schema's catch-all for special one-off bonuses) with referenceType=ADMIN and
+// referenceId=userId so the unique constraint guarantees it fires once per user.
+export const FIRST_SHARE_DELTA = 2;
+export const FIRST_SHARE_DESCRIPTION = "初次分享";
+
 // Idempotent score mutation. Always writes a ledger row first, then syncs the
 // cached contribution_score + user_level. Safe to call inside a transaction.
 export async function applyScore(

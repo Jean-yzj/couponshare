@@ -5,6 +5,7 @@ import { requireActiveUser } from "@/lib/auth";
 import { assertTransition } from "@/lib/coupon-state";
 import { writeAudit } from "@/lib/audit";
 import { notifyMany } from "@/lib/notify";
+import { applyScore, FIRST_SHARE_DELTA, FIRST_SHARE_DESCRIPTION } from "@/lib/score";
 
 export const POST = route(async (req, ctx) => {
   const { id } = await ctx.params;
@@ -61,6 +62,23 @@ export const POST = route(async (req, ctx) => {
     ip: meta.ip,
     ua: meta.ua,
   });
+
+  // Phase 1: award first-share bonus (+2) idempotently.
+  // Uses ADMIN_ADJUSTMENT + referenceType=ADMIN + referenceId=userId as the
+  // unique key — guaranteed to fire at most once per user (schema unique constraint).
+  // Failure must not block the publish response.
+  try {
+    await applyScore(prisma, {
+      userId: user.id,
+      eventType: "ADMIN_ADJUSTMENT",
+      delta: FIRST_SHARE_DELTA,
+      referenceType: "ADMIN",
+      referenceId: user.id,
+      description: FIRST_SHARE_DESCRIPTION,
+    });
+  } catch (err) {
+    console.error("[publish] first-share score failed", err);
+  }
 
   return jsonOk({ coupon_id: id, status: updated.status });
 });

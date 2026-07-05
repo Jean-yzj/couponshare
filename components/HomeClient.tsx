@@ -8,6 +8,8 @@ import { Button, Input, Skeleton, EmptyState, LoadFailed, Spinner } from "@/comp
 import { Icon } from "@/components/icons";
 import { cn } from "@/lib/display";
 import { CATEGORIES, REDEEM_KINDS } from "@/lib/categories";
+import { ShareGuideCard } from "@/components/ShareGuideCard";
+import { useMe } from "@/lib/client";
 
 const TYPES = [
   { value: "ALL", label: "全部" },
@@ -160,6 +162,7 @@ function FeedView({
   initialBrands: string[];
   initialFilters: FeedFilters;
 }) {
+  const { me } = useMe();
   // Computed once on mount: prefers a stored search over the (possibly stale)
   // server-derived default — see resolveInitialFilters above.
   const [resolved] = useState(() => resolveInitialFilters(initialFilters));
@@ -389,6 +392,10 @@ function FeedView({
           <FilterRow label="排序" options={SORTS} value={sort} onChange={setSort} />
         </div>
       </div>
+
+      {signedIn && me && me.has_shared === false && (
+        <ShareGuideCard hasShared={false} />
+      )}
 
       {noFilters && expData && expData.data.length > 0 && (
         <section className="mb-6 rounded-2xl border border-danger/30 bg-danger-tint/40 p-4">

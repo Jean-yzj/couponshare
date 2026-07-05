@@ -71,6 +71,7 @@ export const GET = route(async () => {
     returningRaw,
     referredCount,
     byProvider,
+    weeklyCompletedRaw,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { status: "ACTIVE" } }),
@@ -170,6 +171,16 @@ export const GET = route(async () => {
     // Registration source: how many came in through a friend's invite link.
     prisma.user.count({ where: { referredById: { not: null } } }),
     prisma.user.groupBy({ by: ["loginProvider"], _count: true }),
+    // Weekly completed transactions: past 8 weeks (Monday-based), current week included.
+    prisma.$queryRaw<{ week: string; c: number }[]>`
+      SELECT to_char(date_trunc('week', completed_at), 'YYYY-MM-DD') AS week,
+             COUNT(*)::int AS c
+      FROM transactions
+      WHERE completed_at IS NOT NULL
+        AND completed_at >= date_trunc('week', NOW()) - INTERVAL '7 weeks'
+      GROUP BY 1
+      ORDER BY 1
+    `,
   ]);
 
   const days: string[] = [];
@@ -206,6 +217,21 @@ export const GET = route(async () => {
       .map((r) => ({ key: String(r[field]), count: r._count }))
       .sort((a, b) => b.count - a.count);
 
+  // Build 8-slot weekly array (ISO week Monday labels as MM/DD).
+  const weeklyCompleted: { label: string; count: number }[] = [];
+  for (let w = 7; w >= 0; w--) {
+    const monday = new Date(now);
+    // Roll back to this week's Monday, then subtract w weeks.
+    const dayOfWeek = monday.getDay(); // 0=Sun
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    monday.setDate(monday.getDate() - daysToMonday - w * 7);
+    monday.setHours(0, 0, 0, 0);
+    const isoWeek = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
+    const label = `${monday.getMonth() + 1}/${monday.getDate()}`;
+    const row = weeklyCompletedRaw.find((r) => r.week === isoWeek);
+    weeklyCompleted.push({ label, count: row ? Number(row.c) : 0 });
+  }
+
   return jsonOk({
     generated_at: now.toISOString(),
     overview: {
@@ -236,6 +262,7 @@ export const GET = route(async () => {
     by_status: grp(byStatus, "status"),
     by_type: grp(byType, "type"),
     by_level: grp(byLevel, "userLevel"),
+    weekly_completed: weeklyCompleted,
     series: {
       days,
       signups: bucket(userTs),

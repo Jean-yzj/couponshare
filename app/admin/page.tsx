@@ -35,6 +35,7 @@ type Stats = {
   active_users: { dau_today: number; wau: number };
   activation: { registered: number; shared: number; claimed: number; completed: number; returning_7d: number };
   sources: { referred: number; organic: number; by_provider: { key: string; count: number }[] };
+  weekly_completed: { label: string; count: number }[];
   heatmap_hours: number[];
   top_contributors: { id: string; display_name: string; avatar_url: string | null; level_name: string; contribution_score: number }[];
   top_brands: { brand: string; count: number }[];
@@ -109,6 +110,11 @@ export default function AdminDashboardPage() {
       {/* Registration-by-hour heatmap */}
       <Section title="註冊時段分佈（台灣時間）">
         <HourHeatmap hours={data.heatmap_hours} />
+      </Section>
+
+      {/* North-star: weekly completed transactions */}
+      <Section title="週完成交易（北極星）">
+        <WeeklyCompletedChart weeks={data.weekly_completed} />
       </Section>
 
       {/* Trends */}
@@ -413,6 +419,62 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Empty() {
   return <p className="py-3 text-sm text-ink-faint">尚無資料</p>;
+}
+
+function WeeklyCompletedChart({ weeks }: { weeks: { label: string; count: number }[] }) {
+  if (weeks.length === 0) return <Empty />;
+  const values = weeks.map((w) => w.count);
+  const labels = weeks.map((w) => w.label);
+  const max = Math.max(1, ...values);
+  const total = sum(values);
+  const W = 300;
+  const H = 96;
+  const P = 5;
+  const n = values.length;
+  const gid = "wk-completed";
+  const xAt = (i: number) => (n <= 1 ? W / 2 : P + (i / (n - 1)) * (W - 2 * P));
+  const yAt = (v: number) => H - P - (v / max) * (H - 2 * P);
+  const line = values.map((v, i) => `${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(" ");
+  const area = `${P},${H - P} ${line} ${W - P},${H - P}`;
+  const last = values[n - 1] ?? 0;
+  return (
+    <div>
+      <div className="flex items-baseline justify-between">
+        <p className="text-sm text-ink-soft">每週完成交易筆數（含當週）</p>
+        <p className="text-xs text-ink-faint">8 週共 {total} 筆</p>
+      </div>
+      {total === 0 ? (
+        <div className="flex h-28 items-center justify-center text-sm text-ink-faint">尚無資料</div>
+      ) : (
+        <>
+          <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="mt-3 h-28 w-full">
+            <defs>
+              <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <polygon points={area} fill={`url(#${gid})`} />
+            <polyline
+              points={line}
+              fill="none"
+              stroke="var(--color-accent)"
+              strokeWidth="2"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+            <circle cx={xAt(n - 1)} cy={yAt(last)} r="2.6" fill="var(--color-accent)" vectorEffect="non-scaling-stroke" />
+          </svg>
+          <div className="mt-1.5 flex justify-between text-[10px] text-ink-faint">
+            {labels.map((l, i) => (
+              <span key={i}>{l}</span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 function DashSkeleton() {

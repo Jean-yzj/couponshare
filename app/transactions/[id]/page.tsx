@@ -564,6 +564,18 @@ export default function TransactionPage() {
         </Card>
       ) : null}
 
+      {/* First-claim second-touch CTA: show below the completed card for the claimant who hasn't shared yet */}
+      {completed && isClaimant && me && me.has_shared === false && (
+        <div className="mt-3 text-center">
+          <Link
+            href="/new?src=first-claim"
+            className="text-sm text-ink-soft transition-colors hover:text-accent"
+          >
+            也把你用不到的券分享出去 →
+          </Link>
+        </div>
+      )}
+
       {counterpart && !disputed && (
         <div className="mt-4 flex justify-center">
           <button
