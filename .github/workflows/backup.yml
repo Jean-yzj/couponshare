@@ -25,15 +25,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - name: Download backup from app
+      - name: Checkout (for the resumable backup script)
+        uses: actions/checkout@v4
+
+      - name: Download backup from app (resumable)
+        env:
+          BACKUP_URL: https://couponshare.lazybearlife.com
+          BACKUP_SECRET: ${{ secrets.BACKUP_SECRET }}
         run: |
           set -euo pipefail
           TS=$(date -u +%Y%m%d-%H%M)
           echo "TS=$TS" >> "$GITHUB_ENV"
-          curl -fsS --max-time 1800 \
-            -H "x-backup-secret: ${{ secrets.BACKUP_SECRET }}" \
-            "https://couponshare.lazybearlife.com/api/v1/admin/backup" \
-            -o "couponshare-$TS.ndjson.gz"
+          # Resumable: loops the endpoint's ~40MB slices until _done, so the full
+          # ~486MB DB survives Zeabur's ~10-min gateway timeout (one curl truncates).
+          OUT="couponshare-$TS.ndjson.gz" node scripts/fetch-backup.mjs
           gzip -t "couponshare-$TS.ndjson.gz"
           ls -lh "couponshare-$TS.ndjson.gz"
 

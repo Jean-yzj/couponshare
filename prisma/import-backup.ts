@@ -56,6 +56,10 @@ async function main() {
       console.log(`${dryRun ? "[dry-run] " : ""}restoring backup exported at ${o.exportedAt}`);
       continue;
     }
+    // Resumable-backup control markers carry no row — skip them so we never try to
+    // createMany into a "_next"/"_done" model. (A backup assembled from multiple
+    // resumable slices has one such marker at the end of each slice.)
+    if (o._t === "_next" || o._t === "_done") continue;
     if (o._t !== curModel) {
       await flush();
       curModel = o._t;
