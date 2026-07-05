@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useApi, useMe } from "@/lib/client";
 import { Card, Avatar, Skeleton, EmptyState, Button, NeedLogin, Eyebrow } from "@/components/ui";
@@ -10,7 +11,7 @@ import { CATEGORIES } from "@/lib/categories";
 type Stats = {
   generated_at: string;
   overview: {
-    users: { total: number; active: number; suspended: number; new_3h: number; new_24h: number; new_48h: number; new_7d: number; new_30d: number };
+    users: { total: number; active: number; suspended: number; new_3h: number; new_6h: number; new_12h: number; new_24h: number; new_48h: number; new_7d: number; new_30d: number };
     coupons: { total: number; new_24h: number; new_7d: number; new_30d: number };
     transactions: { total: number; completed: number; gift: number; exchange: number };
     claims: { total: number; pending: number };
@@ -23,6 +24,7 @@ type Stats = {
   by_status: { key: string; count: number }[];
   by_type: { key: string; count: number }[];
   by_level: { key: string; count: number }[];
+  by_age: { key: string; count: number }[];
   series: {
     days: string[];
     signups: number[];
@@ -35,6 +37,12 @@ type Stats = {
   active_users: { dau_today: number; wau: number };
   activation: { registered: number; shared: number; claimed: number; completed: number; returning_7d: number };
   sources: { referred: number; organic: number; by_provider: { key: string; count: number }[] };
+  signup_window: { hours: number; started_at: string; count: number };
+  utm: {
+    tracked: number;
+    by_source: { key: string; count: number }[];
+    top_posts: { source: string | null; medium: string | null; campaign: string | null; content: string | null; post: string; count: number }[];
+  };
   weekly_completed: { label: string; count: number }[];
   heatmap_hours: number[];
   top_contributors: { id: string; display_name: string; avatar_url: string | null; level_name: string; contribution_score: number }[];
@@ -58,12 +66,15 @@ const STATUS_LABEL: Record<string, string> = {
 const TYPE_LABEL: Record<string, string> = { GIFT: "免費贈送", EXCHANGE: "交換" };
 const LEVEL_LABEL: Record<string, string> = { LEVEL_1: "新手", LEVEL_2: "達人", LEVEL_3: "傳奇" };
 const PROVIDER_LABEL: Record<string, string> = { EMAIL: "Email", GOOGLE: "Google", APPLE: "Apple", LINE: "LINE", ANONYMOUS: "訪客" };
+const SIGNUP_WINDOWS = [3, 6, 12, 24, 48] as const;
+type SignupHours = (typeof SIGNUP_WINDOWS)[number];
 
 const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
 
 export default function AdminDashboardPage() {
+  const [signupHours, setSignupHours] = useState<SignupHours>(24);
   const { me, loading: meLoading } = useMe();
-  const { data, loading } = useApi<Stats>(me?.is_admin ? "/api/v1/admin/stats" : null);
+  const { data, loading } = useApi<Stats>(me?.is_admin ? `/api/v1/admin/stats?signup_hours=${signupHours}` : null);
 
   if (meLoading) return <DashSkeleton />;
   if (!me) return <NeedLogin message="登入後即可使用管理功能。" />;
@@ -102,14 +113,15 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard icon="lightning" label="當日活躍 DAU" value={data.active_users.dau_today} sub="今日有動作的人" tone="accent" />
         <StatCard icon="users" label="7 日活躍 WAU" value={data.active_users.wau} sub="近 7 日活躍人數" />
-        <StatCard icon="user" label="3 小時註冊" value={o.users.new_3h} />
-        <StatCard icon="user" label="24 小時註冊" value={o.users.new_24h} />
-        <StatCard icon="user" label="48 小時註冊" value={o.users.new_48h} />
+        <StatCard icon="user" label={`${data.signup_window.hours} 小時註冊`} value={data.signup_window.count} sub="依下方區間切換" />
+        <StatCard icon="user" label="7 日註冊" value={o.users.new_7d} />
+        <StatCard icon="user" label="30 日註冊" value={o.users.new_30d} />
       </div>
 
       {/* Registration-by-hour heatmap */}
-      <Section title="註冊時段分佈（台灣時間）">
-        <HourHeatmap hours={data.heatmap_hours} />
+      <Section title="註冊熱力圖（台灣時間）">
+        <SignupWindowPicker value={signupHours} onChange={setSignupHours} />
+        <HourHeatmap hours={data.heatmap_hours} windowHours={data.signup_window.hours} />
       </Section>
 
       {/* North-star: weekly completed transactions */}
@@ -162,6 +174,23 @@ export default function AdminDashboardPage() {
         </div>
       </Section>
 
+      <Section title="UTM 貼文註冊">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <div className="rounded-xl bg-canvas/60 p-3 text-center">
+              <p className="font-display text-2xl font-extrabold tabular-nums text-accent">
+                {data.utm.tracked.toLocaleString()}
+              </p>
+              <p className="mt-0.5 text-xs text-ink-soft">帶 UTM 的註冊</p>
+            </div>
+            <div className="mt-4">
+              <BarList items={data.utm.by_source.map((p) => ({ label: p.key, count: p.count }))} />
+            </div>
+          </div>
+          <UtmPostList posts={data.utm.top_posts} />
+        </div>
+      </Section>
+
       {/* Breakdowns */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Section title="票券分類">
@@ -172,6 +201,9 @@ export default function AdminDashboardPage() {
         </Section>
         <Section title="會員等級">
           <BarList items={data.by_level.map((c) => ({ label: LEVEL_LABEL[c.key] || c.key, count: c.count }))} />
+        </Section>
+        <Section title="用戶年齡層">
+          <BarList items={data.by_age.map((c) => ({ label: c.key, count: c.count }))} />
         </Section>
         <Section title="贈送 vs 交換">
           <BarList items={data.by_type.map((c) => ({ label: TYPE_LABEL[c.key] || c.key, count: c.count }))} />
@@ -340,7 +372,26 @@ function TrendChart({ title, days, values }: { title: string; days: string[]; va
   );
 }
 
-function HourHeatmap({ hours }: { hours: number[] }) {
+function SignupWindowPicker({ value, onChange }: { value: SignupHours; onChange: (v: SignupHours) => void }) {
+  return (
+    <div className="mb-4 flex flex-wrap gap-1.5">
+      {SIGNUP_WINDOWS.map((h) => (
+        <button
+          key={h}
+          onClick={() => onChange(h)}
+          className={cn(
+            "h-8 rounded-full px-3 text-xs font-semibold transition-colors",
+            value === h ? "bg-accent text-white shadow-soft" : "bg-sand text-ink-soft hover:text-ink",
+          )}
+        >
+          {h} 小時
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function HourHeatmap({ hours, windowHours }: { hours: number[]; windowHours: number }) {
   const total = sum(hours);
   if (total === 0) return <Empty />;
   const max = Math.max(1, ...hours);
@@ -348,7 +399,7 @@ function HourHeatmap({ hours }: { hours: number[] }) {
   return (
     <div>
       <p className="mb-3 text-xs text-ink-soft">
-        尖峰時段 <span className="font-semibold text-accent">{peak}:00–{peak}:59</span>　·　全站累計 {total} 筆註冊
+        近 {windowHours} 小時尖峰 <span className="font-semibold text-accent">{peak}:00–{peak}:59</span>　·　{total} 筆註冊
       </p>
       <div className="flex h-24 items-end gap-px">
         {hours.map((c, h) => (
@@ -367,6 +418,33 @@ function HourHeatmap({ hours }: { hours: number[] }) {
         <span>18</span>
         <span>23</span>
       </div>
+    </div>
+  );
+}
+
+function UtmPostList({
+  posts,
+}: {
+  posts: { source: string | null; medium: string | null; campaign: string | null; content: string | null; post: string; count: number }[];
+}) {
+  if (posts.length === 0) return <Empty />;
+  return (
+    <div className="space-y-2.5">
+      {posts.map((p, i) => {
+        const meta = [p.source, p.medium, p.campaign].filter(Boolean).join(" · ");
+        return (
+          <div key={`${p.source}-${p.campaign}-${p.content}-${i}`} className="flex items-center gap-3">
+            <span className="w-4 shrink-0 text-center text-sm font-bold text-ink-faint">{i + 1}</span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-ink" title={p.content || p.campaign || p.post}>
+                {p.post}
+              </p>
+              <p className="truncate text-xs text-ink-faint">{meta || "未標來源"}</p>
+            </div>
+            <span className="shrink-0 text-sm font-semibold tabular-nums text-accent">{p.count}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

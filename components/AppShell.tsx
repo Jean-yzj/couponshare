@@ -7,6 +7,7 @@ import { cn } from "@/lib/display";
 import { useMe, useApi, apiFetch } from "@/lib/client";
 import { Icon, type IconName } from "./icons";
 import { Avatar, Button } from "./ui";
+import { UtmCapture } from "./UtmCapture";
 
 function Logo() {
   return (
@@ -87,6 +88,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="relative z-10 flex min-h-dvh flex-col">
+      <UtmCapture />
       <header className="sticky top-0 z-40 border-b border-line/80 bg-canvas">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4 sm:px-6">
           <Logo />

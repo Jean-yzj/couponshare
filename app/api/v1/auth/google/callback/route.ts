@@ -6,8 +6,18 @@ import { createSession } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
 import { exchangeCode, fetchGoogleProfile } from "@/lib/google";
 import { resolveReferrer, REF_COOKIE } from "@/lib/referral";
+import { UTM_COOKIE, normalizeUtm, utmCreateData } from "@/lib/utm";
 
 export const runtime = "nodejs";
+
+function parseSavedUtm(value: string | undefined) {
+  if (!value) return undefined;
+  try {
+    return normalizeUtm(JSON.parse(value));
+  } catch {
+    return undefined;
+  }
+}
 
 export const GET = route(async (req) => {
   const url = new URL(req.url);
@@ -18,8 +28,11 @@ export const GET = route(async (req) => {
   const store = await cookies();
   const saved = store.get("g_state")?.value;
   const savedRef = store.get(REF_COOKIE)?.value;
+  const savedUtm = store.get(UTM_COOKIE)?.value;
+  const attribution = parseSavedUtm(savedUtm);
   store.delete("g_state");
   store.delete(REF_COOKIE);
+  store.delete(UTM_COOKIE);
 
   if (!code || !state || !saved || state !== saved) {
     console.error("[google callback] pre-check failed", { hasCode: !!code, hasSaved: !!saved, match: state === saved });
@@ -49,6 +62,7 @@ export const GET = route(async (req) => {
             loginProvider: "GOOGLE",
             lastLoginAt: new Date(),
             referredById: await resolveReferrer(savedRef),
+            ...utmCreateData(attribution),
           },
         });
 
