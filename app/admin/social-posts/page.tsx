@@ -91,7 +91,9 @@ export default function AdminSocialPostsPage() {
   return (
     <div>
       <h1 className="text-2xl font-extrabold tracking-tight text-ink">發文審核</h1>
-      <p className="mt-1 text-sm text-ink-soft">審核社群發文換申請次數的申請。</p>
+      <p className="mt-1 text-sm text-ink-soft">
+        審核社群發文換申請次數的申請。通過前請確認貼文公開、含 #CouponShare，且貼文內容本身有放平台使用截圖。
+      </p>
 
       <div className="no-scrollbar -mx-4 mt-5 flex gap-1.5 overflow-x-auto px-4 pb-1">
         {TABS.map((t) => (
@@ -153,6 +155,9 @@ export default function AdminSocialPostsPage() {
 
               {/* Evidence screenshot */}
               <div className="mt-3">
+                <p className="mb-1.5 text-xs font-medium text-ink-faint">
+                  審核截圖需看得到：平台使用截圖、#CouponShare 與讚數。
+                </p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={post.evidence_image}

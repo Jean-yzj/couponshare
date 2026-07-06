@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
 import { fileToDataUri } from "@/lib/client-image";
 import {
@@ -51,8 +51,8 @@ const STATUS_PILL: Record<SocialPostStatus, { label: (bonus: number | null) => s
 };
 
 const STEPS = [
-  { title: "公開發文", desc: "在 Threads 帶上 #CouponShare 分享心得" },
-  { title: "回來提交", desc: "附上貼文連結與截圖" },
+  { title: "公開發文", desc: "帶 #CouponShare，文內放平台使用截圖" },
+  { title: "回來提交", desc: "附上公開連結與可審核截圖" },
   { title: "等待審核", desc: "7 天內完成，通過即發放" },
 ];
 
@@ -67,37 +67,15 @@ export default function SocialRewardPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [origin, setOrigin] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
 
   if (meLoading) return <PageSkeleton />;
   if (!me) return <NeedLogin message="登入後即可使用發文獎勵。" />;
   if (loading || !data) return <PageSkeleton />;
 
   const canSubmit = topic.trim() && postDate && postUrl.trim() && !!image;
-  const inviteUrl = `${origin || "https://couponshare.lazybearlife.com"}/login?ref=${me.id}`;
-  const template = `我最近在用 CouponShare：把用不到的優惠券分享出去，也常領到別人分享的好康。讓券不浪費，也讓善意流動起來。
-
-#CouponShare
-${inviteUrl}`;
-
   const tm = data.this_month;
   const monthPost = tm ? (data.posts.find((p) => p.id === tm.id) ?? null) : null;
-
-  async function copyTemplate() {
-    try {
-      await navigator.clipboard.writeText(template);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* clipboard blocked — user can long-press the text */
-    }
-  }
 
   async function pickImage(f: File | null) {
     if (!f) return;
@@ -184,29 +162,6 @@ ${inviteUrl}`;
         ))}
       </div>
 
-      {/* Copyable template — with the user's invite link baked in */}
-      <Card className="mt-4 p-4">
-        <div className="flex items-baseline justify-between gap-2">
-          <p className="font-semibold text-ink">懶人範本</p>
-          <span className="text-xs text-ink-faint">可直接複製，也歡迎自由改寫</span>
-        </div>
-        <div className="mt-2.5 whitespace-pre-wrap break-all rounded-xl bg-canvas/70 p-3.5 text-sm leading-relaxed text-ink-soft">
-          {template}
-        </div>
-        <p className="mt-2 flex items-start gap-1.5 text-xs text-ink-faint">
-          <Icon name="gift" size={13} className="mt-0.5 shrink-0 text-pine" />
-          範本已帶上你的邀請連結：每有一人透過它註冊，你再 +2 次。歡迎大家一起讓更多人知道這個平臺，把善意傳遞下去。
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button variant="outline" icon={copied ? "check" : "edit"} onClick={copyTemplate}>
-            {copied ? "已複製" : "複製範本"}
-          </Button>
-          <Button icon="arrowRight" onClick={() => window.open("https://www.threads.com/", "_blank", "noopener")}>
-            打開 Threads
-          </Button>
-        </div>
-      </Card>
-
       {/* Submit form / this-month status */}
       <div className="mt-4">
         {data.can_submit ? (
@@ -224,6 +179,9 @@ ${inviteUrl}`;
           ) : (
             <Card className="p-5">
               <h2 className="mb-4 font-semibold text-ink">發完文，回來這裡提交</h2>
+              <Banner tone="info" icon="image">
+                貼文內容需包含你實際使用 CouponShare 的截圖，例如探索頁、上架流程、錢包或領券畫面；只貼文字或只有 #CouponShare 不算。
+              </Banner>
               <div className="space-y-4">
                 <Field label="發文主題" required hint="一句話描述你的貼文內容">
                   <Input
@@ -250,7 +208,10 @@ ${inviteUrl}`;
                 </Field>
                 <div>
                   <p className="mb-1.5 text-sm font-medium text-ink">
-                    貼文截圖 <span className="text-accent">*</span>
+                    審核截圖 <span className="text-accent">*</span>
+                  </p>
+                  <p className="mb-2 text-xs leading-relaxed text-ink-faint">
+                    請上傳能看出「貼文裡有平台使用截圖」、#CouponShare 與讚數的截圖。
                   </p>
                   <input
                     ref={fileRef}
@@ -279,7 +240,7 @@ ${inviteUrl}`;
                       className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-canvas/50 py-4 text-sm text-ink-soft transition-colors hover:border-accent hover:text-accent"
                     >
                       <Icon name="image" size={18} />
-                      上傳貼文截圖（需看得到 #CouponShare 與讚數）
+                      上傳審核截圖（需看得到平台使用截圖、#CouponShare 與讚數）
                     </button>
                   )}
                 </div>
@@ -327,6 +288,9 @@ ${inviteUrl}`;
         </span>
         <span className="inline-flex items-center gap-1">
           <Icon name="star" size={12} /> 讚數以截圖為準
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <Icon name="image" size={12} /> 文內需有平台使用截圖
         </span>
         <span className="inline-flex items-center gap-1">
           <Icon name="info" size={12} /> 內容偏負面不予通過
