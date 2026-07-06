@@ -15,7 +15,11 @@ export const POST = route(async (req, ctx) => {
   const t = await prisma.transaction.findUnique({ where: { id } });
   if (!t) throw new ApiError("NOT_FOUND");
   if (t.ownerId !== user.id && t.claimantId !== user.id) throw new ApiError("FORBIDDEN");
-  if (t.status !== "COMPLETED") throw new ApiError("TRANSACTION_NOT_COMPLETE");
+  // A GIFT's giver can rate the moment they've sent it (transaction still CREATED),
+  // without waiting for the recipient to confirm completion. Everyone else — the
+  // recipient, and both sides of an exchange — rates only after COMPLETED.
+  const giverEarly = t.transactionType === "GIFT" && t.ownerId === user.id && t.status === "CREATED";
+  if (t.status !== "COMPLETED" && !giverEarly) throw new ApiError("TRANSACTION_NOT_COMPLETE");
 
   const counterparty = user.id === t.ownerId ? t.claimantId : t.ownerId;
   if (body.to_user_id !== counterparty) {

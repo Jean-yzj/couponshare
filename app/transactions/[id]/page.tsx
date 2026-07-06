@@ -318,7 +318,7 @@ export default function TransactionPage() {
             <Icon name="heart" size={17} className="text-pine" /> 感謝你的分享
           </p>
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-            你已經把這張券送出去了，謝謝你讓用不到的好康流動起來。等對方兌換後，別忘了回來互相評價與感謝。
+            你已經把這張券送出去了，謝謝你讓用不到的好康流動起來。你現在就可以在下方留下對這位夥伴的評價與感謝，不用等對方確認。
           </p>
         </Card>
       ) : (
@@ -580,7 +580,9 @@ export default function TransactionPage() {
         )}
       </Card>
 
-      {/* Gift completion / rating after completion */}
+      {/* Completion / rating.
+          GIFT: the giver can rate the moment they've sent it (no 完成 button); only
+          the recipient confirms 完成. EXCHANGE: mutual-complete flow lives above. */}
       {completed ? (
         <Card className="mt-4 p-5">
           {t.rated_by_viewer ? (
@@ -591,15 +593,25 @@ export default function TransactionPage() {
             <RatingForm txnId={t.id} toUser={counterpart} onDone={refetch} />
           )}
         </Card>
-      ) : !isExchange && !disputed ? (
+      ) : disputed || isExchange ? null : isOwner ? (
         <Card className="mt-4 p-5">
-          <p className="font-semibold text-ink">完成後請確認</p>
-          <p className="mt-1 text-sm text-ink-soft">兌換完成後按一下，雙方就能互相評價。</p>
+          {t.rated_by_viewer ? (
+            <p className="flex items-center gap-2 text-sm font-medium text-pine">
+              <Icon name="check" size={18} /> 謝謝你的評價！
+            </p>
+          ) : (
+            <RatingForm txnId={t.id} toUser={counterpart} onDone={refetch} />
+          )}
+        </Card>
+      ) : (
+        <Card className="mt-4 p-5">
+          <p className="font-semibold text-ink">兌換完成了嗎？</p>
+          <p className="mt-1 text-sm text-ink-soft">到店兌換沒問題後按一下，就能留下評價與感謝。</p>
           <Button className="mt-3" icon="check" loading={completing} onClick={complete}>
             確認完成
           </Button>
         </Card>
-      ) : null}
+      )}
 
       {/* First-claim second-touch CTA: show below the completed card for the claimant who hasn't shared yet */}
       {completed && isClaimant && me && me.has_shared === false && (
