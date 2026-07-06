@@ -186,41 +186,40 @@ export default function SocialRewardPage() {
           what to write before they get to the submit step */}
       <Card className="mt-4 p-5">
         <h2 className="font-semibold text-ink">怎麼發才算數</h2>
-        <ul className="mt-3 space-y-2 text-sm text-ink-soft">
-          <li className="flex items-start gap-2">
-            <Icon name="check" size={15} className="mt-0.5 shrink-0 text-pine" />
-            <span>
-              公開帳號，用<span className="font-medium text-ink">自己的話</span>寫至少{" "}
-              <span className="font-medium text-ink">30 字</span>使用心得。
+        <ol className="mt-3 space-y-3">
+          <li className="flex items-start gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-tint text-xs font-bold text-accent">
+              1
             </span>
+            <p className="text-sm leading-relaxed text-ink-soft">
+              帳號設為公開，用自己的話寫至少 30 字的使用心得。
+            </p>
           </li>
-          <li className="flex items-start gap-2">
-            <Icon name="check" size={15} className="mt-0.5 shrink-0 text-pine" />
-            <span>
-              文中<span className="font-medium text-ink">提到 CouponShare</span> 即可（加不加 # 都行）。
+          <li className="flex items-start gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-tint text-xs font-bold text-accent">
+              2
             </span>
+            <p className="text-sm leading-relaxed text-ink-soft">
+              貼文中有提到「CouponShare」就可以，要不要加井字號 # 都行。
+            </p>
           </li>
-          <li className="flex items-start gap-2">
-            <Icon name="check" size={15} className="mt-0.5 shrink-0 text-pine" />
-            <span>
-              附上一張<span className="font-medium text-ink">平台使用截圖</span>（探索頁、錢包、領券畫面等）。
+          <li className="flex items-start gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-tint text-xs font-bold text-accent">
+              3
             </span>
+            <p className="text-sm leading-relaxed text-ink-soft">
+              附上一張平台使用截圖（探索頁、錢包或領券畫面）。
+            </p>
           </li>
-        </ul>
+        </ol>
         <div className="mt-4 rounded-xl bg-accent-tint/50 p-3.5">
           <p className="flex items-center gap-1.5 text-sm font-semibold text-accent-press">
             <Icon name="sparkles" size={15} /> 不知道寫什麼？可以分享
           </p>
-          <ul className="mt-2 space-y-1.5 text-sm text-ink-soft">
-            <li className="flex items-start gap-2">
-              <span className="text-accent">・</span>你在平台上<span className="font-medium text-ink">拿到的券</span>，換到什麼好康
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-accent">・</span>你<span className="font-medium text-ink">分享出去的券</span>，幫到了誰
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-accent">・</span>其他使用這個平台的<span className="font-medium text-ink">心得</span>與感想
-            </li>
+          <ul className="mt-2 space-y-1 text-sm leading-relaxed text-ink-soft">
+            <li>・你在平台上拿到的券，換到什麼好康</li>
+            <li>・你分享出去的券，幫到了誰</li>
+            <li>・其他使用這個平台的心得與感想</li>
           </ul>
         </div>
         <p className="mt-3 text-xs leading-relaxed text-ink-faint">
