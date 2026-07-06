@@ -99,8 +99,6 @@ export default function AdminDashboardPage() {
         </p>
       </div>
 
-      <KillSwitches />
-
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatCard icon="user" label="總會員" value={o.users.total} sub={`今日 +${o.users.new_24h}　7 日 +${o.users.new_7d}`} />
@@ -285,6 +283,10 @@ export default function AdminDashboardPage() {
           )}
         </Section>
       </div>
+
+      {/* Emergency kill-switches — parked at the very bottom, out of the daily
+          scan path but one scroll away when an incident hits. */}
+      <KillSwitches />
     </div>
   );
 }
