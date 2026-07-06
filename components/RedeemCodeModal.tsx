@@ -2,20 +2,25 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch, ApiErr } from "@/lib/client";
+import { cn, formatDate } from "@/lib/display";
 import { Modal } from "./Modal";
 import { Button, Spinner, Banner } from "./ui";
+import { Icon } from "./icons";
 
 // Shows the decrypted text redeem code to an authorized viewer (owner or the
 // chosen claimant). Fetches on open; the code is never in the feed payload.
 export function RedeemCodeModal({
   couponId,
   owned = false,
+  expiry,
   open,
   onClose,
 }: {
   couponId: string;
   // The viewer owns this code outright (their own coupon, or a received gift).
   owned?: boolean;
+  // The giver's expiry date (raw ISO). null = no expiry; undefined = don't show.
+  expiry?: string | null;
   open: boolean;
   onClose: () => void;
 }) {
@@ -68,6 +73,18 @@ export function RedeemCodeModal({
           </p>
         )}
       </div>
+
+      {expiry !== undefined && (
+        <p
+          className={cn(
+            "mt-3 flex items-center justify-center gap-1.5 text-center text-sm font-semibold",
+            expiry && new Date(expiry).getTime() <= Date.now() ? "text-danger" : "text-ink",
+          )}
+        >
+          <Icon name="clock" size={14} className="text-ink-faint" />
+          {expiry ? `使用期限：${formatDate(expiry)}` : "無使用期限"}
+        </p>
+      )}
 
       {code && !loading && !error && (
         <Button full className="mt-3" icon={copied ? "check" : "ticket"} onClick={copy}>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch, ApiErr } from "@/lib/client";
-import { cn } from "@/lib/display";
+import { cn, formatDate } from "@/lib/display";
 import { Modal } from "./Modal";
 import { Button, Spinner, Banner } from "./ui";
 import { Icon } from "./icons";
@@ -12,6 +12,7 @@ export function BarcodeModal({
   endpoint,
   title,
   owned = false,
+  expiry,
   open,
   onClose,
 }: {
@@ -21,6 +22,10 @@ export function BarcodeModal({
   // The viewer owns this coupon outright (a received gift, or their own coupon).
   // Show it as a plain, keepable ticket instead of a self-destructing barcode.
   owned?: boolean;
+  // The giver's expiry date (raw ISO). null = no expiry; undefined = don't show.
+  // Surfaced here because this is the point of use — the recipient needs to know
+  // how long the ticket is good for while they're at the counter.
+  expiry?: string | null;
   open: boolean;
   onClose: () => void;
 }) {
@@ -132,6 +137,18 @@ export function BarcodeModal({
           </div>
         )}
       </div>
+
+      {expiry !== undefined && (
+        <p
+          className={cn(
+            "mt-3 flex items-center justify-center gap-1.5 text-center text-sm font-semibold",
+            expiry && new Date(expiry).getTime() <= Date.now() ? "text-danger" : "text-ink",
+          )}
+        >
+          <Icon name="clock" size={14} className="text-ink-faint" />
+          {expiry ? `使用期限：${formatDate(expiry)}` : "無使用期限"}
+        </p>
+      )}
 
       {url && !error && !loading && (
         <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-ink-faint">

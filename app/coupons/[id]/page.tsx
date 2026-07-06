@@ -368,6 +368,13 @@ export default function CouponDetailPage() {
                 ? "雙方都確認了，條碼僅供你本人兌換，請勿轉傳。"
                 : "這是交換券，雙方都到交易頁確認後，系統才會同時亮碼。"}
           </p>
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-canvas/60 px-3 py-2.5 text-sm">
+            <Icon name="clock" size={16} className={cn("shrink-0", exp.urgent ? "text-danger" : "text-ink-faint")} />
+            <span className="text-ink-soft">使用期限</span>
+            <span className={cn("ml-auto font-bold", exp.urgent ? "text-danger" : "text-ink")}>
+              {coupon.expiry_date ? formatDate(coupon.expiry_date) : "無使用期限"}
+            </span>
+          </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {coupon.can_view_barcode && (
               <Button icon="ticket" onClick={() => setBarcodeOpen(true)}>
@@ -595,12 +602,14 @@ export default function CouponDetailPage() {
       <BarcodeModal
         couponId={coupon.id}
         owned={coupon.is_owner || coupon.type === "GIFT"}
+        expiry={coupon.expiry_date}
         open={barcodeOpen}
         onClose={() => setBarcodeOpen(false)}
       />
       <RedeemCodeModal
         couponId={coupon.id}
         owned={coupon.is_owner || coupon.type === "GIFT"}
+        expiry={coupon.expiry_date}
         open={redeemCodeOpen}
         onClose={() => setRedeemCodeOpen(false)}
       />

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/display";
 import { useMe, useApi, apiFetch } from "@/lib/client";
 import { Icon, type IconName } from "./icons";
@@ -75,9 +75,35 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { me, refetch } = useMe();
   const { data: notif } = useApi<{ unread_count: number }>(me ? "/api/v1/notifications" : null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(false);
   const unread = notif?.unread_count ?? 0;
 
   const isActive = (p: string) => (p === "/" ? pathname === "/" : pathname.startsWith(p));
+
+  // Threads promo — nudge logged-in users toward the 發文換次數 reward. Starts
+  // hidden (so SSR/hydration match), then reveals unless dismissed this session (X)
+  // or forever (不要再顯示). Storage may throw in private mode — fail closed (stay hidden).
+  useEffect(() => {
+    if (!me || me.status === "SUSPENDED") return;
+    try {
+      if (localStorage.getItem("cs_threads_promo_off") || sessionStorage.getItem("cs_threads_promo_x")) {
+        return;
+      }
+    } catch {
+      return;
+    }
+    setPromoOpen(true);
+  }, [me]);
+
+  function closePromo(forever: boolean) {
+    try {
+      if (forever) localStorage.setItem("cs_threads_promo_off", "1");
+      else sessionStorage.setItem("cs_threads_promo_x", "1");
+    } catch {
+      /* storage blocked — just hide for now */
+    }
+    setPromoOpen(false);
+  }
 
   async function logout() {
     await apiFetch("/api/v1/auth/logout", { method: "POST" }).catch(() => {});
@@ -199,6 +225,43 @@ export function AppShell({ children }: { children: ReactNode }) {
             >
               提出申訴
             </Link>
+          </div>
+        )}
+
+        {promoOpen && pathname !== "/social-reward" && (
+          <div className="mb-5 flex items-start gap-3 rounded-2xl border border-accent/20 bg-accent-tint/60 p-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-accent shadow-soft">
+              <Icon name="share" size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-ink">發一篇 Threads，就能換申請次數</p>
+              <p className="mt-0.5 text-sm text-ink-soft">
+                在 Threads 貼文帶上 #CouponShare，審核通過就送你當月申請次數，破百讚更多。
+              </p>
+              <div className="mt-2.5 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/social-reward"
+                  prefetch={true}
+                  onClick={() => closePromo(false)}
+                  className="inline-flex items-center gap-1 rounded-full bg-accent px-3.5 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-accent-press"
+                >
+                  前往看看 <Icon name="chevronRight" size={14} />
+                </Link>
+                <button
+                  onClick={() => closePromo(true)}
+                  className="text-xs font-medium text-ink-faint transition-colors hover:text-ink-soft"
+                >
+                  不要再顯示
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => closePromo(false)}
+              aria-label="關閉"
+              className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-ink-faint transition-colors hover:bg-white/70 hover:text-ink"
+            >
+              <Icon name="x" size={18} />
+            </button>
           </div>
         )}
         {children}
