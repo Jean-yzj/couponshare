@@ -73,51 +73,45 @@ export function Landing() {
   return (
     <div className="space-y-24 pb-12">
       {/* Hero */}
-      <section className="relative pt-4 md:pt-12">
-        {/* ambient glows for depth */}
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute -top-10 right-[6%] h-72 w-72 rounded-full bg-accent/15 blur-[90px]" />
-          <div className="absolute left-0 top-28 h-56 w-56 rounded-full bg-grape/10 blur-[80px]" />
-        </div>
-        <div className="grid items-center gap-12 md:grid-cols-[1.05fr_0.95fr]">
+      <section className="pt-6 md:pt-14">
+        <div className="grid items-center gap-6 md:grid-cols-[1.05fr_0.95fr] md:gap-14">
           <div className="text-center md:text-left">
             <Eyebrow>
               <Icon name="heart" size={13} /> Share what you don&apos;t use
             </Eyebrow>
-            <h1 className="mt-4 text-[2.05rem] font-extrabold leading-[1.18] tracking-tight text-ink sm:text-[2.7rem] md:text-[3.35rem]">
+            <h1 className="mt-4 text-[2.15rem] font-extrabold leading-[1.16] tracking-tight text-ink sm:text-[2.7rem] md:text-[3.3rem]">
               把用不到的優惠券，
               <br />
               和需要的人
               <span className="relative whitespace-nowrap text-accent">
                 分享
-                <svg aria-hidden viewBox="0 0 120 8" preserveAspectRatio="none" className="absolute -bottom-1.5 left-0 h-2.5 w-full text-accent/35">
+                <svg aria-hidden viewBox="0 0 120 8" preserveAspectRatio="none" className="absolute -bottom-1.5 left-0 h-2.5 w-full text-accent/30">
                   <path d="M1 5.5 C 34 1, 88 1, 119 4.5" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
                 </svg>
               </span>
             </h1>
-            <p className="mt-5 max-w-md text-[16px] leading-relaxed text-ink-soft">
-              一張你還沒時間用的券，剛好是別人正需要的小確幸。把「我用不到」交給「我需要」，不花一毛錢，也能讓世界溫暖一點。
+            <p className="mx-auto mt-5 max-w-sm text-[15px] leading-relaxed text-ink-soft md:mx-0 md:text-base">
+              你用不到的那一張，也許正是別人今天需要的。
+              <br className="hidden sm:block" />
+              送出去不花一毛錢，也讓生活多一點善意。
             </p>
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-3 md:justify-start">
+            <div className="mt-8 flex flex-col gap-2.5 sm:flex-row sm:justify-center md:justify-start">
               <Button href="/login" size="lg" icon="heart">加入，開始分享</Button>
               <Button href="/login" size="lg" variant="outline">我已經有帳號</Button>
             </div>
-            <div className="mt-6 flex justify-center md:justify-start">
+            <div className="mt-8 flex justify-center md:justify-start">
               <LiveStats />
             </div>
           </div>
 
-          <div className="relative mx-auto h-[340px] w-[300px] sm:w-[360px]">
-            {/* soft glow pad behind the card stack */}
-            <div aria-hidden className="absolute inset-x-4 bottom-4 top-8 -z-10 rounded-[44px] bg-grad-brand opacity-20 blur-2xl" />
-            <Icon name="sparkle" size={18} className="absolute -left-1 top-3 animate-twinkle text-accent" />
-            <Icon name="sparkle" size={13} className="absolute bottom-7 right-1 animate-twinkle text-grape [animation-delay:1s]" />
-            <SampleCard brand="摩斯" cat="速食" title="摩斯漢堡 經典漢堡買一送一" owner="Amy · 達人" meta="想換超商券" type="EXCHANGE"
-              className="absolute left-0 top-10 w-[190px] -rotate-[8deg] sm:w-[208px]" />
+          {/* Product peek — a tidy little stack of shared coupons */}
+          <div className="relative mx-auto h-[264px] w-full max-w-[300px] md:h-[344px] md:max-w-[380px]">
             <SampleCard brand="全家" cat="超商" title="全家 任選飲料第二件 6 折" owner="Nina · 傳奇" meta="11 小時後到期" type="GIFT"
-              className="absolute right-0 top-0 w-[190px] rotate-[8deg] sm:w-[208px]" />
+              className="absolute right-0 top-0 w-[178px] rotate-[5deg] sm:w-[206px]" />
+            <SampleCard brand="摩斯" cat="速食" title="摩斯漢堡 經典漢堡買一送一" owner="Amy · 達人" meta="想換超商券" type="EXCHANGE"
+              className="absolute left-0 top-6 w-[178px] -rotate-[6deg] sm:w-[206px]" />
             <SampleCard brand="星巴克" cat="咖啡" title="星巴克 大杯飲料買一送一" owner="Jean · 傳奇" meta="4 天後到期" type="GIFT"
-              className="absolute bottom-1 left-1/2 z-10 w-[224px] -translate-x-1/2 sm:w-[240px]" />
+              className="absolute bottom-0 left-1/2 z-10 w-[216px] -translate-x-1/2 sm:w-[236px]" />
           </div>
         </div>
       </section>
