@@ -229,39 +229,45 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
 
         {promoOpen && pathname !== "/social-reward" && (
-          <div className="mb-5 flex items-start gap-3 rounded-2xl border border-accent/20 bg-accent-tint/60 p-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-accent shadow-soft">
-              <Icon name="share" size={20} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-ink">發一篇 Threads，就能換申請次數</p>
-              <p className="mt-0.5 text-sm text-ink-soft">
-                在 Threads 貼文帶上 #CouponShare，審核通過就送你當月申請次數，破百讚更多。
-              </p>
-              <div className="mt-2.5 flex flex-wrap items-center gap-3">
-                <Link
-                  href="/social-reward"
-                  prefetch={true}
-                  onClick={() => closePromo(false)}
-                  className="inline-flex items-center gap-1 rounded-full bg-accent px-3.5 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-accent-press"
-                >
-                  前往看看 <Icon name="chevronRight" size={14} />
-                </Link>
-                <button
-                  onClick={() => closePromo(true)}
-                  className="text-xs font-medium text-ink-faint transition-colors hover:text-ink-soft"
-                >
-                  不要再顯示
-                </button>
-              </div>
-            </div>
+          <div className="relative mb-5 overflow-hidden rounded-2xl bg-grad-brand p-4 text-white shadow-glow sm:p-5">
+            <div className="pointer-events-none absolute -right-10 -top-14 h-36 w-36 rounded-full bg-white/10" />
+            <div className="pointer-events-none absolute -bottom-14 right-20 h-28 w-28 rounded-full bg-white/10" />
             <button
               onClick={() => closePromo(false)}
               aria-label="關閉"
-              className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-ink-faint transition-colors hover:bg-white/70 hover:text-ink"
+              className="absolute right-2.5 top-2.5 rounded-full p-1.5 text-white/75 transition-colors hover:bg-white/15 hover:text-white"
             >
-              <Icon name="x" size={18} />
+              <Icon name="x" size={17} />
             </button>
+            <div className="relative flex items-start gap-3.5 pr-8">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/20">
+                <Icon name="sparkles" size={22} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-base font-extrabold sm:text-lg">
+                  發一篇 Threads，換申請次數
+                </p>
+                <p className="mt-0.5 text-sm leading-relaxed text-white/85">
+                  貼文帶上 #CouponShare，審核通過送當月申請次數，破百讚拿更多。
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <Link
+                    href="/social-reward"
+                    prefetch={true}
+                    onClick={() => closePromo(false)}
+                    className="inline-flex items-center gap-1 rounded-full bg-white px-4 py-1.5 text-sm font-bold text-accent-press shadow-soft transition-transform active:scale-[0.98]"
+                  >
+                    前往看看 <Icon name="chevronRight" size={14} />
+                  </Link>
+                  <button
+                    onClick={() => closePromo(true)}
+                    className="text-xs font-medium text-white/70 transition-colors hover:text-white"
+                  >
+                    不要再顯示
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
         {children}
