@@ -78,17 +78,27 @@ export default function AppealPage() {
             </>
           )}
         </Card>
+      ) : rejected ? (
+        <Card className="mt-5 p-6">
+          <div className="flex items-center gap-2 text-danger">
+            <Icon name="ban" size={20} />
+            <p className="font-semibold">申訴未通過</p>
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+            你的申訴已經人工複核並駁回{data.appeal?.admin_note ? `：${data.appeal.admin_note}` : ""}。
+            依規定每個帳號僅能申訴一次，無法再次提出。
+          </p>
+          {data.appeal && (
+            <p className="mt-3 text-xs text-ink-faint">申訴於 {formatDate(data.appeal.created_at)} 送出</p>
+          )}
+        </Card>
       ) : (
         <Card className="mt-5 p-6">
-          {rejected && (
-            <div className="mb-4">
-              <Banner tone="warn" icon="info">
-                上次申訴未通過{data.appeal?.admin_note ? `：${data.appeal.admin_note}` : ""}。你可以再次說明並送出。
-              </Banner>
-            </div>
-          )}
-          <p className="text-sm leading-relaxed text-ink-soft">
-            你的帳號因被多位使用者檢舉而停權。若你認為這是誤會，請說明情況，我們會人工複核。
+          <Banner tone="warn" icon="info">
+            每個帳號僅能申訴一次，送出後若被駁回將無法再次申訴，請一次把情況說明清楚。
+          </Banner>
+          <p className="mt-4 text-sm leading-relaxed text-ink-soft">
+            你的帳號因違反平台規範而停權。若你認為這是誤會，請說明情況，我們會人工複核。
           </p>
           <div className="mt-4">
             <Field label="申訴說明" required>

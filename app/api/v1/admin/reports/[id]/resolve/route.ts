@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/errors";
 import { requireAdmin } from "@/lib/admin";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
+import { blockUserRecentIps } from "@/lib/blocked-ip";
 
 const schema = z.object({
   action: z.enum(["dismiss", "remove_coupon", "suspend_user", "dismiss_malicious", "strike_user"]),
@@ -125,6 +126,7 @@ export const POST = route(async (req, ctx) => {
         title: "你的帳號已被暫停",
         body: `你的帳號因違反平台規範已被暫停，相關票券已下架${note ? `：${note}` : ""}。如有疑問可提出申訴。`,
       });
+      await blockUserRecentIps(tx, targetId, "檢舉成立停權");
     }
 
     await writeAudit(tx, {

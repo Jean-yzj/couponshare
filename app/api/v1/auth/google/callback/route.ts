@@ -8,6 +8,7 @@ import { exchangeCode, fetchGoogleProfile } from "@/lib/google";
 import { resolveReferrer, REF_COOKIE, REFERRAL_BONUS } from "@/lib/referral";
 import { grantBonusClaims } from "@/lib/bonus";
 import { getFlag, FLAG_REGISTER_PAUSED } from "@/lib/settings";
+import { isIpBlocked } from "@/lib/blocked-ip";
 import { UTM_COOKIE, normalizeUtm, utmCreateData } from "@/lib/utm";
 
 export const runtime = "nodejs";
@@ -54,6 +55,10 @@ export const GET = route(async (req) => {
     // Kill-switch: pause NEW signups (existing users can still log in).
     if (!existing && (await getFlag(FLAG_REGISTER_PAUSED))) {
       return NextResponse.redirect(`${origin}/login?error=register_paused`);
+    }
+    // Block NEW accounts from an IP tied to a suspended user (existing users unaffected).
+    if (!existing && (await isIpBlocked(clientMeta(req).ip))) {
+      return NextResponse.redirect(`${origin}/login?error=ip_blocked`);
     }
     // Account-takeover guard: only log in as an EXISTING account when Google has
     // verified this email. An unverified email must not be able to attach to (and

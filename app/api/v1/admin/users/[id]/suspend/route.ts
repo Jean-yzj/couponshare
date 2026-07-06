@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/errors";
 import { requireAdmin } from "@/lib/admin";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
+import { blockUserRecentIps } from "@/lib/blocked-ip";
 
 const schema = z.object({ reason: z.string().max(300).optional() });
 
@@ -42,6 +43,8 @@ export const POST = route(async (req, ctx) => {
       ip: meta.ip,
       ua: meta.ua,
     });
+    // Block their recent IPs from registering fresh accounts (evasion).
+    await blockUserRecentIps(tx, id, "帳號手動停權");
   });
 
   return jsonOk({ id, suspended: true });

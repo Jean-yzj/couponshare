@@ -9,6 +9,7 @@ import { throttle } from "@/lib/throttle";
 import { resolveReferrer, REFERRAL_BONUS } from "@/lib/referral";
 import { grantBonusClaims } from "@/lib/bonus";
 import { getFlag, FLAG_REGISTER_PAUSED } from "@/lib/settings";
+import { isIpBlocked } from "@/lib/blocked-ip";
 import { utmCreateData } from "@/lib/utm";
 
 export const POST = route(async (req) => {
@@ -17,6 +18,10 @@ export const POST = route(async (req) => {
   // Emergency kill-switch: pause new signups during a mass-registration attack.
   if (await getFlag(FLAG_REGISTER_PAUSED)) {
     throw new ApiError("VALIDATION_ERROR", { message: "目前暫停開放新帳號註冊，請稍後再試。" });
+  }
+  // Block new accounts from an IP tied to a suspended user (evasion).
+  if (await isIpBlocked(clientMeta(req).ip)) {
+    throw new ApiError("VALIDATION_ERROR", { message: "此網路目前無法註冊新帳號，如有疑問請聯繫客服。" });
   }
   const body = await readBody(req, registerSchema);
   const existing = await prisma.user.findFirst({

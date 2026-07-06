@@ -537,3 +537,16 @@ model AppSetting {
 
   @@map("app_settings")
 }
+
+// IPs blocked from creating new accounts — captured from a user's recent activity
+// when an admin suspends them, to stop the "make a fresh account and come back"
+// evasion. Scoped to registration (not all traffic) to limit CGNAT collateral.
+model BlockedIp {
+  ip        String   @id
+  userId    String?  @map("user_id")
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("blocked_ips")
+}

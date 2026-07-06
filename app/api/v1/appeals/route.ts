@@ -5,7 +5,8 @@ import { requireUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { appealSchema } from "@/lib/validation";
 
-// Suspended accounts can appeal once (pending) for manual review.
+// Suspended accounts get ONE appeal, ever. A rejected appeal is final — this closes
+// the "reject → immediately re-appeal → spam the queue" loop.
 export const POST = route(async (req) => {
   const user = await requireUser();
   if (user.status !== "SUSPENDED") {
@@ -13,10 +14,17 @@ export const POST = route(async (req) => {
   }
   const { message } = await readBody(req, appealSchema);
 
-  const pending = await prisma.appeal.findFirst({
-    where: { userId: user.id, status: "PENDING" },
+  const existing = await prisma.appeal.findFirst({
+    where: { userId: user.id, status: { in: ["PENDING", "REJECTED"] } },
   });
-  if (pending) throw new ApiError("VALIDATION_ERROR", { message: "你已有一筆審核中的申訴" });
+  if (existing) {
+    throw new ApiError("VALIDATION_ERROR", {
+      message:
+        existing.status === "REJECTED"
+          ? "你的申訴已被駁回，依規定無法再次申訴。"
+          : "你已有一筆審核中的申訴。",
+    });
+  }
 
   const appeal = await prisma.appeal.create({ data: { userId: user.id, message } });
 

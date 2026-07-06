@@ -112,6 +112,60 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.location.href = "/";
   }
 
+  // Suspended accounts are fully walled off: no feed, no nav, no content — just the
+  // suspension notice, plus the /appeal route so they can lodge their one appeal.
+  if (me && me.status === "SUSPENDED") {
+    const onAppeal = pathname.startsWith("/appeal");
+    return (
+      <div className="relative z-10 flex min-h-dvh flex-col">
+        <header className="border-b border-line/80 bg-canvas">
+          <div className="mx-auto flex h-16 w-full max-w-3xl items-center justify-between px-4 sm:px-6">
+            <div className="flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-grad-brand text-white shadow-glow">
+                <Icon name="ticket" size={20} />
+              </span>
+              <span className="font-display text-[22px] font-extrabold tracking-tight text-ink">
+                CouponShare
+              </span>
+            </div>
+            <button
+              onClick={logout}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-ink-soft transition-colors hover:bg-sand/70"
+            >
+              <Icon name="logout" size={16} /> 登出
+            </button>
+          </div>
+        </header>
+        <main className="mx-auto flex w-full max-w-xl flex-1 flex-col px-4 py-8 sm:px-6">
+          {onAppeal ? (
+            children
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center py-10 text-center">
+              <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-danger-tint text-danger">
+                <Icon name="ban" size={30} />
+              </span>
+              <h1 className="mt-4 font-display text-2xl font-extrabold text-ink">你的帳號已被停權</h1>
+              <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
+                你的帳號因違反平台規範已被停權，目前無法瀏覽或使用任何功能。若你認為這是誤會，可以提出一次申訴。
+              </p>
+              <div className="mt-6 flex flex-col items-center gap-3">
+                <Button href="/appeal" icon="shield">
+                  前往申訴
+                </Button>
+                <button
+                  onClick={logout}
+                  className="text-sm font-medium text-ink-faint transition-colors hover:text-ink-soft"
+                >
+                  登出
+                </button>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="relative z-10 flex min-h-dvh flex-col">
       <UtmCapture />
