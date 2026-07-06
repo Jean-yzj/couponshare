@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { ApiError } from "./errors";
+import { clientIp } from "./ip";
 
 // Fixed-window, in-memory rate limiter. Single-instance only: state lives in the
 // process and resets on redeploy. That's a deliberate trade-off — it's a real
@@ -10,8 +11,7 @@ const buckets = new Map<string, Bucket>();
 let lastSweep = 0;
 
 function ipOf(req: NextRequest): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  return (fwd ? fwd.split(",")[0]!.trim() : req.headers.get("x-real-ip")) || "unknown";
+  return clientIp(req) || "unknown";
 }
 
 export function throttle(req: NextRequest, action: string, limit: number, windowMs: number): void {

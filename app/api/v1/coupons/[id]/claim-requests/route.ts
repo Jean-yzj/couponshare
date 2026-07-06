@@ -13,11 +13,16 @@ import { claimRequestSchema } from "@/lib/validation";
 import { hasBlockBetween } from "@/lib/blocks";
 import { assertTransition } from "@/lib/coupon-state";
 import { applyScore, SCORE_RULES } from "@/lib/score";
+import { getFlag, FLAG_CLAIMS_PAUSED } from "@/lib/settings";
 
 // Apply to claim / exchange a coupon. PRD §7.2.
 export const POST = route(async (req, ctx) => {
   const { id: couponId } = await ctx.params;
   const user = await requireActiveUser();
+  // Emergency kill-switch: an admin can pause all claiming during an abuse incident.
+  if (await getFlag(FLAG_CLAIMS_PAUSED)) {
+    throw new ApiError("VALIDATION_ERROR", { message: "平台目前暫停領券，請稍後再試。" });
+  }
   const body = await readBody(req, claimRequestSchema);
 
   const coupon = await prisma.coupon.findUnique({ where: { id: couponId } });

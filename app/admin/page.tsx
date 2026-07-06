@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useApi, useMe } from "@/lib/client";
+import { useApi, useMe, apiFetch, ApiErr } from "@/lib/client";
 import { Card, Avatar, Skeleton, EmptyState, Button, NeedLogin, Eyebrow } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { cn, relativeTime } from "@/lib/display";
@@ -98,6 +98,8 @@ export default function AdminDashboardPage() {
           CouponShare 營運數據與趨勢　·　更新於 {relativeTime(data.generated_at)}
         </p>
       </div>
+
+      <KillSwitches />
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -483,6 +485,61 @@ function BarList({ items }: { items: { label: string; count: number }[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function KillSwitches() {
+  const { data, refetch } = useApi<{ flags: Record<string, boolean> }>("/api/v1/admin/settings");
+  const [busy, setBusy] = useState<string | null>(null);
+  const flags = data?.flags ?? {};
+  const items = [
+    { key: "claims_paused", label: "暫停領券", hint: "所有人都無法申請 / 領取票券" },
+    { key: "register_paused", label: "暫停註冊", hint: "無法建立新帳號（現有用戶登入不受影響）" },
+  ];
+  async function toggle(key: string, value: boolean) {
+    setBusy(key);
+    try {
+      await apiFetch("/api/v1/admin/settings", { method: "POST", body: JSON.stringify({ key, value }) });
+      await refetch();
+    } catch (e) {
+      alert(e instanceof ApiErr ? e.message : "操作失敗");
+    } finally {
+      setBusy(null);
+    }
+  }
+  return (
+    <Section title="緊急控制（遭濫用時止血用）">
+      <div className="space-y-2.5">
+        {items.map((it) => {
+          const on = !!flags[it.key];
+          return (
+            <div
+              key={it.key}
+              className={cn(
+                "flex items-center gap-3 rounded-xl border p-3",
+                on ? "border-danger/40 bg-danger-tint/60" : "border-line bg-canvas/50",
+              )}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-ink">
+                  {it.label}
+                  {on && <span className="ml-2 text-xs font-bold text-danger">● 已暫停</span>}
+                </p>
+                <p className="mt-0.5 text-xs text-ink-faint">{it.hint}</p>
+              </div>
+              <Button
+                size="sm"
+                variant={on ? "outline" : "danger"}
+                loading={busy === it.key}
+                onClick={() => toggle(it.key, !on)}
+              >
+                {on ? "恢復" : "暫停"}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </Section>
   );
 }
 

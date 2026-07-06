@@ -8,11 +8,16 @@ import { registerSchema } from "@/lib/validation";
 import { throttle } from "@/lib/throttle";
 import { resolveReferrer, REFERRAL_BONUS } from "@/lib/referral";
 import { grantBonusClaims } from "@/lib/bonus";
+import { getFlag, FLAG_REGISTER_PAUSED } from "@/lib/settings";
 import { utmCreateData } from "@/lib/utm";
 
 export const POST = route(async (req) => {
   // Throttle account creation per IP — also makes email-enumeration probing impractical.
   throttle(req, "register", 8, 60 * 60_000);
+  // Emergency kill-switch: pause new signups during a mass-registration attack.
+  if (await getFlag(FLAG_REGISTER_PAUSED)) {
+    throw new ApiError("VALIDATION_ERROR", { message: "目前暫停開放新帳號註冊，請稍後再試。" });
+  }
   const body = await readBody(req, registerSchema);
   const existing = await prisma.user.findFirst({
     where: { email: { equals: body.email, mode: "insensitive" } },

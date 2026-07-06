@@ -7,6 +7,7 @@ import { writeAudit } from "@/lib/audit";
 import { exchangeCode, fetchGoogleProfile } from "@/lib/google";
 import { resolveReferrer, REF_COOKIE, REFERRAL_BONUS } from "@/lib/referral";
 import { grantBonusClaims } from "@/lib/bonus";
+import { getFlag, FLAG_REGISTER_PAUSED } from "@/lib/settings";
 import { UTM_COOKIE, normalizeUtm, utmCreateData } from "@/lib/utm";
 
 export const runtime = "nodejs";
@@ -50,6 +51,10 @@ export const GET = route(async (req) => {
     const existing = await prisma.user.findFirst({
       where: { email: { equals: email, mode: "insensitive" } },
     });
+    // Kill-switch: pause NEW signups (existing users can still log in).
+    if (!existing && (await getFlag(FLAG_REGISTER_PAUSED))) {
+      return NextResponse.redirect(`${origin}/login?error=register_paused`);
+    }
     // Account-takeover guard: only log in as an EXISTING account when Google has
     // verified this email. An unverified email must not be able to attach to (and
     // sign in as) someone else's account. New signups are unaffected.

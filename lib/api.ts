@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { ZodType } from "zod";
 import { ApiError, errorResponse } from "./errors";
+import { clientIp } from "./ip";
 
 // Wraps a route handler with unified error handling. Generic over the dynamic
 // segment params so both static and dynamic routes type-check against Next's
@@ -34,9 +35,7 @@ export async function readBody<T>(req: NextRequest, schema: ZodType<T>): Promise
 }
 
 export function clientMeta(req: NextRequest): { ip: string | null; ua: string | null } {
-  const fwd = req.headers.get("x-forwarded-for");
-  const ip = fwd ? fwd.split(",")[0]!.trim() : req.headers.get("x-real-ip");
-  return { ip: ip ?? null, ua: req.headers.get("user-agent") };
+  return { ip: clientIp(req), ua: req.headers.get("user-agent") };
 }
 
 // Behind Zeabur's reverse proxy, `new URL(req.url).origin` is the internal

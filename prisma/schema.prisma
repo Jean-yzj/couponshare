@@ -526,3 +526,14 @@ model SocialPost {
   @@index([status])
   @@map("social_posts")
 }
+
+// Tiny key-value store for operational flags — e.g. the claim / register
+// kill-switches an admin can flip during an abuse incident. Read through a short
+// in-process cache (lib/settings) so the hot paths don't hit the DB every request.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
