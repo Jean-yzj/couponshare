@@ -15,6 +15,7 @@ import {
   GradientPanel,
   ProgressBar,
   AchievementRow,
+  LevelEmblem,
 } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { HeroSparkles } from "@/components/Mascot";
@@ -160,8 +161,8 @@ export default function ScorePage() {
                 size={64}
                 className="ring-4 ring-white/30"
               />
-              <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-white text-gold-ink shadow-soft">
-                <Icon name="medal" size={15} />
+              <span className="absolute -bottom-2 -right-2 rounded-[11px] bg-white/90 p-0.5 shadow-soft">
+                <LevelEmblem level={data.user_level} size={30} />
               </span>
             </div>
             <div className="min-w-0 flex-1">
@@ -310,15 +311,7 @@ export default function ScorePage() {
             <Card key={l.key} className={cn("p-4", active && "border-accent ring-2 ring-accent/15")}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
-                  <div
-                    className={cn(
-                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white",
-                      lm.emblem,
-                      lm.emblemEdge,
-                    )}
-                  >
-                    <Icon name="medal" size={20} />
-                  </div>
+                  <LevelEmblem level={l.key} size={54} className="-my-1 shrink-0" />
                   <div>
                     <div className="flex items-center gap-1.5">
                       <p className="font-semibold text-ink">{l.name}</p>

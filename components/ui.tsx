@@ -179,13 +179,79 @@ export function Pill({
   );
 }
 
+// Tier emblem — a rounded "squircle" badge with a chunky bottom lip (matching the
+// app's cute, rounded language) and a glyph unique to each tier: 新手 star-spark,
+// 達人 gem, 傳奇 crown. Colors come from theme variables so it adapts with the palette.
+const EMBLEM: Record<string, { main: string; edge: string; glyph: "spark" | "gem" | "crown" }> = {
+  LEVEL_1: { main: "var(--color-accent)", edge: "var(--color-accent-press)", glyph: "spark" },
+  LEVEL_2: { main: "var(--color-teal)", edge: "#14697c", glyph: "gem" },
+  LEVEL_3: { main: "var(--color-gold)", edge: "#9c7419", glyph: "crown" },
+};
+
+export function LevelEmblem({
+  level,
+  size = 44,
+  className,
+}: {
+  level: string;
+  size?: number;
+  className?: string;
+}) {
+  const m = EMBLEM[level] ?? EMBLEM.LEVEL_1;
+  const name = LEVEL_META[level]?.name ?? "";
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      className={className}
+      role="img"
+      aria-label={`${name}徽章`}
+    >
+      <rect x="12" y="12" width="76" height="76" rx="24" fill={m.edge} />
+      <rect x="12" y="12" width="76" height="70" rx="24" fill={m.main} />
+      {m.glyph === "spark" && (
+        <path
+          d="M50,31 C51.8,41.5 58,46.5 68.5,48 C58,49.5 51.8,54.5 50,65 C48.2,54.5 42,49.5 31.5,48 C42,46.5 48.2,41.5 50,31 Z"
+          fill="#fff"
+        />
+      )}
+      {m.glyph === "gem" && (
+        <>
+          <path d="M35,42 L44,32 L56,32 L65,42 L50,63 Z" fill="#fff" />
+          <path
+            d="M35,42 L65,42 M50,63 L44,32 M50,63 L56,32"
+            stroke={m.main}
+            strokeWidth="1.7"
+            fill="none"
+            strokeLinejoin="round"
+          />
+        </>
+      )}
+      {m.glyph === "crown" && (
+        <>
+          <path d="M32,59 L32,40 L43,50 L50,34 L57,50 L68,40 L68,59 Z" fill="#fff" />
+          <circle cx="32" cy="40" r="3.1" fill="#fff" />
+          <circle cx="50" cy="34" r="3.1" fill="#fff" />
+          <circle cx="68" cy="40" r="3.1" fill="#fff" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 export function LevelBadge({ level }: { level: string }) {
   const m = LEVEL_META[level] ?? LEVEL_META.LEVEL_1;
   return (
-    <Pill className={m.cls} icon="medal">
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full py-0.5 pl-0.5 pr-2 text-xs font-medium",
+        m.cls,
+      )}
+    >
+      <LevelEmblem level={level} size={16} />
       {m.name}
-      <span className="ml-0.5 text-[10px] leading-none tracking-tight">{"★".repeat(m.stars)}</span>
-    </Pill>
+    </span>
   );
 }
 
