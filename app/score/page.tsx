@@ -211,7 +211,7 @@ export default function ScorePage() {
         </div>
       </GradientPanel>
 
-      {/* Daily application quota */}
+      {/* Today's daily application quota */}
       {me.apply_remaining !== undefined && (
         <div className="mt-4 flex items-center gap-3 rounded-2xl border border-line bg-paper p-4 shadow-soft">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-tint text-accent">
@@ -234,24 +234,47 @@ export default function ScorePage() {
         </div>
       )}
 
-      {/* Invite friends */}
-      <InviteCard userId={me.id} />
-
-      {/* Social post reward entry */}
-      <div className="mt-4 flex items-center gap-3 rounded-2xl border border-line bg-paper p-4 shadow-soft">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-tint text-accent">
-          <Icon name="send" size={20} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-ink">社群發文換申請次數</p>
-          <p className="mt-0.5 text-sm text-ink-soft">
-            發一篇 #CouponShare 貼文，最多換 20 次申請次數。
-          </p>
+      {/* This month's accumulated bonus pool (社群發文 / 推薦) — usable any day this month */}
+      {me.apply_bonus_pool !== undefined && (
+        <div className="mt-3 flex items-center gap-3 rounded-2xl border border-line bg-paper p-4 shadow-soft">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pine-tint text-pine">
+            <Icon name="coin" size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-ink">本月累積額度</p>
+            <p className="mt-0.5 text-sm text-ink-soft">
+              發文、邀請賺到的加碼次數，這個月內哪天用都可以。
+            </p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="font-display text-3xl font-extrabold leading-none text-pine">
+              {me.apply_bonus_pool}
+            </p>
+            <p className="mt-0.5 text-[11px] text-ink-faint">次剩餘</p>
+          </div>
         </div>
-        <Button href="/social-reward" variant="outline" size="sm" iconRight="chevronRight">
-          前往
+      )}
+
+      {/* Social post reward entry (before invite, per product order) */}
+      <div className="mt-4 rounded-2xl border border-line bg-paper p-4 shadow-soft">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-tint text-accent">
+            <Icon name="send" size={20} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-ink">社群發文換申請次數</p>
+            <p className="mt-0.5 text-sm text-ink-soft">
+              發一篇 #CouponShare 貼文，最多換 20 次申請次數。
+            </p>
+          </div>
+        </div>
+        <Button href="/social-reward" full variant="outline" iconRight="chevronRight" className="mt-3">
+          前往發文
         </Button>
       </div>
+
+      {/* Invite friends */}
+      <InviteCard userId={me.id} />
 
       {/* Achievements */}
       <div className="mb-3 mt-7 flex items-center justify-between">
@@ -384,7 +407,9 @@ function InviteCard({ userId }: { userId: string }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-ink">邀請好友，賺申請次數</p>
-          <p className="mt-0.5 text-sm text-ink-soft">每邀請一位好友註冊，你當天多 2 次申請額度。</p>
+          <p className="mt-0.5 text-sm text-ink-soft">
+            歡迎大家一起讓更多人知道這個平臺，然後把善意傳遞下去。
+          </p>
         </div>
       </div>
       <button

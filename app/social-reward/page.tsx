@@ -143,22 +143,31 @@ export default function SocialRewardPage() {
         <div className="flex items-center gap-2 mb-3">
           <Eyebrow>活動說明</Eyebrow>
         </div>
-        <ul className="space-y-2 text-sm text-ink-soft">
+        <ul className="space-y-2.5 text-sm leading-relaxed text-ink-soft">
           <li className="flex items-start gap-2">
             <Icon name="check" size={15} className="mt-0.5 shrink-0 text-pine" />
-            在 Threads 等社群發一篇公開貼文、帶上 <span className="font-medium text-ink">#CouponShare</span>，分享你的使用心得（可以寫：在平台上得到的優惠券、收穫到的好評、分享出去的東西，但不限於這些）。
+            <span>
+              在 Threads 等社群發一篇公開貼文、帶上{" "}
+              <span className="font-medium text-ink">#CouponShare</span>
+              ，分享你的使用心得（可以寫：在平台上得到的優惠券、收穫到的好評、分享出去的東西，但不限於這些）。
+            </span>
           </li>
           <li className="flex items-start gap-2">
             <Icon name="check" size={15} className="mt-0.5 shrink-0 text-pine" />
-            審核 7 天內完成。通過 <span className="font-medium text-ink">+10 次申請</span>、貼文讚數破 100（以截圖為準）<span className="font-medium text-ink">+20 次</span>、貢獻值 <span className="font-medium text-ink">+5</span>。
+            <span>
+              審核 7 天內完成。通過{" "}
+              <span className="font-medium text-ink">+10 次申請</span>、貼文讚數破 100（以截圖為準）
+              <span className="font-medium text-ink">+20 次</span>、貢獻值{" "}
+              <span className="font-medium text-ink">+5</span>。
+            </span>
           </li>
           <li className="flex items-start gap-2">
             <Icon name="check" size={15} className="mt-0.5 shrink-0 text-pine" />
-            每人每月限一篇。帳號需設為公開，審核者才看得到內容。
+            <span>每人每月限一篇。帳號需設為公開，審核者才看得到內容。</span>
           </li>
           <li className="flex items-start gap-2">
             <Icon name="info" size={15} className="mt-0.5 shrink-0 text-ink-faint" />
-            內容偏負面不予通過。
+            <span>內容偏負面不予通過。</span>
           </li>
         </ul>
       </Card>

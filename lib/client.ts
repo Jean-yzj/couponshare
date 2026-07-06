@@ -127,6 +127,7 @@ export type Me = {
   apply_remaining?: number;
   apply_limit?: number;
   apply_base?: number;
+  apply_bonus_pool?: number;
   apply_can_share_for_more?: boolean;
   must_share_first?: boolean;
 };

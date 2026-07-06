@@ -41,6 +41,8 @@ export const GET = route(async () => {
       apply_remaining: quota.remaining,
       apply_limit: quota.limit,
       apply_base: quota.base,
+      // 本月累積加碼池（社群發文 / 推薦），當月有效、哪天用都行。
+      apply_bonus_pool: quota.poolRemaining,
       // Whether publishing one more coupon would actually raise today's limit — so
       // the UI only promises "share for +3" when it's true, not at the hard ceiling.
       apply_can_share_for_more: quota.canShareForMore,
