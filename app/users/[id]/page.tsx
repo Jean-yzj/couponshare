@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useApi } from "@/lib/client";
+import { useApi, useMe, apiFetch, ApiErr } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
 import { Card, Avatar, LevelBadge, Skeleton, EmptyState, Button, Banner } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -48,7 +50,41 @@ function Stars({ score, size = 16 }: { score: number; size?: number }) {
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { data, loading } = useApi<Profile>(`/api/v1/users/${id}`);
+  const { me } = useMe();
+  const { data, loading, refetch } = useApi<Profile>(`/api/v1/users/${id}`);
+  const [acting, setActing] = useState(false);
+
+  // Admin: suspend / restore this account directly, independent of any report —
+  // so you can act on someone whose report review already closed.
+  async function suspend() {
+    const reason = window.prompt("停權這個帳號並下架其所有票券？可填原因（會通知對方，可留空）。");
+    if (reason === null) return; // cancelled
+    setActing(true);
+    try {
+      await apiFetch(`/api/v1/admin/users/${id}/suspend`, {
+        method: "POST",
+        body: JSON.stringify({ reason: reason.trim() || undefined }),
+      });
+      await refetch();
+    } catch (e) {
+      alert(e instanceof ApiErr ? e.message : "操作失敗");
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function restore() {
+    if (!confirm("恢復這個帳號並重新上架其票券？")) return;
+    setActing(true);
+    try {
+      await apiFetch(`/api/v1/admin/users/${id}/restore`, { method: "POST" });
+      await refetch();
+    } catch (e) {
+      alert(e instanceof ApiErr ? e.message : "操作失敗");
+    } finally {
+      setActing(false);
+    }
+  }
 
   if (loading) return <Skeleton className="mx-auto h-64 max-w-2xl rounded-2xl" />;
   if (!data)
@@ -86,7 +122,7 @@ export default function ProfilePage() {
         {suspended && (
           <div className="mt-4">
             <Banner tone="warn" icon="ban">
-              此帳號因多次被檢舉已被停權。
+              此帳號目前已被停權，暫時無法分享或申請票券。
             </Banner>
           </div>
         )}
@@ -100,6 +136,26 @@ export default function ProfilePage() {
             star
           />
         </div>
+
+        {me?.is_admin && me.id !== user.id && (
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-4">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-ink-faint">
+              <Icon name="shield" size={13} /> 管理員操作
+            </span>
+            {suspended ? (
+              <Button size="sm" variant="outline" icon="check" loading={acting} onClick={restore}>
+                解除停權
+              </Button>
+            ) : (
+              <Button size="sm" variant="danger" icon="ban" loading={acting} onClick={suspend}>
+                停權此帳號
+              </Button>
+            )}
+            <Link href="/admin/suspended" className="ml-auto text-xs text-accent hover:underline">
+              被停權帳號
+            </Link>
+          </div>
+        )}
       </Card>
 
       {/* Ratings */}
