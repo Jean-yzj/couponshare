@@ -7,6 +7,7 @@ import {
   Card,
   GradientPanel,
   LevelBadge,
+  LevelEmblem,
   NeedLogin,
   LoadFailed,
   PageHeader,
@@ -109,8 +110,12 @@ export default function LeaderboardPage() {
                     {e.rank}
                   </span>
                 </div>
-                <p className="mt-3 max-w-full truncate text-sm font-bold text-ink">{e.display_name}</p>
-                <p className="mt-0.5 flex items-center gap-1 font-display text-lg font-extrabold text-accent">
+                <p className="mt-2.5 max-w-full truncate text-sm font-bold text-ink">{e.display_name}</p>
+                <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-canvas px-2 py-0.5">
+                  <LevelEmblem level={e.user_level} size={15} />
+                  <span className="text-[11px] font-medium text-ink-soft">{e.level_name}</span>
+                </span>
+                <p className="mt-1.5 font-display text-lg font-extrabold text-accent">
                   {e.contribution_score}
                 </p>
                 <span className="text-[11px] text-ink-faint">貢獻分</span>

@@ -26,11 +26,21 @@ export const GET = route(async () => {
   const userLevel = recomputed?.level ?? user.userLevel;
   const monthlyGifts = recomputed?.monthlyGifts ?? 0;
 
-  const ledger = await prisma.scoreLedger.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const [ledger, counts] = await Promise.all([
+    prisma.scoreLedger.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    // Lifetime totals per event — powers the tiered achievements (銅/銀/金/傳說).
+    prisma.scoreLedger.groupBy({
+      by: ["eventType"],
+      where: { userId: user.id },
+      _count: { _all: true },
+    }),
+  ]);
+  const eventCounts: Record<string, number> = {};
+  for (const c of counts) eventCounts[c.eventType] = c._count._all;
   const level = LEVELS[userLevel];
 
   return jsonOk({
@@ -39,6 +49,7 @@ export const GET = route(async () => {
     level_name: level.name,
     risk_flag: user.contributionScore < 0,
     monthly_gifts: monthlyGifts,
+    event_counts: eventCounts,
     next_level: nextLevelTarget(user.contributionScore, monthlyGifts),
     earn_rules: EARN_RULES,
     penalty_rules: PENALTY_RULES,

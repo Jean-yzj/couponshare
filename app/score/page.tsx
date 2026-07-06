@@ -14,7 +14,6 @@ import {
   Avatar,
   GradientPanel,
   ProgressBar,
-  AchievementRow,
   LevelEmblem,
 } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
@@ -51,6 +50,7 @@ type ScoreData = {
   penalty_rules: Rule[];
   levels: Level[];
   ledger: Ledger[];
+  event_counts: Record<string, number>;
 };
 
 const EVENT_ICON: Record<string, IconName> = {
@@ -64,6 +64,21 @@ const EVENT_ICON: Record<string, IconName> = {
   ADMIN_ADJUSTMENT: "shield",
 };
 const LEVEL_NUM: Record<string, number> = { LEVEL_1: 1, LEVEL_2: 2, LEVEL_3: 3 };
+
+// Tiered achievements — each earns 銅 → 銀 → 金 → 傳說 as the lifetime count climbs,
+// so there's always a next goal instead of everything unlocking on the first action.
+const TIER_STYLE = [
+  { name: "銅牌", bg: "#C17A43", edge: "#98592F" },
+  { name: "銀牌", bg: "#96A2AF", edge: "#697583" },
+  { name: "金牌", bg: "#F0A200", edge: "#B77C00" },
+  { name: "傳說", bg: "#7C5CFC", edge: "#5B3FD1" },
+];
+const ACHIEVEMENTS: { key: string; label: string; unit: string; icon: IconName; thresholds: number[] }[] = [
+  { key: "COUPON_GIFTED", label: "送出票券", unit: "張", icon: "gift", thresholds: [1, 10, 100, 1000] },
+  { key: "COUPON_EXCHANGED", label: "完成交換", unit: "次", icon: "swap", thresholds: [1, 10, 50, 200] },
+  { key: "POSITIVE_RATING", label: "收到好評", unit: "則", icon: "star", thresholds: [1, 10, 50, 200] },
+  { key: "THANK_YOU_MESSAGE", label: "收到感謝", unit: "則", icon: "heart", thresholds: [1, 10, 50, 200] },
+];
 
 export default function ScorePage() {
   const { me, loading: meLoading } = useMe();
@@ -95,51 +110,14 @@ export default function ScorePage() {
   const curMeta = LEVEL_META[data.user_level] ?? LEVEL_META.LEVEL_1;
   const levelNum = LEVEL_NUM[data.user_level] ?? 1;
 
-  const doneEvents = new Set(data.ledger.map((e) => e.event_type));
-  const badges: {
-    icon: IconName;
-    label: string;
-    condition: string;
-    tone: "blue" | "gold" | "pine" | "teal" | "grape" | "rose";
-    unlocked: boolean;
-  }[] = [
-    { icon: "leaf", label: "初來乍到", condition: "註冊加入 CouponShare 就完成", tone: "pine", unlocked: true },
-    {
-      icon: "gift",
-      label: "樂於分享",
-      condition: "成功送出第一張票券",
-      tone: "blue",
-      unlocked: doneEvents.has("COUPON_GIFTED") || data.contribution_score > 0,
-    },
-    {
-      icon: "swap",
-      label: "交換達人",
-      condition: "完成一次票券交換",
-      tone: "teal",
-      unlocked: doneEvents.has("COUPON_EXCHANGED"),
-    },
-    {
-      icon: "star",
-      label: "人氣好評",
-      condition: "獲得第一則正面評價",
-      tone: "gold",
-      unlocked: doneEvents.has("POSITIVE_RATING"),
-    },
-    {
-      icon: "heart",
-      label: "揪感心",
-      condition: "收到對方的感謝訊息",
-      tone: "rose",
-      unlocked: doneEvents.has("THANK_YOU_MESSAGE"),
-    },
-    {
-      icon: "crown",
-      label: "傳奇會員",
-      condition: "貢獻分達 10000，或當月成功送出 50 張",
-      tone: "grape",
-      unlocked: data.user_level === "LEVEL_3",
-    },
-  ];
+  const counts = data.event_counts ?? {};
+  const achievements = ACHIEVEMENTS.map((a) => {
+    const count = counts[a.key] ?? 0;
+    const tier = a.thresholds.filter((t) => count >= t).length; // 0=locked … 4=傳說
+    return { ...a, count, tier };
+  });
+  const unlockedTiers = achievements.reduce((n, a) => n + a.tier, 0);
+  const totalTiers = ACHIEVEMENTS.length * TIER_STYLE.length;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -277,16 +255,22 @@ export default function ScorePage() {
       {/* Invite friends */}
       <InviteCard userId={me.id} />
 
-      {/* Achievements */}
+      {/* Achievements — tiered 銅 / 銀 / 金 / 傳說 */}
       <div className="mb-3 mt-7 flex items-center justify-between">
-        <h2 className="font-semibold text-ink">我的徽章</h2>
-        <span className="text-xs text-ink-faint">
-          已解鎖 {badges.filter((b) => b.unlocked).length}/{badges.length}
-        </span>
+        <h2 className="font-semibold text-ink">成就徽章</h2>
+        <span className="text-xs text-ink-faint">已達 {unlockedTiers}/{totalTiers} 級</span>
       </div>
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {badges.map((b) => (
-          <AchievementRow key={b.label} {...b} />
+        {achievements.map((a) => (
+          <TierAchievement
+            key={a.key}
+            label={a.label}
+            unit={a.unit}
+            icon={a.icon}
+            thresholds={a.thresholds}
+            count={a.count}
+            tier={a.tier}
+          />
         ))}
       </div>
 
@@ -412,6 +396,57 @@ function InviteCard({ userId }: { userId: string }) {
         <Icon name={copied ? "check" : "share"} size={16} />
         {copied ? "已複製邀請連結" : "複製我的邀請連結"}
       </button>
+    </div>
+  );
+}
+
+function TierAchievement({
+  label,
+  unit,
+  icon,
+  thresholds,
+  count,
+  tier,
+}: {
+  label: string;
+  unit: string;
+  icon: IconName;
+  thresholds: number[];
+  count: number;
+  tier: number;
+}) {
+  const unlocked = tier > 0;
+  const cur = unlocked ? TIER_STYLE[tier - 1] : { name: "未解鎖", bg: "#D9D3C7", edge: "#B9B3A6" };
+  const nextT = tier < thresholds.length ? thresholds[tier] : null;
+  const prevT = tier > 0 ? thresholds[tier - 1] : 0;
+  const pct = nextT ? Math.min(100, Math.round(((count - prevT) / (nextT - prevT)) * 100)) : 100;
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-line bg-paper p-3.5 shadow-soft">
+      <span
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white"
+        style={{ backgroundColor: cur.bg, boxShadow: `0 3px 0 0 ${cur.edge}` }}
+      >
+        <Icon name={icon} size={22} className={unlocked ? undefined : "opacity-60"} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="truncate font-semibold text-ink">{label}</p>
+          <span
+            className={cn("shrink-0 text-xs font-bold", !unlocked && "text-ink-faint")}
+            style={unlocked ? { color: cur.edge } : undefined}
+          >
+            {cur.name}
+          </span>
+        </div>
+        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-sand">
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: cur.bg }} />
+        </div>
+        <p className="mt-1 text-xs text-ink-faint">
+          {nextT
+            ? `已達 ${count} ${unit}・距${TIER_STYLE[tier].name}還差 ${(nextT - count).toLocaleString()} ${unit}`
+            : `已達 ${count.toLocaleString()} ${unit}・最高級`}
+        </p>
+      </div>
     </div>
   );
 }
