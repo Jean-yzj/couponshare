@@ -73,48 +73,67 @@ export function Landing() {
   return (
     <div className="space-y-24 pb-12">
       {/* Hero */}
-      <section className="grid items-center gap-12 pt-4 md:grid-cols-[1.05fr_0.95fr] md:pt-12">
-        <div className="text-center md:text-left">
-          <Eyebrow>
-            <Icon name="heart" size={13} /> Share what you don&apos;t use
-          </Eyebrow>
-          <h1 className="mt-4 text-[2.05rem] font-extrabold leading-[1.18] tracking-tight text-ink sm:text-[2.7rem] md:text-[3.35rem]">
-            把用不到的優惠券，
-            <br />
-            和需要的人<span className="text-accent">分享</span>
-          </h1>
-          <p className="mt-5 max-w-md text-[16px] leading-relaxed text-ink-soft">
-            一張你還沒時間用的券，剛好是別人正需要的小確幸。把「我用不到」交給「我需要」，不花一毛錢，也能讓世界溫暖一點。
-          </p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3 md:justify-start">
-            <Button href="/login" size="lg" icon="heart">加入，開始分享</Button>
-            <Button href="/login" size="lg" variant="outline">我已經有帳號</Button>
-          </div>
-          <div className="flex justify-center md:justify-start">
-            <LiveStats />
-          </div>
+      <section className="relative pt-4 md:pt-12">
+        {/* ambient glows for depth */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute -top-10 right-[6%] h-72 w-72 rounded-full bg-accent/15 blur-[90px]" />
+          <div className="absolute left-0 top-28 h-56 w-56 rounded-full bg-grape/10 blur-[80px]" />
         </div>
+        <div className="grid items-center gap-12 md:grid-cols-[1.05fr_0.95fr]">
+          <div className="text-center md:text-left">
+            <Eyebrow>
+              <Icon name="heart" size={13} /> Share what you don&apos;t use
+            </Eyebrow>
+            <h1 className="mt-4 text-[2.05rem] font-extrabold leading-[1.18] tracking-tight text-ink sm:text-[2.7rem] md:text-[3.35rem]">
+              把用不到的優惠券，
+              <br />
+              和需要的人
+              <span className="relative whitespace-nowrap text-accent">
+                分享
+                <svg aria-hidden viewBox="0 0 120 8" preserveAspectRatio="none" className="absolute -bottom-1.5 left-0 h-2.5 w-full text-accent/35">
+                  <path d="M1 5.5 C 34 1, 88 1, 119 4.5" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round" />
+                </svg>
+              </span>
+            </h1>
+            <p className="mt-5 max-w-md text-[16px] leading-relaxed text-ink-soft">
+              一張你還沒時間用的券，剛好是別人正需要的小確幸。把「我用不到」交給「我需要」，不花一毛錢，也能讓世界溫暖一點。
+            </p>
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3 md:justify-start">
+              <Button href="/login" size="lg" icon="heart">加入，開始分享</Button>
+              <Button href="/login" size="lg" variant="outline">我已經有帳號</Button>
+            </div>
+            <div className="mt-6 flex justify-center md:justify-start">
+              <LiveStats />
+            </div>
+          </div>
 
-        <div className="relative mx-auto h-[330px] w-[300px] sm:w-[360px]">
-          <SampleCard brand="摩斯" cat="速食" title="摩斯漢堡 經典漢堡買一送一" owner="Amy · 達人" meta="想換超商券" type="EXCHANGE"
-            className="absolute left-0 top-10 w-[190px] -rotate-[8deg] sm:w-[208px]" />
-          <SampleCard brand="全家" cat="超商" title="全家 任選飲料第二件 6 折" owner="Nina · 傳奇" meta="11 小時後到期" type="GIFT"
-            className="absolute right-0 top-0 w-[190px] rotate-[8deg] sm:w-[208px]" />
-          <SampleCard brand="星巴克" cat="咖啡" title="星巴克 大杯飲料買一送一" owner="Jean · 傳奇" meta="4 天後到期" type="GIFT"
-            className="absolute bottom-1 left-1/2 z-10 w-[224px] -translate-x-1/2 sm:w-[240px]" />
+          <div className="relative mx-auto h-[340px] w-[300px] sm:w-[360px]">
+            {/* soft glow pad behind the card stack */}
+            <div aria-hidden className="absolute inset-x-4 bottom-4 top-8 -z-10 rounded-[44px] bg-grad-brand opacity-20 blur-2xl" />
+            <Icon name="sparkle" size={18} className="absolute -left-1 top-3 animate-twinkle text-accent" />
+            <Icon name="sparkle" size={13} className="absolute bottom-7 right-1 animate-twinkle text-grape [animation-delay:1s]" />
+            <SampleCard brand="摩斯" cat="速食" title="摩斯漢堡 經典漢堡買一送一" owner="Amy · 達人" meta="想換超商券" type="EXCHANGE"
+              className="absolute left-0 top-10 w-[190px] -rotate-[8deg] sm:w-[208px]" />
+            <SampleCard brand="全家" cat="超商" title="全家 任選飲料第二件 6 折" owner="Nina · 傳奇" meta="11 小時後到期" type="GIFT"
+              className="absolute right-0 top-0 w-[190px] rotate-[8deg] sm:w-[208px]" />
+            <SampleCard brand="星巴克" cat="咖啡" title="星巴克 大杯飲料買一送一" owner="Jean · 傳奇" meta="4 天後到期" type="GIFT"
+              className="absolute bottom-1 left-1/2 z-10 w-[224px] -translate-x-1/2 sm:w-[240px]" />
+          </div>
         </div>
       </section>
 
       {/* Origin story */}
       <section className="mx-auto max-w-2xl">
-        <Card className="bg-accent-tint/50 p-7 sm:p-9">
+        <Card className="relative overflow-hidden bg-accent-tint/50 p-7 sm:p-9">
+          <span aria-hidden className="pointer-events-none absolute -right-1 -top-8 select-none font-display text-[130px] leading-none text-accent/10">”</span>
           <Eyebrow>
             <Icon name="sparkle" size={14} /> Our story · 為什麼做這個
           </Eyebrow>
-          <div className="mt-4 space-y-4 text-[16px] leading-loose text-ink-soft">
+          <div className="relative mt-4 space-y-4 text-[16px] leading-loose text-ink-soft">
             <p>我常在社群上看到，很多人手邊有用不到的兌換券，也很樂意分享出去<span className="text-ink">——只是一直沒有一個好地方可以分享。</span></p>
             <p>於是我做了 CouponShare，想讓「我剛好用不到」可以遇上「我剛好需要」。每一張被好好使用的券，都是一次小小的互助；不用花一毛錢，也能讓彼此的生活、讓這個世界，變得溫暖一點點。</p>
           </div>
+          <p className="mt-5 text-sm font-medium text-ink-faint">— CouponShare，一個關於分享的小小實驗</p>
         </Card>
       </section>
 
@@ -127,7 +146,7 @@ export function Landing() {
         </div>
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {STEPS.map((s, i) => (
-            <Card key={s.title} className="p-5">
+            <Card key={s.title} className="p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lift">
               <div className="flex items-center gap-3">
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-white"><Icon name={s.icon} size={20} /></span>
                 <span className="font-display text-lg font-extrabold text-ink-faint">0{i + 1}</span>
@@ -158,7 +177,7 @@ export function Landing() {
           </div>
           <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
-              <div key={f.kind} className="overflow-hidden rounded-2xl border border-line bg-paper shadow-soft">
+              <div key={f.kind} className="overflow-hidden rounded-2xl border border-line bg-paper shadow-soft transition-all duration-200 hover:-translate-y-1 hover:border-accent/30 hover:shadow-lift">
                 <div className="flex h-32 items-center justify-center border-b border-line bg-canvas px-5">
                   <FeatureVisual kind={f.kind} />
                 </div>
@@ -193,7 +212,11 @@ export function Landing() {
       {/* Closing CTA — solid blue band (plain div so the colour actually renders) */}
       <section className="mx-auto max-w-3xl">
         <div className="relative flex flex-col items-center overflow-hidden rounded-[28px] bg-grad-brand-deep px-6 py-12 text-center shadow-glow">
-          <span className="eyebrow text-white/80">Join us</span>
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-white/10 blur-2xl" />
+            <div className="absolute -bottom-14 -left-10 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+          </div>
+          <span className="relative eyebrow text-white/80">Join us</span>
           <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">讓世界溫暖一點，從一張券開始</h2>
           <p className="mt-2.5 max-w-md text-sm leading-relaxed text-white/85">你用不到的，也許正是別人今天需要的。加入我們，把好康傳下去。</p>
           <Button href="/login" size="lg" variant="secondary" icon="heart" className="mt-6">加入 CouponShare</Button>

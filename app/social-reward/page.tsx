@@ -147,15 +147,15 @@ export default function SocialRewardPage() {
           <div className="mt-4 space-y-2.5 rounded-2xl bg-white/15 p-4 backdrop-blur-sm">
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm text-white/85">審核通過</span>
-              <span className="font-display text-xl font-extrabold">送 10 次申請</span>
+              <span className="font-display text-lg font-extrabold">送 10 次申請</span>
             </div>
             <div className="flex items-center justify-between gap-2 border-t border-white/15 pt-2.5">
               <span className="text-sm text-white/85">貼文讚數破 100</span>
-              <span className="font-display text-xl font-extrabold">改送 20 次</span>
+              <span className="font-display text-lg font-extrabold">再多送 10 次</span>
             </div>
             <div className="flex items-center justify-between gap-2 border-t border-white/15 pt-2.5">
               <span className="text-sm text-white/85">以上兩種都再加</span>
-              <span className="font-display text-base font-extrabold">5 點貢獻值</span>
+              <span className="font-display text-lg font-extrabold">5 點貢獻值</span>
             </div>
           </div>
 
@@ -200,7 +200,7 @@ export default function SocialRewardPage() {
               2
             </span>
             <p className="text-sm leading-relaxed text-ink-soft">
-              貼文中有提到「CouponShare」就可以，要不要加井字號 # 都行。
+              貼文中有提到「CouponShare」就可以。
             </p>
           </li>
           <li className="flex items-start gap-3">
