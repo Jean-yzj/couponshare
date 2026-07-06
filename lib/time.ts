@@ -12,3 +12,10 @@ export function startOfMonthTaipei(now: Date = new Date()): Date {
   const firstTaipei = Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1, 0, 0, 0);
   return new Date(firstTaipei - TZ_OFFSET_MS);
 }
+
+// Calendar-month key in Taipei time, e.g. "2026-07". Used to scope the monthly
+// bonus-claim pool: a balance stamped with a past month reads as expired.
+export function monthKeyTaipei(now: Date = new Date()): string {
+  const t = new Date(now.getTime() + TZ_OFFSET_MS);
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}`;
+}

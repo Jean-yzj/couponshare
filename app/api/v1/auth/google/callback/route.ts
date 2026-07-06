@@ -5,7 +5,8 @@ import { route, clientMeta, publicOrigin } from "@/lib/api";
 import { createSession } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
 import { exchangeCode, fetchGoogleProfile } from "@/lib/google";
-import { resolveReferrer, REF_COOKIE } from "@/lib/referral";
+import { resolveReferrer, REF_COOKIE, REFERRAL_BONUS } from "@/lib/referral";
+import { grantBonusClaims } from "@/lib/bonus";
 import { UTM_COOKIE, normalizeUtm, utmCreateData } from "@/lib/utm";
 
 export const runtime = "nodejs";
@@ -55,6 +56,7 @@ export const GET = route(async (req) => {
     if (existing && !profile.emailVerified) {
       return NextResponse.redirect(`${origin}/login?error=email_unverified`);
     }
+    const referrerId = existing ? null : await resolveReferrer(savedRef);
     const user = existing
       ? await prisma.user.update({
           where: { id: existing.id },
@@ -67,10 +69,13 @@ export const GET = route(async (req) => {
             avatarUrl: profile.picture,
             loginProvider: "GOOGLE",
             lastLoginAt: new Date(),
-            referredById: await resolveReferrer(savedRef),
+            referredById: referrerId,
             ...utmCreateData(attribution),
           },
         });
+
+    // Referral reward: the inviter gets +2 claim-attempts in their monthly pool.
+    if (referrerId) await grantBonusClaims(prisma, referrerId, REFERRAL_BONUS);
 
     const meta = clientMeta(req);
     await writeAudit(prisma, {

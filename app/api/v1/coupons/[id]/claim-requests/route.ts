@@ -99,6 +99,16 @@ export const POST = route(async (req, ctx) => {
         data: { claimRequestCount: { increment: 1 } },
       });
 
+      // If this application went past the free daily allowance, it spends one credit
+      // from the monthly bonus pool (社群發文 / 推薦加碼). Guarded so it never goes
+      // negative; the pool only tops up the day, still under the hard daily ceiling.
+      if (quota.hasShared && quota.used >= quota.dailyAllowance && quota.poolRemaining > 0) {
+        await tx.user.updateMany({
+          where: { id: user.id, bonusClaims: { gt: 0 } },
+          data: { bonusClaims: { decrement: 1 } },
+        });
+      }
+
       const autoApprove =
         locked.type === "GIFT" && locked.unlockPolicy === "AUTO_REVEAL_AFTER_MESSAGE";
 

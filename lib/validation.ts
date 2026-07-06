@@ -181,3 +181,19 @@ export const adminResolveSchema = z.object({
   decision: z.enum(["ACCEPT", "REJECT"]),
   note: z.string().max(500).optional().nullable(),
 });
+
+// 社群發文換申請次數 — both proofs (public link + screenshot) are required.
+export const socialPostSchema = z.object({
+  topic: z.string().trim().min(2).max(200),
+  post_date: z.coerce.date(),
+  post_url: z.string().trim().url().max(500),
+  evidence_image: z.string().min(1).max(700_000),
+});
+
+// Admin decision. APPROVE grants a bonus tier: 10 (normal) or 20 (screenshot shows
+// 100+ likes). REJECT (e.g. negative post) grants nothing.
+export const socialPostResolveSchema = z.object({
+  decision: z.enum(["APPROVE", "REJECT"]),
+  bonus: z.union([z.literal(10), z.literal(20)]).optional(),
+  note: z.string().max(500).optional().nullable(),
+});

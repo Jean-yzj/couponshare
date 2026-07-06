@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useApi, useMe } from "@/lib/client";
 import {
+  Button,
   Card,
   Skeleton,
   NeedLogin,
@@ -235,6 +236,22 @@ export default function ScorePage() {
 
       {/* Invite friends */}
       <InviteCard userId={me.id} />
+
+      {/* Social post reward entry */}
+      <div className="mt-4 flex items-center gap-3 rounded-2xl border border-line bg-paper p-4 shadow-soft">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-tint text-accent">
+          <Icon name="send" size={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-ink">社群發文換申請次數</p>
+          <p className="mt-0.5 text-sm text-ink-soft">
+            發一篇 #CouponShare 貼文，最多換 20 次申請次數。
+          </p>
+        </div>
+        <Button href="/social-reward" variant="outline" size="sm" iconRight="chevronRight">
+          前往
+        </Button>
+      </div>
 
       {/* Achievements */}
       <div className="mb-3 mt-7 flex items-center justify-between">

@@ -116,6 +116,7 @@ enum ScoreEventType {
   COUPON_EXCHANGED
   THANK_YOU_MESSAGE
   POSITIVE_RATING
+  SOCIAL_POST_APPROVED
   COUPON_WITHDRAWN
   INVALID_COUPON_REPORT_CONFIRMED
   NO_SHOW_REPORT_CONFIRMED
@@ -141,11 +142,18 @@ enum NotificationType {
   REPORT_UPDATED
   BRAND_RESTOCK
   APPEAL_UPDATED
+  SOCIAL_POST_UPDATED
 }
 
 enum AppealStatus {
   PENDING
   ACCEPTED
+  REJECTED
+}
+
+enum SocialPostStatus {
+  PENDING
+  APPROVED
   REJECTED
 }
 
@@ -176,8 +184,12 @@ model User {
   utmTerm           String?       @map("utm_term")
   landingPath       String?       @map("landing_path")
   // Who invited this user (their user id). Plain scalar — we only ever count
-  // "signups referred by X today" for the invite bonus, no relation needed.
+  // "signups referred by X" for the invite bonus, no relation needed.
   referredById      String?       @map("referred_by_id")
+  // Monthly bonus-claim pool (社群發文審核通過 +10/+20、推薦成功 +2). Scoped to a
+  // Taipei calendar month via bonusClaimsMonth ("2026-07"); a stale month reads 0.
+  bonusClaims       Int           @default(0) @map("bonus_claims")
+  bonusClaimsMonth  String?       @map("bonus_claims_month")
 
   ownedCoupons         Coupon[]             @relation("OwnedCoupons")
   claimedCoupons       Coupon[]             @relation("ClaimedCoupons")
@@ -193,6 +205,7 @@ model User {
   notifications        Notification[]
   brandFollows         BrandFollow[]
   appeals              Appeal[]
+  socialPosts          SocialPost[]
   pushTokens           PushToken[]
   blocksMade           Block[]              @relation("BlocksMade")
   blocksReceived       Block[]              @relation("BlocksReceived")
@@ -486,4 +499,30 @@ model Appeal {
   @@index([userId])
   @@index([status])
   @@map("appeals")
+}
+
+// 社群發文換申請次數：user posts about CouponShare (Threads etc. with #CouponShare),
+// submits proof, admin reviews within 7 days. Approved → +10 monthly claim credits
+// (+20 if the screenshot shows 100+ likes) and +5 contribution score. One per user
+// per Taipei calendar month (enforced at submit).
+model SocialPost {
+  id            String           @id @default(uuid())
+  userId        String           @map("user_id")
+  topic         String
+  postDate      DateTime         @map("post_date")
+  // Proof — BOTH required: the public post link AND a screenshot (data-URI). The
+  // admin reads the like count off the screenshot to pick the reward tier.
+  postUrl       String           @map("post_url")
+  evidenceImage String           @map("evidence_image")
+  status        SocialPostStatus @default(PENDING)
+  bonusGranted  Int?             @map("bonus_granted")
+  adminNote     String?          @map("admin_note")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  resolvedAt    DateTime?        @map("resolved_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("social_posts")
 }

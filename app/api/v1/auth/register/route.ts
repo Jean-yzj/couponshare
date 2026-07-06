@@ -6,7 +6,8 @@ import { createSession } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
 import { registerSchema } from "@/lib/validation";
 import { throttle } from "@/lib/throttle";
-import { resolveReferrer } from "@/lib/referral";
+import { resolveReferrer, REFERRAL_BONUS } from "@/lib/referral";
+import { grantBonusClaims } from "@/lib/bonus";
 import { utmCreateData } from "@/lib/utm";
 
 export const POST = route(async (req) => {
@@ -31,6 +32,9 @@ export const POST = route(async (req) => {
       referredById,
     },
   });
+
+  // Referral reward: the inviter gets +2 claim-attempts in their monthly pool.
+  if (referredById) await grantBonusClaims(prisma, referredById, REFERRAL_BONUS);
 
   const meta = clientMeta(req);
   await writeAudit(prisma, {

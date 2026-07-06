@@ -11,6 +11,7 @@ const EARN_RULES = [
   { label: "成功交換一張票券", delta: SCORE_RULES.COUPON_EXCHANGED, icon: "swap" },
   { label: "收到 4 星以上好評", delta: SCORE_RULES.POSITIVE_RATING, icon: "star" },
   { label: "收到領取者的感謝訊息", delta: SCORE_RULES.THANK_YOU_MESSAGE, icon: "heart" },
+  { label: "在社群發文分享 #CouponShare（審核通過）", delta: SCORE_RULES.SOCIAL_POST_APPROVED, icon: "share" },
 ];
 const PENALTY_RULES = [
   { label: "下架已上架、但還沒送出的票券", delta: SCORE_RULES.COUPON_WITHDRAWN, icon: "ban" },
