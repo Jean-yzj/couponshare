@@ -4,7 +4,18 @@ import { useState } from "react";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
 import { Button, Card, Avatar, Skeleton, EmptyState, NeedLogin, LoadFailed } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { ReasonModal } from "@/components/ReasonModal";
 import { cn, relativeTime } from "@/lib/display";
+
+const REJECT_PRESETS = [
+  "貼文未包含平台使用截圖",
+  "內容與 CouponShare 無關、未提到平台",
+  "使用心得字數不足（未達 30 字）",
+  "帳號未公開，無法查看貼文",
+  "內容偏負面或不當",
+  "疑似造假、非本人實際使用",
+  "申請破百讚，但截圖讚數未達 100",
+];
 
 type SocialPostStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -42,6 +53,7 @@ export default function AdminSocialPostsPage() {
     me?.is_admin ? `/api/v1/admin/social-posts?status=${tab}` : null,
   );
   const [acting, setActing] = useState<string | null>(null);
+  const [pendingReject, setPendingReject] = useState<string | null>(null);
 
   if (meLoading)
     return (
@@ -63,20 +75,19 @@ export default function AdminSocialPostsPage() {
   async function act(
     id: string,
     decision: "APPROVE" | "REJECT",
-    bonus?: 10 | 20,
+    extra?: { bonus?: 10 | 20; note?: string },
   ) {
-    let note: string | undefined;
-    if (decision === "REJECT") {
-      const raw = window.prompt("請輸入未通過原因（可留空）");
-      if (raw === null) return; // cancelled
-      note = raw.trim() || undefined;
-    }
     setActing(id);
     try {
       await apiFetch(`/api/v1/admin/social-posts/${id}/resolve`, {
         method: "POST",
-        body: JSON.stringify({ decision, ...(bonus ? { bonus } : {}), ...(note ? { note } : {}) }),
+        body: JSON.stringify({
+          decision,
+          ...(extra?.bonus ? { bonus: extra.bonus } : {}),
+          ...(extra?.note ? { note: extra.note } : {}),
+        }),
       });
+      setPendingReject(null);
       await refetch();
     } catch (e) {
       alert(e instanceof ApiErr ? e.message : "操作失敗");
@@ -176,7 +187,7 @@ export default function AdminSocialPostsPage() {
                     variant="outline"
                     icon="check"
                     loading={acting === post.id}
-                    onClick={() => act(post.id, "APPROVE", 10)}
+                    onClick={() => act(post.id, "APPROVE", { bonus: 10 })}
                   >
                     通過 +10
                   </Button>
@@ -185,7 +196,7 @@ export default function AdminSocialPostsPage() {
                     variant="gold"
                     icon="star"
                     loading={acting === post.id}
-                    onClick={() => act(post.id, "APPROVE", 20)}
+                    onClick={() => act(post.id, "APPROVE", { bonus: 20 })}
                   >
                     破百讚 +20
                   </Button>
@@ -194,7 +205,7 @@ export default function AdminSocialPostsPage() {
                     variant="danger"
                     icon="x"
                     loading={acting === post.id}
-                    onClick={() => act(post.id, "REJECT")}
+                    onClick={() => setPendingReject(post.id)}
                   >
                     未通過
                   </Button>
@@ -227,6 +238,20 @@ export default function AdminSocialPostsPage() {
           ))
         )}
       </div>
+
+      <ReasonModal
+        open={!!pendingReject}
+        title="退回這則發文申請"
+        hint="會通知申請人退回原因。"
+        presets={REJECT_PRESETS}
+        confirmLabel="退回申請"
+        confirmVariant="danger"
+        busy={!!pendingReject && acting === pendingReject}
+        onCancel={() => setPendingReject(null)}
+        onConfirm={(reason) =>
+          pendingReject && act(pendingReject, "REJECT", { note: reason || undefined })
+        }
+      />
     </div>
   );
 }

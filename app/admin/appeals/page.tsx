@@ -5,7 +5,15 @@ import { useState } from "react";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
 import { Button, Card, Avatar, LevelBadge, Skeleton, EmptyState, NeedLogin, Pill } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { ReasonModal } from "@/components/ReasonModal";
 import { cn, relativeTime } from "@/lib/display";
+
+const REJECT_PRESETS = [
+  "經複核，原停權處置正確，維持停權",
+  "申訴未提出新的具體事證",
+  "違規事實明確，不予恢復",
+  "多次被檢舉且經查證屬實",
+];
 
 type AppealRow = {
   id: string;
@@ -38,6 +46,7 @@ export default function AdminAppealsPage() {
     me?.is_admin ? `/api/v1/admin/appeals?status=${tab}` : null,
   );
   const [acting, setActing] = useState<string | null>(null);
+  const [pendingReject, setPendingReject] = useState<string | null>(null);
 
   if (meLoading)
     return (
@@ -53,25 +62,25 @@ export default function AdminAppealsPage() {
       </div>
     );
 
-  async function resolve(id: string, decision: "ACCEPT" | "REJECT") {
-    let note: string | undefined;
-    if (decision === "REJECT") {
-      note = window.prompt("駁回原因（選填，會通知對方）") || undefined;
-    } else if (!window.confirm("通過申訴並恢復這個帳號？")) {
-      return;
-    }
+  async function submit(id: string, decision: "ACCEPT" | "REJECT", note?: string) {
     setActing(id);
     try {
       await apiFetch(`/api/v1/admin/appeals/${id}/resolve`, {
         method: "POST",
         body: JSON.stringify({ decision, note: note ?? null }),
       });
+      setPendingReject(null);
       await refetch();
     } catch (e) {
       alert(e instanceof ApiErr ? e.message : "操作失敗");
     } finally {
       setActing(null);
     }
+  }
+
+  function accept(id: string) {
+    if (!window.confirm("通過申訴並恢復這個帳號？")) return;
+    submit(id, "ACCEPT");
   }
 
   return (
@@ -134,10 +143,10 @@ export default function AdminAppealsPage() {
 
               {a.status === "PENDING" && (
                 <div className="mt-3 flex gap-2">
-                  <Button size="sm" icon="check" loading={acting === a.id} onClick={() => resolve(a.id, "ACCEPT")}>
+                  <Button size="sm" icon="check" loading={acting === a.id} onClick={() => accept(a.id)}>
                     通過，恢復帳號
                   </Button>
-                  <Button size="sm" variant="danger" loading={acting === a.id} onClick={() => resolve(a.id, "REJECT")}>
+                  <Button size="sm" variant="danger" loading={acting === a.id} onClick={() => setPendingReject(a.id)}>
                     駁回
                   </Button>
                 </div>
@@ -146,6 +155,20 @@ export default function AdminAppealsPage() {
           ))
         )}
       </div>
+
+      <ReasonModal
+        open={!!pendingReject}
+        title="駁回這則申訴"
+        hint="會通知對方駁回原因，維持原停權。"
+        presets={REJECT_PRESETS}
+        confirmLabel="駁回申訴"
+        confirmVariant="danger"
+        busy={!!pendingReject && acting === pendingReject}
+        onCancel={() => setPendingReject(null)}
+        onConfirm={(reason) =>
+          pendingReject && submit(pendingReject, "REJECT", reason || undefined)
+        }
+      />
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useApi, useMe, apiFetch, ApiErr } from "@/lib/client";
-import { Card, Avatar, Skeleton, EmptyState, Button, NeedLogin, Eyebrow } from "@/components/ui";
+import { Card, Avatar, Skeleton, EmptyState, Button, NeedLogin, Eyebrow, Field, Input } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { cn, relativeTime } from "@/lib/display";
 import { CATEGORIES } from "@/lib/categories";
@@ -284,8 +284,8 @@ export default function AdminDashboardPage() {
         </Section>
       </div>
 
-      {/* Emergency kill-switches — parked at the very bottom, out of the daily
-          scan path but one scroll away when an incident hits. */}
+      {/* Admin tools — parked at the very bottom, out of the daily scan path. */}
+      <ScoreAdjust />
       <KillSwitches />
     </div>
   );
@@ -487,6 +487,87 @@ function BarList({ items }: { items: { label: string; count: number }[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function ScoreAdjust() {
+  const [email, setEmail] = useState("");
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [result, setResult] = useState<{ display_name: string; before: number; contribution_score: number } | null>(
+    null,
+  );
+
+  async function submit() {
+    const delta = Number(amount);
+    if (!email.trim() || !Number.isInteger(delta) || delta === 0) {
+      setErr("請輸入 Email 與非零的整數分數");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    setResult(null);
+    try {
+      const r = await apiFetch<{ user: { display_name: string; before: number; contribution_score: number } }>(
+        "/api/v1/admin/users/adjust-score",
+        {
+          method: "POST",
+          body: JSON.stringify({ email: email.trim(), delta, note: note.trim() || undefined }),
+        },
+      );
+      setResult(r.user);
+      setEmail("");
+      setAmount("");
+      setNote("");
+    } catch (e) {
+      setErr(e instanceof ApiErr ? e.message : "調整失敗");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Section title="手動調整貢獻值">
+      <div className="space-y-3">
+        <Field label="使用者 Email">
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="user@example.com"
+          />
+        </Field>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="加減分（可為負）">
+            <Input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="例如 20 或 -5"
+            />
+          </Field>
+          <Field label="備註（選填）">
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="例如：補回被誤扣的分數"
+            />
+          </Field>
+        </div>
+        <Button loading={busy} onClick={submit} icon="plus">
+          送出調整
+        </Button>
+        {err && <p className="text-sm font-medium text-danger">{err}</p>}
+        {result && (
+          <div className="rounded-xl bg-pine-tint/60 p-3 text-sm text-ink">
+            已調整 <span className="font-semibold">{result.display_name}</span>：{result.before} →{" "}
+            <span className="font-bold text-pine">{result.contribution_score}</span> 分
+          </div>
+        )}
+      </div>
+    </Section>
   );
 }
 

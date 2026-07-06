@@ -5,7 +5,55 @@ import { useState } from "react";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
 import { Button, Card, Skeleton, EmptyState, NeedLogin, Pill } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { ReasonModal } from "@/components/ReasonModal";
 import { cn, relativeTime } from "@/lib/display";
+
+type ReportAction = "dismiss" | "dismiss_malicious" | "strike_user" | "remove_coupon" | "suspend_user";
+const ACTION_META: Record<
+  ReportAction,
+  { title: string; hint: string; variant: "primary" | "danger" | "outline"; presets: string[] }
+> = {
+  dismiss: {
+    title: "駁回檢舉（判定無違規）",
+    hint: "會通知檢舉人結果。",
+    variant: "outline",
+    presets: [
+      "證據不足，無法判定違規",
+      "檢舉內容與事實不符",
+      "屬雙方交易糾紛，非平台違規",
+      "票券經確認有效、無問題",
+    ],
+  },
+  dismiss_malicious: {
+    title: "判定惡意 / 不實檢舉",
+    hint: "檢舉者記一次違規，累積 3 次自動停權。",
+    variant: "danger",
+    presets: ["查無此交易，疑似惡意檢舉", "重複濫用檢舉功能", "檢舉內容明顯不實、意圖騷擾"],
+  },
+  strike_user: {
+    title: "記一次檢舉（累積 3 次停權）",
+    hint: "被檢舉者記一次違規，滿 3 次系統自動停權。",
+    variant: "danger",
+    presets: [
+      "提供無效或已過期的票券",
+      "三天以上未回覆，視為放對方鴿子",
+      "票券已被使用、無法兌換",
+      "交換要求不合理",
+    ],
+  },
+  remove_coupon: {
+    title: "下架此券",
+    hint: "會通知持有者。",
+    variant: "danger",
+    presets: ["無效券 / 已過期 / 已被使用", "未載明折扣金額或內容不具體", "涉及轉售、營利或違反平台規範"],
+  },
+  suspend_user: {
+    title: "停權此帳號並下架其票券",
+    hint: "會通知對方，可提出申訴。",
+    variant: "danger",
+    presets: ["多次提供無效券、經查證屬實", "多次放鳥、惡意不履行交換", "不當言論、騷擾或詐騙行為"],
+  },
+};
 
 const REASON_LABEL: Record<string, string> = {
   INVALID_COUPON: "無效券 / 無法使用",
@@ -88,6 +136,7 @@ export default function AdminReportsPage() {
     me?.is_admin ? `/api/v1/admin/reports?status=${tab}` : null,
   );
   const [acting, setActing] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ id: string; action: ReportAction } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ReportDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -123,27 +172,18 @@ export default function AdminReportsPage() {
       </div>
     );
 
-  async function act(
-    id: string,
-    action: "dismiss" | "remove_coupon" | "suspend_user" | "dismiss_malicious" | "strike_user",
-  ) {
-    const prompts: Record<typeof action, string> = {
-      dismiss: "駁回這則檢舉（判定無違規）？可填備註。",
-      dismiss_malicious:
-        "判定這是惡意 / 不實檢舉？檢舉者會記一次違規，累積 3 次自動停權。可填備註。",
-      strike_user:
-        "這則檢舉成立、但還不到停權？被檢舉者記一次違規，累積 3 次系統自動停權。可填備註。",
-      remove_coupon: "下架這張被檢舉的票券？可填原因（會通知持有者）。",
-      suspend_user: "停權這位使用者並下架其所有票券？可填原因（會通知對方）。",
-    };
-    const note = window.prompt(prompts[action]);
-    if (note === null) return; // cancelled
+  // Every action opens the reason picker (preset chips + editable note); runAction
+  // fires the resolve call once the admin confirms.
+  async function runAction(reason: string) {
+    if (!pending) return;
+    const { id, action } = pending;
     setActing(id);
     try {
       await apiFetch(`/api/v1/admin/reports/${id}/resolve`, {
         method: "POST",
-        body: JSON.stringify({ action, note: note.trim() || undefined }),
+        body: JSON.stringify({ action, note: reason || undefined }),
       });
+      setPending(null);
       await refetch();
     } catch (e) {
       alert(e instanceof ApiErr ? e.message : "操作失敗");
@@ -256,22 +296,22 @@ export default function AdminReportsPage() {
 
               {r.status === "PENDING" || r.status === "REVIEWING" ? (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button size="sm" variant="ghost" icon="check" loading={acting === r.id} onClick={() => act(r.id, "dismiss")}>
+                  <Button size="sm" variant="ghost" icon="check" loading={acting === r.id} onClick={() => setPending({ id: r.id, action: "dismiss" })}>
                     駁回（無違規）
                   </Button>
-                  <Button size="sm" variant="outline" icon="flag" loading={acting === r.id} onClick={() => act(r.id, "dismiss_malicious")}>
+                  <Button size="sm" variant="outline" icon="flag" loading={acting === r.id} onClick={() => setPending({ id: r.id, action: "dismiss_malicious" })}>
                     判定惡意檢舉
                   </Button>
-                  <Button size="sm" variant="outline" icon="shieldCheck" loading={acting === r.id} onClick={() => act(r.id, "strike_user")}>
+                  <Button size="sm" variant="outline" icon="shieldCheck" loading={acting === r.id} onClick={() => setPending({ id: r.id, action: "strike_user" })}>
                     記一次檢舉
                   </Button>
                   {r.coupon && (
-                    <Button size="sm" variant="outline" icon="ban" loading={acting === r.id} onClick={() => act(r.id, "remove_coupon")}>
+                    <Button size="sm" variant="outline" icon="ban" loading={acting === r.id} onClick={() => setPending({ id: r.id, action: "remove_coupon" })}>
                       下架此券
                     </Button>
                   )}
                   {r.reported_user && r.reported_user.status === "ACTIVE" && (
-                    <Button size="sm" variant="danger" icon="shield" loading={acting === r.id} onClick={() => act(r.id, "suspend_user")}>
+                    <Button size="sm" variant="danger" icon="shield" loading={acting === r.id} onClick={() => setPending({ id: r.id, action: "suspend_user" })}>
                       停權帳號
                     </Button>
                   )}
@@ -298,6 +338,18 @@ export default function AdminReportsPage() {
           ))
         )}
       </div>
+
+      <ReasonModal
+        open={!!pending}
+        title={pending ? ACTION_META[pending.action].title : ""}
+        hint={pending ? ACTION_META[pending.action].hint : undefined}
+        presets={pending ? ACTION_META[pending.action].presets : []}
+        confirmLabel="確認送出"
+        confirmVariant={pending ? ACTION_META[pending.action].variant : "primary"}
+        busy={!!pending && acting === pending.id}
+        onCancel={() => setPending(null)}
+        onConfirm={runAction}
+      />
     </div>
   );
 }
