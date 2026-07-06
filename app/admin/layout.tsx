@@ -22,7 +22,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto max-w-5xl">
       {me?.is_admin && (
-        <div className="mb-6 flex items-center gap-1 overflow-x-auto border-b border-line">
+        <div className="no-scrollbar sticky top-16 z-30 -mx-4 mb-6 flex items-center gap-1 overflow-x-auto overscroll-x-contain border-b border-line bg-canvas px-4 sm:-mx-6 sm:px-6">
           {TABS.map((t) => {
             const active = t.href === "/admin" ? pathname === "/admin" : pathname.startsWith(t.href);
             return (
