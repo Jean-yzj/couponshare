@@ -181,6 +181,52 @@ export default function SocialRewardPage() {
         ))}
       </div>
 
+      {/* How to post — rules + content suggestions, ABOVE the form so users know
+          what to write before they get to the submit step */}
+      <Card className="mt-4 p-5">
+        <h2 className="font-semibold text-ink">怎麼發才算數</h2>
+        <ul className="mt-3 space-y-2 text-sm text-ink-soft">
+          <li className="flex items-start gap-2">
+            <Icon name="check" size={15} className="mt-0.5 shrink-0 text-pine" />
+            <span>
+              公開帳號，用<span className="font-medium text-ink">自己的話</span>寫至少{" "}
+              <span className="font-medium text-ink">30 字</span>使用心得。
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Icon name="check" size={15} className="mt-0.5 shrink-0 text-pine" />
+            <span>
+              文中<span className="font-medium text-ink">提到 CouponShare</span> 即可（加不加 # 都行）。
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <Icon name="check" size={15} className="mt-0.5 shrink-0 text-pine" />
+            <span>
+              附上一張<span className="font-medium text-ink">平台使用截圖</span>（探索頁、錢包、領券畫面等）。
+            </span>
+          </li>
+        </ul>
+        <div className="mt-4 rounded-xl bg-accent-tint/50 p-3.5">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-accent-press">
+            <Icon name="sparkles" size={15} /> 不知道寫什麼？可以分享
+          </p>
+          <ul className="mt-2 space-y-1.5 text-sm text-ink-soft">
+            <li className="flex items-start gap-2">
+              <span className="text-accent">・</span>你在平台上<span className="font-medium text-ink">拿到的券</span>，換到什麼好康
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-accent">・</span>你<span className="font-medium text-ink">分享出去的券</span>，幫到了誰
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-accent">・</span>其他使用這個平台的<span className="font-medium text-ink">心得</span>與感想
+            </li>
+          </ul>
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-ink-faint">
+          每人每月限一篇・每月限 500 名・讚數以截圖為準・內容偏負面不予通過。
+        </p>
+      </Card>
+
       {/* Monthly quota progress — 500 participants per month, first come first served */}
       <Card className="mt-4 p-4">
         <div className="flex items-baseline justify-between gap-2">
@@ -229,10 +275,6 @@ export default function SocialRewardPage() {
           ) : (
             <Card className="p-5">
               <h2 className="mb-4 font-semibold text-ink">發完文，回來這裡提交</h2>
-              <Banner tone="info" icon="image">
-                貼文需包含：你實際使用平台的截圖（例如探索頁、錢包、領券畫面）＋至少 30
-                字的使用心得，並用自己的話寫、文中有提到 CouponShare 即可（加不加 # 都可以）。
-              </Banner>
               <div className="space-y-4">
                 <Field label="發文主題" required hint="一句話描述你的貼文內容">
                   <Input
@@ -337,31 +379,6 @@ export default function SocialRewardPage() {
             )}
           </Card>
         )}
-      </div>
-
-      {/* Fine print */}
-      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1 text-xs text-ink-faint">
-        <span className="inline-flex items-center gap-1">
-          <Icon name="eye" size={12} /> 帳號需設為公開
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <Icon name="clock" size={12} /> 每人每月限一篇
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <Icon name="users" size={12} /> 每月限 {data.month_cap} 名
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <Icon name="edit" size={12} /> 心得至少 30 字
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <Icon name="image" size={12} /> 文內需有平台使用截圖
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <Icon name="star" size={12} /> 讚數以截圖為準
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <Icon name="info" size={12} /> 內容偏負面不予通過
-        </span>
       </div>
 
       {/* Past submissions */}

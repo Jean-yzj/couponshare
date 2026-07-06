@@ -11,11 +11,23 @@ export const GET = route(async (req) => {
   const allowed = ["PENDING", "APPROVED", "REJECTED"];
   const status: SocialPostStatus = allowed.includes(raw) ? (raw as SocialPostStatus) : "PENDING";
 
+  // NB: never select evidenceImage here — each is a ~700KB data-URI, so 200 of them
+  // would be a multi-MB payload that times out on mobile (and the page would look
+  // empty). The screenshot is served per-post from .../[id]/image instead.
   const posts = await prisma.socialPost.findMany({
     where: { status },
     orderBy: { createdAt: status === "PENDING" ? "asc" : "desc" },
     take: 200,
-    include: {
+    select: {
+      id: true,
+      topic: true,
+      postDate: true,
+      postUrl: true,
+      status: true,
+      bonusGranted: true,
+      adminNote: true,
+      createdAt: true,
+      resolvedAt: true,
       user: {
         select: { id: true, displayName: true, avatarUrl: true, contributionScore: true, status: true },
       },
@@ -28,7 +40,6 @@ export const GET = route(async (req) => {
       topic: p.topic,
       post_date: p.postDate,
       post_url: p.postUrl,
-      evidence_image: p.evidenceImage,
       status: p.status,
       bonus_granted: p.bonusGranted,
       admin_note: p.adminNote,

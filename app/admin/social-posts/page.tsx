@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
-import { Button, Card, Avatar, Skeleton, EmptyState, NeedLogin } from "@/components/ui";
+import { Button, Card, Avatar, Skeleton, EmptyState, NeedLogin, LoadFailed } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { cn, relativeTime } from "@/lib/display";
 
@@ -13,7 +13,6 @@ type AdminSocialPost = {
   topic: string;
   post_date: string;
   post_url: string;
-  evidence_image: string;
   status: SocialPostStatus;
   bonus_granted: number | null;
   admin_note: string | null;
@@ -39,7 +38,7 @@ type Tab = (typeof TABS)[number]["key"];
 export default function AdminSocialPostsPage() {
   const { me, loading: meLoading } = useMe();
   const [tab, setTab] = useState<Tab>("PENDING");
-  const { data, loading, refetch } = useApi<{ data: AdminSocialPost[] }>(
+  const { data, loading, error, refetch } = useApi<{ data: AdminSocialPost[] }>(
     me?.is_admin ? `/api/v1/admin/social-posts?status=${tab}` : null,
   );
   const [acting, setActing] = useState<string | null>(null);
@@ -111,7 +110,9 @@ export default function AdminSocialPostsPage() {
       </div>
 
       <div className="mt-5 space-y-4">
-        {loading ? (
+        {error && !data ? (
+          <LoadFailed onRetry={refetch} />
+        ) : loading ? (
           Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)
         ) : rows.length === 0 ? (
           <EmptyState
@@ -160,9 +161,10 @@ export default function AdminSocialPostsPage() {
                 </p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={post.evidence_image}
+                  src={`/api/v1/admin/social-posts/${post.id}/image`}
                   className="max-h-64 rounded-lg border border-line"
                   alt="發文截圖"
+                  loading="lazy"
                 />
               </div>
 
