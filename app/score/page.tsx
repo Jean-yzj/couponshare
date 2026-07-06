@@ -134,7 +134,7 @@ export default function ScorePage() {
     {
       icon: "crown",
       label: "傳奇會員",
-      condition: "貢獻分達 150，或當月成功送出 20 張",
+      condition: "貢獻分達 10000，或當月成功送出 50 張",
       tone: "grape",
       unlocked: data.user_level === "LEVEL_3",
     },

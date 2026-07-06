@@ -3,7 +3,7 @@ import { route, jsonOk } from "@/lib/api";
 import { getBearerSession, getCurrentUser } from "@/lib/auth";
 import { ApiError } from "@/lib/errors";
 import { LEVELS, nextLevelTarget } from "@/lib/levels";
-import { monthlyGiftCount } from "@/lib/leveling";
+import { recomputeLevel } from "@/lib/leveling";
 import { applyQuota } from "@/lib/share-gate";
 import { avatarRef } from "@/lib/serialize";
 import { isAdmin } from "@/lib/admin";
@@ -16,8 +16,13 @@ export const GET = route(async () => {
   if (!user) return jsonOk({ user: null });
 
   // This endpoint gates first paint on every page — keep it to one round-trip.
-  const [gifts, quota] = await Promise.all([monthlyGiftCount(prisma, user.id), applyQuota(user)]);
-  const level = LEVELS[user.userLevel];
+  // Recompute the level here (not just count gifts) so a tier earned via this
+  // month's gifts drops back to the score-based tier once the month rolls over,
+  // even for users who don't open the score page.
+  const [recomputed, quota] = await Promise.all([recomputeLevel(prisma, user.id), applyQuota(user)]);
+  const userLevel = recomputed?.level ?? user.userLevel;
+  const gifts = recomputed?.monthlyGifts ?? 0;
+  const level = LEVELS[userLevel];
   const dailyClaim = user.riskFlag ? Math.max(1, Math.floor(level.dailyClaim / 5)) : level.dailyClaim;
 
   return jsonOk({
@@ -27,7 +32,7 @@ export const GET = route(async () => {
       avatar_url: avatarRef(user),
       email: user.email,
       login_provider: user.loginProvider,
-      user_level: user.userLevel,
+      user_level: userLevel,
       level_name: level.name,
       contribution_score: user.contributionScore,
       monthly_gifts: gifts,
