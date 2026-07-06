@@ -2,14 +2,14 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { route, readBody, jsonOk } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
-import { requireUser } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/auth";
 import { applyScore, SCORE_RULES } from "@/lib/score";
 import { notify } from "@/lib/notify";
 import { ratingSchema } from "@/lib/validation";
 
 export const POST = route(async (req, ctx) => {
   const { id } = await ctx.params;
-  const user = await requireUser();
+  const user = await requireActiveUser();
   const body = await readBody(req, ratingSchema);
 
   const t = await prisma.transaction.findUnique({ where: { id } });

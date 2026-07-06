@@ -37,6 +37,12 @@ export const POST = route(async (req) => {
     : null;
   const existing = existingByApple ?? existingByEmail;
   if (existing?.status === "DELETED") throw new ApiError("INVALID_CREDENTIALS");
+  // Matching by the stable Apple subject is safe. Matching only by email is not —
+  // require Apple to have verified the email before attaching to an existing
+  // account, or an unverified token could take one over.
+  if (!existingByApple && existingByEmail && !identity.emailVerified) {
+    throw new ApiError("UNAUTHORIZED");
+  }
 
   const fallbackName = identity.email ? identity.email.split("@")[0] || "Apple 使用者" : "Apple 使用者";
   const user = existing

@@ -25,6 +25,10 @@ export const POST = route(async (req) => {
     where: { email: { equals: profile.email, mode: "insensitive" } },
   });
   if (existing?.status === "DELETED") throw new ApiError("INVALID_CREDENTIALS");
+  // Never attach to an existing account unless Google has verified this email —
+  // otherwise an unverified token could take over someone else's account. (Real
+  // Google sign-ins are always verified, so legitimate logins are unaffected.)
+  if (existing && !profile.emailVerified) throw new ApiError("UNAUTHORIZED");
 
   const user = existing
     ? await prisma.user.update({

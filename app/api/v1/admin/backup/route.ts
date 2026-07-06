@@ -27,6 +27,8 @@ const TABLES: { model: string; batch: number }[] = [
   { model: "rating", batch: 500 },
   { model: "report", batch: 300 },
   { model: "appeal", batch: 500 },
+  // Evidence data-URIs can be ~0.5MB each, so keep the batch small like coupon.
+  { model: "socialPost", batch: 20 },
   { model: "scoreLedger", batch: 1000 },
   { model: "notification", batch: 1000 },
   { model: "brandFollow", batch: 1000 },
@@ -75,6 +77,20 @@ async function* generate(startIdx: number, startId: string | undefined): AsyncGe
       return;
     }
   }
+
+  // Small operational tables whose PK isn't `id`, so they don't fit the id-cursor
+  // loop above (AppSetting keyed by `key`, BlockedIp by `ip`). They're tiny — the
+  // kill-switch flags and a short IP blocklist — so emit them whole here on the
+  // final segment (this code is only reached once the paged loop fully completes).
+  for (const model of ["appSetting", "blockedIp"] as const) {
+    const rows: Record<string, unknown>[] = await (
+      prisma as unknown as Record<string, { findMany: (a: unknown) => Promise<Record<string, unknown>[]> }>
+    )[model].findMany({});
+    let chunk = "";
+    for (const r of rows) chunk += JSON.stringify({ _t: model, r }) + "\n";
+    if (chunk) yield chunk;
+  }
+
   yield JSON.stringify({ _t: "_done" }) + "\n";
 }
 

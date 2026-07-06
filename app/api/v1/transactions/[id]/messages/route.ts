@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { route, readBody, jsonOk } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
-import { requireUser } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
 import { transactionMessageSchema } from "@/lib/validation";
 import { sniffImageType } from "@/lib/image";
@@ -28,7 +28,7 @@ function validateMessageImage(image: string | null | undefined): string | null {
 export const POST = route(async (req, ctx) => {
   throttle(req, "transaction-message", 60, 10 * 60_000);
   const { id } = await ctx.params;
-  const user = await requireUser();
+  const user = await requireActiveUser();
   const body = await readBody(req, transactionMessageSchema);
   const message = body.message.trim();
   const imageUrl = validateMessageImage(body.image);

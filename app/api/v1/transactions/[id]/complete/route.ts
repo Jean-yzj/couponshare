@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { route, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
-import { requireUser } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/auth";
 import { applyScore, SCORE_RULES } from "@/lib/score";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
@@ -11,7 +11,7 @@ import { writeAudit } from "@/lib/audit";
 // completion credits BOTH sides +5; a disputed one credits nobody. PRD §7.3.
 export const POST = route(async (req, ctx) => {
   const { id } = await ctx.params;
-  const user = await requireUser();
+  const user = await requireActiveUser();
 
   const t = await prisma.transaction.findUnique({ where: { id } });
   if (!t) throw new ApiError("NOT_FOUND");

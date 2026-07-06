@@ -20,13 +20,20 @@ concurrency:
   group: db-backup
   cancel-in-progress: false
 
+# Least privilege: this job only reads the repo (to run the fetch script) and talks
+# to external endpoints. It never writes back to the repository.
+permissions:
+  contents: read
+
 jobs:
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - name: Checkout (for the resumable backup script)
-        uses: actions/checkout@v4
+        # Pinned to a full commit SHA (supply-chain safety); this is the v4 tag as
+        # of 2026-07-06. Bump deliberately when upgrading.
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Download backup from app (resumable)
         env:

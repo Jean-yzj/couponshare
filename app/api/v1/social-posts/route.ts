@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/errors";
 import { requireActiveUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { socialPostSchema } from "@/lib/validation";
+import { validateDataUriImage } from "@/lib/image";
 import { startOfMonthTaipei, monthKeyTaipei } from "@/lib/time";
 
 // 社群發文換申請次數 — submit proof of a CouponShare post for review.
@@ -16,9 +17,13 @@ export const POST = route(async (req) => {
   const user = await requireActiveUser();
   const body = await readBody(req, socialPostSchema);
 
-  // Screenshot must be an inline data-URI (the admin reads the like count off it);
-  // the link is the public post URL.
-  if (!body.evidence_image.startsWith("data:image/")) {
+  // Screenshot must be a real inline image (the admin reads the like count off it).
+  // Magic-byte validated — a direct API caller can't slip in an SVG or malformed
+  // blob that the admin console would then render.
+  // Cap set above the schema's base64 length limit so size is enforced there (clear
+  // error); this call's job is the magic-byte/format check.
+  const evidenceImage = validateDataUriImage(body.evidence_image, 700 * 1024);
+  if (!evidenceImage) {
     throw new ApiError("VALIDATION_ERROR", { message: "請上傳貼文截圖" });
   }
 
@@ -45,7 +50,7 @@ export const POST = route(async (req) => {
       topic: body.topic,
       postDate: body.post_date,
       postUrl: body.post_url,
-      evidenceImage: body.evidence_image,
+      evidenceImage,
       status: "PENDING",
     },
     select: { id: true, status: true, createdAt: true },
