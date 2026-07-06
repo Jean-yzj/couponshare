@@ -135,35 +135,36 @@ export default function SocialRewardPage() {
         <HeroSparkles />
         <div className="relative">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
-            <Icon name="sparkles" size={13} /> 社群任務・每人每月一篇
+            <Icon name="sparkles" size={13} /> 社群任務・每月一篇
           </span>
-          <h1 className="mt-3 font-display text-[26px] font-extrabold leading-tight">
-            發一篇 Threads，
-            <br />
-            換申請次數
+          <h1 className="mt-3 font-display text-[28px] font-extrabold leading-tight">
+            發文換申請次數
           </h1>
-          <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-white/15 px-2 py-2.5 backdrop-blur-sm">
-              <p className="font-display text-xl font-extrabold leading-none">+10</p>
-              <p className="mt-1 text-[11px] text-white/80">發文通過</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-white/85">
+            在 Threads 分享你的使用心得，通過審核就送你申請次數。
+          </p>
+
+          <div className="mt-4 space-y-2.5 rounded-2xl bg-white/15 p-4 backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm text-white/85">審核通過</span>
+              <span className="font-display text-xl font-extrabold">送 10 次申請</span>
             </div>
-            <div className="rounded-xl bg-white/15 px-2 py-2.5 backdrop-blur-sm">
-              <p className="font-display text-xl font-extrabold leading-none">+20</p>
-              <p className="mt-1 text-[11px] text-white/80">讚數破百</p>
+            <div className="flex items-center justify-between gap-2 border-t border-white/15 pt-2.5">
+              <span className="text-sm text-white/85">貼文讚數破 100</span>
+              <span className="font-display text-xl font-extrabold">改送 20 次</span>
             </div>
-            <div className="rounded-xl bg-white/15 px-2 py-2.5 backdrop-blur-sm">
-              <p className="font-display text-xl font-extrabold leading-none">+5</p>
-              <p className="mt-1 text-[11px] text-white/80">貢獻值皆有</p>
+            <div className="flex items-center justify-between gap-2 border-t border-white/15 pt-2.5">
+              <span className="text-sm text-white/85">以上兩種都再加</span>
+              <span className="font-display text-base font-extrabold">5 點貢獻值</span>
             </div>
           </div>
-          <p className="mt-2 text-center text-[11px] leading-relaxed text-white/75">
-            +10 與 +20 擇一發放：讚數破百就發 +20（以你提交的截圖為準），否則發 +10。
-          </p>
-          <div className="mt-3 flex items-center justify-between rounded-xl bg-white/15 px-4 py-2.5 backdrop-blur-sm">
-            <span className="inline-flex items-center gap-1.5 text-sm text-white/85">
-              <Icon name="coin" size={15} /> 本月加碼池（哪天用都行）
-            </span>
-            <span className="font-display text-lg font-extrabold">{data.pool_remaining} 次</span>
+
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-white/15 px-4 py-2.5 backdrop-blur-sm">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white/90">本月累積的獎勵次數</p>
+              <p className="text-[11px] text-white/65">當月有效，哪天用都行</p>
+            </div>
+            <span className="shrink-0 font-display text-2xl font-extrabold">{data.pool_remaining} 次</span>
           </div>
         </div>
       </GradientPanel>
