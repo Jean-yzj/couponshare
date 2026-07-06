@@ -55,6 +55,8 @@ type Detail = {
   can_view_redeem_code: boolean;
   is_owner: boolean;
   is_claimant: boolean;
+  transaction_id: string | null;
+  exchange_revealed: boolean | null;
   my_request_status: string | null;
   my_request_id: string | null;
   claimed_at: string | null;
@@ -362,17 +364,24 @@ export default function CouponDetailPage() {
           <p className="mt-1 text-sm text-ink-soft">
             {coupon.type === "GIFT"
               ? "這張券已經是你的了，結帳時出示畫面即可，也可以截圖保存。"
-              : "條碼僅供你本人兌換，請勿轉傳。"}
+              : coupon.exchange_revealed
+                ? "雙方都確認了，條碼僅供你本人兌換，請勿轉傳。"
+                : "這是交換券，雙方都到交易頁確認後，系統才會同時亮碼。"}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            {coupon.has_barcode && (
+            {coupon.can_view_barcode && (
               <Button icon="ticket" onClick={() => setBarcodeOpen(true)}>
                 {coupon.type === "GIFT" ? "出示我的票券" : "查看條碼"}
               </Button>
             )}
-            {coupon.has_redeem_code && (
+            {coupon.can_view_redeem_code && (
               <Button icon="ticket" onClick={() => setRedeemCodeOpen(true)}>
                 查看兌換碼
+              </Button>
+            )}
+            {coupon.type === "EXCHANGE" && !coupon.exchange_revealed && coupon.transaction_id && (
+              <Button icon="swap" href={`/transactions/${coupon.transaction_id}`}>
+                前往亮碼交換
               </Button>
             )}
             <Button variant="outline" href="/wallet" icon="wallet">

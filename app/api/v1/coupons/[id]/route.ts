@@ -35,9 +35,25 @@ export const GET = route(async (req, ctx) => {
     myRequestId = cr?.id ?? null;
   }
 
+  const exchangeTxn =
+    viewer && coupon.type === "EXCHANGE" && coupon.status === "CLAIMED"
+      ? await prisma.transaction.findUnique({
+          where: { couponId: coupon.id },
+          select: { id: true, revealedAt: true },
+        })
+      : null;
+
+  const detail = couponDetail(coupon, viewer, myRequestStatus);
+  const viewerIsExchangeClaimant =
+    !!viewer && viewer.id === coupon.claimantId && coupon.type === "EXCHANGE" && coupon.status === "CLAIMED";
+  const exchangeRevealed = !!exchangeTxn?.revealedAt;
   const ownerRating = await ratingSummary(prisma, coupon.ownerId);
   return jsonOk({
-    ...couponDetail(coupon, viewer, myRequestStatus),
+    ...detail,
+    can_view_barcode: detail.can_view_barcode && (!viewerIsExchangeClaimant || exchangeRevealed),
+    can_view_redeem_code: detail.can_view_redeem_code && (!viewerIsExchangeClaimant || exchangeRevealed),
+    transaction_id: exchangeTxn?.id ?? null,
+    exchange_revealed: exchangeTxn ? exchangeRevealed : null,
     owner_rating: ownerRating,
     my_request_id: myRequestId,
   });
