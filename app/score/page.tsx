@@ -243,7 +243,7 @@ export default function ScorePage() {
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-ink">社群發文換申請次數</p>
             <p className="mt-0.5 text-sm text-ink-soft">
-              發一篇 #CouponShare 貼文，最多換 20 次申請次數。
+              發文分享使用心得，最多換 20 次申請次數（每月限 500 名）。
             </p>
           </div>
         </div>

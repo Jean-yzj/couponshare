@@ -13,6 +13,7 @@ import {
   Skeleton,
   Pill,
   GradientPanel,
+  ProgressBar,
 } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { HeroSparkles } from "@/components/Mascot";
@@ -39,6 +40,9 @@ type SocialPost = {
 
 type SocialPostsData = {
   pool_remaining: number;
+  month_count: number;
+  month_cap: number;
+  blocked_reason: "already_submitted" | "quota_full" | null;
   can_submit: boolean;
   this_month: ThisMonth | null;
   posts: SocialPost[];
@@ -51,7 +55,7 @@ const STATUS_PILL: Record<SocialPostStatus, { label: (bonus: number | null) => s
 };
 
 const STEPS = [
-  { title: "公開發文", desc: "帶 #CouponShare，文內放平台使用截圖" },
+  { title: "公開發文", desc: "提到 CouponShare＋平台截圖＋至少 30 字心得" },
   { title: "回來提交", desc: "附上公開連結與可審核截圖" },
   { title: "等待審核", desc: "7 天內完成，通過即發放" },
 ];
@@ -67,6 +71,7 @@ export default function SocialRewardPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   if (meLoading) return <PageSkeleton />;
@@ -76,6 +81,17 @@ export default function SocialRewardPage() {
   const canSubmit = topic.trim() && postDate && postUrl.trim() && !!image;
   const tm = data.this_month;
   const monthPost = tm ? (data.posts.find((p) => p.id === tm.id) ?? null) : null;
+  const quotaPct = Math.min(100, Math.round((data.month_count / data.month_cap) * 100));
+
+  async function copyInvite() {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/login?ref=${me!.id}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked */
+    }
+  }
 
   async function pickImage(f: File | null) {
     if (!f) return;
@@ -129,7 +145,7 @@ export default function SocialRewardPage() {
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
             <div className="rounded-xl bg-white/15 px-2 py-2.5 backdrop-blur-sm">
               <p className="font-display text-xl font-extrabold leading-none">+10</p>
-              <p className="mt-1 text-[11px] text-white/80">審核通過</p>
+              <p className="mt-1 text-[11px] text-white/80">發文通過</p>
             </div>
             <div className="rounded-xl bg-white/15 px-2 py-2.5 backdrop-blur-sm">
               <p className="font-display text-xl font-extrabold leading-none">+20</p>
@@ -137,9 +153,12 @@ export default function SocialRewardPage() {
             </div>
             <div className="rounded-xl bg-white/15 px-2 py-2.5 backdrop-blur-sm">
               <p className="font-display text-xl font-extrabold leading-none">+5</p>
-              <p className="mt-1 text-[11px] text-white/80">貢獻值</p>
+              <p className="mt-1 text-[11px] text-white/80">貢獻值皆有</p>
             </div>
           </div>
+          <p className="mt-2 text-center text-[11px] leading-relaxed text-white/75">
+            +10 與 +20 擇一發放：讚數破百就發 +20（以你提交的截圖為準），否則發 +10。
+          </p>
           <div className="mt-3 flex items-center justify-between rounded-xl bg-white/15 px-4 py-2.5 backdrop-blur-sm">
             <span className="inline-flex items-center gap-1.5 text-sm text-white/85">
               <Icon name="coin" size={15} /> 本月加碼池（哪天用都行）
@@ -162,6 +181,37 @@ export default function SocialRewardPage() {
         ))}
       </div>
 
+      {/* Monthly quota progress — 500 participants per month, first come first served */}
+      <Card className="mt-4 p-4">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="font-semibold text-ink">本月名額</p>
+          <p className="text-sm text-ink-faint">
+            已有 <span className="font-bold text-accent">{data.month_count.toLocaleString()}</span> 人發文 / 限{" "}
+            {data.month_cap} 人
+          </p>
+        </div>
+        <div className="mt-2">
+          <ProgressBar value={quotaPct} />
+        </div>
+        <p className="mt-1.5 text-xs text-ink-faint">
+          額滿之後，這個月的發文就不會獲得獎勵；下個月 1 號重新開放。
+        </p>
+      </Card>
+
+      {/* Invite link — free to copy; the post itself should be in the user's own words */}
+      <Card className="mt-4 flex items-center gap-3 p-4">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pine-tint text-pine">
+          <Icon name="gift" size={20} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-ink">貼文裡放上你的邀請連結</p>
+          <p className="mt-0.5 text-sm text-ink-soft">每有一人透過它註冊，你再 +2 次（進當月加碼池）。</p>
+        </div>
+        <Button size="sm" variant="outline" icon={copied ? "check" : "share"} onClick={copyInvite}>
+          {copied ? "已複製" : "複製連結"}
+        </Button>
+      </Card>
+
       {/* Submit form / this-month status */}
       <div className="mt-4">
         {data.can_submit ? (
@@ -180,7 +230,8 @@ export default function SocialRewardPage() {
             <Card className="p-5">
               <h2 className="mb-4 font-semibold text-ink">發完文，回來這裡提交</h2>
               <Banner tone="info" icon="image">
-                貼文內容需包含你實際使用 CouponShare 的截圖，例如探索頁、上架流程、錢包或領券畫面；只貼文字或只有 #CouponShare 不算。
+                貼文需包含：你實際使用平台的截圖（例如探索頁、錢包、領券畫面）＋至少 30
+                字的使用心得，並用自己的話寫、文中有提到 CouponShare 即可（加不加 # 都可以）。
               </Banner>
               <div className="space-y-4">
                 <Field label="發文主題" required hint="一句話描述你的貼文內容">
@@ -211,7 +262,7 @@ export default function SocialRewardPage() {
                     審核截圖 <span className="text-accent">*</span>
                   </p>
                   <p className="mb-2 text-xs leading-relaxed text-ink-faint">
-                    請上傳能看出「貼文裡有平台使用截圖」、#CouponShare 與讚數的截圖。
+                    請上傳能看出貼文內容（平台截圖＋心得文字＋提到 CouponShare）與讚數的截圖。
                   </p>
                   <input
                     ref={fileRef}
@@ -240,7 +291,7 @@ export default function SocialRewardPage() {
                       className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-canvas/50 py-4 text-sm text-ink-soft transition-colors hover:border-accent hover:text-accent"
                     >
                       <Icon name="image" size={18} />
-                      上傳審核截圖（需看得到平台使用截圖、#CouponShare 與讚數）
+                      上傳審核截圖（需看得到貼文內容與讚數）
                     </button>
                   )}
                 </div>
@@ -251,6 +302,16 @@ export default function SocialRewardPage() {
               </div>
             </Card>
           )
+        ) : data.blocked_reason === "quota_full" ? (
+          <Card className="p-5">
+            <p className="font-semibold text-ink">本月名額已滿</p>
+            <div className="mt-3">
+              <Banner tone="warn" icon="info">
+                本月 {data.month_cap} 個發文獎勵名額已滿，現在發文不會獲得獎勵。下個月 1
+                號重新開放，歡迎先把心得存起來、月初再來提交。
+              </Banner>
+            </div>
+          </Card>
         ) : (
           <Card className="p-5">
             <p className="font-semibold text-ink">你這個月已經提交過了，不可以再提交</p>
@@ -287,10 +348,16 @@ export default function SocialRewardPage() {
           <Icon name="clock" size={12} /> 每人每月限一篇
         </span>
         <span className="inline-flex items-center gap-1">
-          <Icon name="star" size={12} /> 讚數以截圖為準
+          <Icon name="users" size={12} /> 每月限 {data.month_cap} 名
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <Icon name="edit" size={12} /> 心得至少 30 字
         </span>
         <span className="inline-flex items-center gap-1">
           <Icon name="image" size={12} /> 文內需有平台使用截圖
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <Icon name="star" size={12} /> 讚數以截圖為準
         </span>
         <span className="inline-flex items-center gap-1">
           <Icon name="info" size={12} /> 內容偏負面不予通過

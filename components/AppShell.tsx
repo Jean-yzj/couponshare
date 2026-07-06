@@ -248,7 +248,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   發一篇 Threads，換申請次數
                 </p>
                 <p className="mt-0.5 text-sm leading-relaxed text-white/85">
-                  貼文帶上 #CouponShare，審核通過送當月申請次數，破百讚拿更多。
+                  發文分享使用心得，審核通過送 10 次申請、破百讚送 20 次（每月限 500 名）。
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
                   <Link
