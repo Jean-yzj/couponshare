@@ -5,9 +5,16 @@ import { apiFetch, ApiErr } from "@/lib/client";
 import { Button, Card, Eyebrow, Field, Input } from "@/components/ui";
 import { Icon } from "@/components/icons";
 
-// 企業合作窗口 — the only business-facing surface on the platform itself.
-// Collects the four contact fields; the founder replies with a quote by email.
-export function BusinessLeadForm() {
+// 企業合作窗口 — collects the four contact fields; the founder replies with a quote
+// by email. Reused both standalone and as the closing section of the /business
+// pitch page (hence the configurable heading).
+export function BusinessLeadForm({
+  title = "企業合作窗口",
+  subtitle = "想把品牌優惠以「官方福利券」的形式放上 CouponShare？留下聯絡方式，我會把完整的合作方案與報價寄到你的信箱。",
+}: {
+  title?: string;
+  subtitle?: string;
+} = {}) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -61,10 +68,8 @@ export function BusinessLeadForm() {
         <Eyebrow>
           <Icon name="sparkle" size={13} /> Business · 企業合作
         </Eyebrow>
-        <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">企業合作窗口</h1>
-        <p className="mx-auto mt-2.5 max-w-sm text-[15px] leading-relaxed text-ink-soft">
-          想把品牌優惠以「官方福利券」的形式放上 CouponShare？留下聯絡方式，我會把完整的合作方案與報價寄到你的信箱。
-        </p>
+        <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">{title}</h1>
+        <p className="mx-auto mt-2.5 max-w-sm text-[15px] leading-relaxed text-ink-soft">{subtitle}</p>
       </div>
 
       <Card className="mt-6 space-y-4 p-5 sm:p-6">
