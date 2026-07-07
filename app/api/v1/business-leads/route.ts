@@ -18,10 +18,10 @@ export const POST = route(async (req) => {
     data: {
       name: body.name,
       company: body.company,
-      jobTitle: body.job_title,
+      jobTitle: body.job_title?.trim() || null,
       email: body.email.toLowerCase(),
-      phone: body.phone,
-      lineId: body.line_id,
+      phone: body.phone?.trim() || null,
+      lineId: body.line_id?.trim() || null,
       goals: body.goals.length ? body.goals.join(", ") : null,
       categories: body.categories.length ? body.categories.join(", ") : null,
     },

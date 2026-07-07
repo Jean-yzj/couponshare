@@ -35,8 +35,12 @@ export function BusinessLeadForm({
     set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
   async function submit() {
-    if (!company.trim() || !name.trim() || !jobTitle.trim() || !email.trim() || !phone.trim() || !lineId.trim()) {
-      setError("請填寫公司、姓名、職稱與聯絡方式，我才聯絡得到你。");
+    if (!company.trim() || !name.trim() || !email.trim()) {
+      setError("請至少填品牌名稱、姓名與 Email。");
+      return;
+    }
+    if (goals.length === 0) {
+      setError("請至少選一個合作目標，我才能給你合適的方案。");
       return;
     }
     setBusy(true);
@@ -47,10 +51,10 @@ export function BusinessLeadForm({
         body: JSON.stringify({
           name: name.trim(),
           company: company.trim(),
-          job_title: jobTitle.trim(),
+          job_title: jobTitle.trim() || undefined,
           email: email.trim(),
-          phone: phone.trim(),
-          line_id: lineId.trim(),
+          phone: phone.trim() || undefined,
+          line_id: lineId.trim() || undefined,
           goals,
           categories,
         }),
@@ -92,30 +96,30 @@ export function BusinessLeadForm({
           <Field label="公司 / 品牌名稱" required>
             <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="例如：某某咖啡" maxLength={60} autoComplete="organization" />
           </Field>
-          <Field label="職稱" required>
-            <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="例如：行銷經理" maxLength={40} autoComplete="organization-title" />
-          </Field>
           <Field label="姓名" required>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="怎麼稱呼你" maxLength={40} autoComplete="name" />
           </Field>
-          <Field label="Email" required hint="報價會寄到這個信箱">
+          <Field label="Email" required hint="方案與範例報表會寄到這裡">
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" maxLength={120} autoComplete="email" />
           </Field>
-          <Field label="電話" required>
+          <Field label="職稱" hint="選填">
+            <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="例如：行銷經理" maxLength={40} autoComplete="organization-title" />
+          </Field>
+          <Field label="電話" hint="選填">
             <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0912 345 678" maxLength={20} autoComplete="tel" />
           </Field>
-          <Field label="LINE ID" required>
+          <Field label="LINE ID" hint="選填">
             <Input value={lineId} onChange={(e) => setLineId(e.target.value)} placeholder="方便即時聯繫" maxLength={80} />
           </Field>
         </div>
 
-        <CheckGroup label="這次的行銷目標（可複選）" options={GOALS} selected={goals} onToggle={(v) => toggle(goals, setGoals, v)} />
+        <CheckGroup label="這次的合作目標（可複選，必填）" options={GOALS} selected={goals} onToggle={(v) => toggle(goals, setGoals, v)} />
         <CheckGroup label="你的產品分類（可複選）" options={CATEGORIES} selected={categories} onToggle={(v) => toggle(categories, setCategories, v)} />
 
         {error && <p className="text-sm text-danger">{error}</p>}
 
         <Button full size="lg" icon="send" loading={busy} onClick={submit}>
-          送出，取得專屬報價
+          送出，取得方案與範例報表
         </Button>
         <p className="text-center text-xs leading-relaxed text-ink-faint">
           你留下的資料只會用於這次合作洽談的聯繫，不會作其他用途。

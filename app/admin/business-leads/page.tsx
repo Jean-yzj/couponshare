@@ -12,8 +12,8 @@ type Lead = {
   company: string | null;
   job_title: string | null;
   email: string;
-  phone: string;
-  line_id: string;
+  phone: string | null;
+  line_id: string | null;
   goals: string | null;
   categories: string | null;
   status: "PENDING" | "CONTACTED";
@@ -146,24 +146,28 @@ export default function AdminBusinessLeadsPage() {
                     {copied === `${l.id}:email` ? "已複製" : "複製"}
                   </button>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <a href={`tel:${l.phone}`} className="flex min-w-0 items-center gap-2 text-ink-soft hover:text-ink">
-                    <Icon name="bell" size={14} className="shrink-0" />
-                    <span className="truncate">{l.phone}</span>
-                  </a>
-                  <button onClick={() => copy(`${l.id}:phone`, l.phone)} className="shrink-0 text-xs text-ink-faint hover:text-ink">
-                    {copied === `${l.id}:phone` ? "已複製" : "複製"}
-                  </button>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex min-w-0 items-center gap-2 text-ink-soft">
-                    <Icon name="user" size={14} className="shrink-0" />
-                    <span className="truncate">LINE：{l.line_id}</span>
-                  </span>
-                  <button onClick={() => copy(`${l.id}:line`, l.line_id)} className="shrink-0 text-xs text-ink-faint hover:text-ink">
-                    {copied === `${l.id}:line` ? "已複製" : "複製"}
-                  </button>
-                </div>
+                {l.phone && (
+                  <div className="flex items-center justify-between gap-2">
+                    <a href={`tel:${l.phone}`} className="flex min-w-0 items-center gap-2 text-ink-soft hover:text-ink">
+                      <Icon name="bell" size={14} className="shrink-0" />
+                      <span className="truncate">{l.phone}</span>
+                    </a>
+                    <button onClick={() => copy(`${l.id}:phone`, l.phone!)} className="shrink-0 text-xs text-ink-faint hover:text-ink">
+                      {copied === `${l.id}:phone` ? "已複製" : "複製"}
+                    </button>
+                  </div>
+                )}
+                {l.line_id && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-2 text-ink-soft">
+                      <Icon name="user" size={14} className="shrink-0" />
+                      <span className="truncate">LINE：{l.line_id}</span>
+                    </span>
+                    <button onClick={() => copy(`${l.id}:line`, l.line_id!)} className="shrink-0 text-xs text-ink-faint hover:text-ink">
+                      {copied === `${l.id}:line` ? "已複製" : "複製"}
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="mt-3 flex gap-2">

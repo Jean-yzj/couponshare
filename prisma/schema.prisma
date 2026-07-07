@@ -580,8 +580,9 @@ model BusinessLead {
   id          String    @id @default(uuid())
   name        String
   email       String
-  phone       String
-  lineId      String    @map("line_id")
+  // Phone / LINE are now optional (low-friction form); nullable in DB.
+  phone       String?
+  lineId      String?   @map("line_id")
   // Nullable so the migration stays additive; the form now collects these too.
   company     String?
   jobTitle    String?   @map("job_title")
