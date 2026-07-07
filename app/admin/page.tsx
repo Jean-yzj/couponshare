@@ -299,11 +299,6 @@ export default function AdminDashboardPage() {
       {/* Ops todo — 每天要處理的營運待辦，置頂顯眼（解決檢舉/申訴看不到） */}
       <OpsTodoBar reports={o.reports.pending} appeals={o.appeals.pending} />
 
-      {/* Date range picker */}
-      <div className="rounded-2xl border border-line bg-canvas/60 px-4 py-3">
-        <DateRangePicker value={dateRange} onChange={setDateRange} />
-      </div>
-
       {/* Secondary sub-tabs */}
       <div className="no-scrollbar -mx-4 flex items-center gap-0 overflow-x-auto overscroll-x-contain border-b border-line px-4 sm:-mx-6 sm:px-6">
         {SUB_TABS.map((t) => (
@@ -320,6 +315,11 @@ export default function AdminDashboardPage() {
             {t.label}
           </button>
         ))}
+      </div>
+
+      {/* Date range picker — sits directly above the stats it filters */}
+      <div className="rounded-2xl border border-line bg-canvas/60 px-4 py-3">
+        <DateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
 
       {/* ── SUB-TAB CONTENT ─────────────────────────────────────────────── */}
