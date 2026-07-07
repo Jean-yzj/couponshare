@@ -26,6 +26,89 @@ function signupWindowFromReq(req: Request): (typeof SIGNUP_WINDOWS)[number] {
     : 24;
 }
 
+// Parse from/to date params (YYYY-MM-DD, Taipei). Returns UTC Date boundaries.
+// Both absent → today Taipei. Invalid → fallback to today.
+interface DateRange {
+  from: string;   // YYYY-MM-DD Taipei
+  to: string;     // YYYY-MM-DD Taipei
+  days: number;
+  fromUtc: Date;  // Taipei 00:00 of `from` in UTC
+  toUtcExcl: Date; // Taipei 00:00 of `to` + 1 day in UTC (exclusive upper bound)
+  prevFromUtc: Date;
+  prevToUtcExcl: Date;
+}
+
+function parseDateRange(req: Request, nowMs: number): DateRange {
+  const todayStr = new Date(nowMs + 8 * 3600 * 1000).toISOString().slice(0, 10);
+  const sp = new URL(req.url).searchParams;
+  const rawFrom = sp.get("from");
+  const rawTo = sp.get("to");
+
+  const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+  let from = rawFrom && ISO_RE.test(rawFrom) ? rawFrom : todayStr;
+  let to   = rawTo   && ISO_RE.test(rawTo)   ? rawTo   : todayStr;
+
+  // Validate order and span (≤366 days).
+  const fromMs = new Date(`${from}T00:00:00+08:00`).getTime();
+  const toMs   = new Date(`${to}T00:00:00+08:00`).getTime();
+  const days   = Math.round((toMs - fromMs) / DAY) + 1;
+
+  if (toMs < fromMs || days > 366) {
+    from = to = todayStr;
+  }
+
+  const finalFromMs = new Date(`${from}T00:00:00+08:00`).getTime();
+  const finalToMs   = new Date(`${to}T00:00:00+08:00`).getTime();
+  const finalDays   = Math.round((finalToMs - finalFromMs) / DAY) + 1;
+
+  const fromUtc    = new Date(finalFromMs);
+  const toUtcExcl  = new Date(finalToMs + DAY); // next day Taipei 00:00 = exclusive
+
+  // Previous period: same span, ending one day before `from`.
+  const prevToUtcExcl = fromUtc; // exclusive = fromUtc, i.e. prev period ends just before current
+  const prevFromUtc   = new Date(fromUtc.getTime() - finalDays * DAY);
+
+  return { from, to, days: finalDays, fromUtc, toUtcExcl, prevFromUtc, prevToUtcExcl };
+}
+
+// Generate human-readable Chinese period labels (server-side, for period_vs).
+function periodLabels(range: DateRange): { label_current: string; label_previous: string } {
+  const { from, to, days } = range;
+  const fmt = (s: string) => {
+    const [, m, d] = s.split("-");
+    return `${Number(m)}/${Number(d)}`;
+  };
+
+  let label_current: string;
+  let label_previous: string;
+
+  if (days === 1) {
+    const todayMs   = new Date(from + "T00:00:00+08:00").getTime();
+    const todayStr  = taipeiDay(Date.now());
+    const ydayStr   = taipeiDay(Date.now() - DAY);
+    if (from === todayStr) {
+      label_current  = "今日";
+      label_previous = "昨日";
+    } else if (from === ydayStr) {
+      label_current  = "昨日";
+      label_previous = `${fmt(taipeiDay(todayMs - 2 * DAY))}`;
+    } else {
+      label_current  = fmt(from);
+      label_previous = fmt(taipeiDay(new Date(from + "T00:00:00+08:00").getTime() - DAY));
+    }
+  } else {
+    label_current  = from === to ? fmt(from) : `${fmt(from)}–${fmt(to)}`;
+    // Previous period: same span before `from`.
+    const prevFromMs  = range.prevFromUtc.getTime();
+    const prevToMs    = range.prevToUtcExcl.getTime() - DAY; // inclusive end
+    const prevFromStr = taipeiDay(prevFromMs);
+    const prevToStr   = taipeiDay(prevToMs);
+    label_previous = `${fmt(prevFromStr)}–${fmt(prevToStr)}`;
+  }
+
+  return { label_current, label_previous };
+}
+
 function ageRangeForBirthYear(birthYear: number | null, now: Date): string {
   if (!birthYear) return "未填";
   const age = now.getFullYear() - birthYear;
@@ -38,13 +121,12 @@ function ageRangeForBirthYear(birthYear: number | null, now: Date): string {
 }
 
 // ── Module-level response cache ────────────────────────────────────────────────
-// Key: signupHours. TTL: 60 seconds. Admin opens auto-refresh; 40+ DB queries
-// must not run on every tick.
+// Key: "${from}|${to}|${signupHours}". TTL: 60 seconds.
 interface CacheEntry {
   data: unknown;
   ts: number;
 }
-const responseCache = new Map<number, CacheEntry>();
+const responseCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 60_000;
 
 // Admin analytics: registrations, coupons, transactions, breakdowns,
@@ -53,55 +135,48 @@ export const GET = route(async (req) => {
   await requireAdmin();
 
   const now = new Date();
+  const nowMs = now.getTime();
   const signupHours = signupWindowFromReq(req);
+  const range = parseDateRange(req, nowMs);
 
   // ── Cache check ──────────────────────────────────────────────────────────────
-  const cached = responseCache.get(signupHours);
-  if (cached && now.getTime() - cached.ts < CACHE_TTL_MS) {
+  const cacheKey = `${range.from}|${range.to}|${signupHours}`;
+  const cached = responseCache.get(cacheKey);
+  if (cached && nowMs - cached.ts < CACHE_TTL_MS) {
     return jsonOk({ ...(cached.data as Record<string, unknown>), cached: true });
   }
 
-  const since = (days: number) => new Date(now.getTime() - days * DAY);
-  const signupWindowStart = new Date(now.getTime() - signupHours * 60 * 60 * 1000);
-  const windowStart = new Date(now.getTime() - 29 * DAY);
+  const since = (days: number) => new Date(nowMs - days * DAY);
+  const signupWindowStart = new Date(nowMs - signupHours * 60 * 60 * 1000);
+  const windowStart = new Date(nowMs - 29 * DAY);
   windowStart.setHours(0, 0, 0, 0);
 
   // ── Taipei time helpers (for raw SQL) ────────────────────────────────────────
   // Taipei = UTC+8. Pattern: created_at + interval '8 hours'
   // Today Taipei 00:00 in UTC:
-  const nowMs = now.getTime();
   const taipeiDayStr = new Date(nowMs + 8 * 3600 * 1000).toISOString().slice(0, 10); // 'YYYY-MM-DD'
   const todayTaipeiStart = new Date(`${taipeiDayStr}T00:00:00+08:00`);    // UTC midnight of Taipei today
   const yesterdayTaipeiStart = new Date(todayTaipeiStart.getTime() - DAY);
-  const elapsed = now.getTime() - todayTaipeiStart.getTime(); // ms since Taipei 00:00 today
+  const elapsed = nowMs - todayTaipeiStart.getTime(); // ms since Taipei 00:00 today
   const yesterdaySameTime = new Date(yesterdayTaipeiStart.getTime() + elapsed); // yesterday same clock
 
   // ── 4-hour bucket helpers ────────────────────────────────────────────────────
-  // 12 buckets spanning 48 hours back. Each bucket is 4h, aligned to Taipei
-  // calendar: bucket index 0 = 48h ago rounded down to 4h boundary.
-  // We build the 12 labels and pass start/end to SQL.
   const BUCKET_MS = 4 * 3600 * 1000;
-  // Current Taipei hour, floored to 4h boundary:
   const taipeiHourNow = Math.floor((nowMs + 8 * 3600 * 1000) / BUCKET_MS) * BUCKET_MS - 8 * 3600 * 1000;
-  // 12 buckets: [taipeiHourNow - 11*4h, taipeiHourNow)
   const fourHourStart = new Date(taipeiHourNow - 11 * BUCKET_MS);
-  const fourHourEnd = new Date(taipeiHourNow + BUCKET_MS); // exclusive upper bound = current bucket end
+  const fourHourEnd = new Date(taipeiHourNow + BUCKET_MS);
 
   // ── Retention helpers ─────────────────────────────────────────────────────────
-  // 8 cohort weeks (Monday-based, Taipei). Oldest = 8 weeks ago Monday.
-  // We pass the 8 week-start timestamps to a single SQL query.
   function taipeiMonday(weeksAgo: number): Date {
-    // Monday of the current Taipei week, minus weeksAgo weeks.
     const taipeiNow = new Date(nowMs + 8 * 3600 * 1000);
-    const dayOfWeek = taipeiNow.getUTCDay(); // 0=Sun
+    const dayOfWeek = taipeiNow.getUTCDay();
     const daysToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     const thisMondayTaipei = new Date(taipeiNow.getTime() - daysToMon * DAY);
     thisMondayTaipei.setUTCHours(0, 0, 0, 0);
-    // Convert to UTC for the Taipei 00:00 moment: subtract 8h
     const thisMondayUtc = new Date(thisMondayTaipei.getTime() - 8 * 3600 * 1000);
     return new Date(thisMondayUtc.getTime() - weeksAgo * 7 * DAY);
   }
-  const cohortStarts = Array.from({ length: 8 }, (_, i) => taipeiMonday(7 - i)); // oldest first
+  const cohortStarts = Array.from({ length: 8 }, (_, i) => taipeiMonday(7 - i));
 
   const [
     userTotal,
@@ -158,31 +233,32 @@ export const GET = route(async (req) => {
     referredCount,
     byProvider,
     weeklyCompletedRaw,
-    // ── New queries ──────────────────────────────────────────────────────────────
+    // ── realtime ─────────────────────────────────────────────────────────────────
     realtimeRaw,
-    todaySignups,
-    ydaySignups,
-    avg7dSignups,
+    // ── today counts (kept for alerts logic) ─────────────────────────────────────
     todayCoupons,
-    ydayCoupons,
-    avg7dCoupons,
     todayClaims,
-    ydayClaims,
-    avg7dClaims,
-    todayCompleted,
-    ydayCompleted,
-    avg7dCompleted,
     todayReports,
-    ydayReports,
+    // ── avg_7d (kept for alerts logic only; not exposed in today_vs) ─────────────
+    avg7dCoupons,
+    avg7dClaims,
     avg7dReports,
-    fourHourRaw, // { metric, bkey, c }[]
+    // ── four_hour ─────────────────────────────────────────────────────────────────
+    fourHourRaw,
     heatmap14Raw,
     retentionRaw,
     pendingOver48hCount,
     couponExpiringCount,
     utmConversionRaw,
+    // ── series (Taipei day boundary) ──────────────────────────────────────────────
     dailyClaimsSeriesRaw,
     dailyCompletedSeriesRaw,
+    // ── period: counts for [from, to] Taipei range ────────────────────────────────
+    periodRaw,
+    // ── period_vs previous: counts for preceding equal-length range ───────────────
+    periodVsPrevRaw,
+    // ── active_note: audit 24h distinct actor ────────────────────────────────────
+    todayActiveAuditRaw,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { status: "ACTIVE" } }),
@@ -296,13 +372,12 @@ export const GET = route(async (req) => {
       ORDER BY c DESC
       LIMIT 10
     `,
-    // Distinct users who applied for a coupon, per day (30-day window).
-    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT requester_id)::int AS c FROM claim_requests WHERE created_at >= ${windowStart} GROUP BY 1`,
-    // Distinct users who published a coupon, per day. JOIN users so audit rows
-    // left behind by deleted accounts don't inflate the count.
-    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(a.created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.action = 'coupon.publish' AND a.created_at >= ${windowStart} GROUP BY 1`,
-    // DAU: distinct still-existing users with any audited activity, per day.
-    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(a.created_at, 'YYYY-MM-DD') AS d, COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.created_at >= ${windowStart} GROUP BY 1`,
+    // Distinct users who applied for a coupon, per day (30-day window). Taipei day boundary.
+    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(created_at + interval '8 hours', 'YYYY-MM-DD') AS d, COUNT(DISTINCT requester_id)::int AS c FROM claim_requests WHERE created_at >= ${windowStart} GROUP BY 1`,
+    // Distinct users who published a coupon, per day. Taipei day boundary.
+    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(a.created_at + interval '8 hours', 'YYYY-MM-DD') AS d, COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.action = 'coupon.publish' AND a.created_at >= ${windowStart} GROUP BY 1`,
+    // DAU: distinct still-existing users with any audited activity, per day. Taipei day boundary.
+    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(a.created_at + interval '8 hours', 'YYYY-MM-DD') AS d, COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.created_at >= ${windowStart} GROUP BY 1`,
     // WAU: distinct still-existing active users in the trailing 7 days.
     prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.created_at >= ${since(7)}`,
     // Activation funnel: distinct users who ever shared / claimed / completed.
@@ -336,23 +411,12 @@ export const GET = route(async (req) => {
       WHERE last_seen_at IS NOT NULL
     `,
 
-    // ── today_vs: signups ─────────────────────────────────────────────────────────
-    prisma.user.count({ where: { createdAt: { gte: todayTaipeiStart } } }),
-    prisma.user.count({ where: { createdAt: { gte: yesterdayTaipeiStart, lt: yesterdaySameTime } } }),
-    prisma.$queryRaw<{ avg: string }[]>`
-      SELECT ROUND(AVG(cnt)::numeric, 1)::text AS avg
-      FROM (
-        SELECT COUNT(*)::int AS cnt
-        FROM users
-        WHERE created_at >= ${new Date(todayTaipeiStart.getTime() - 7 * DAY)}
-          AND created_at <  ${todayTaipeiStart}
-        GROUP BY DATE(created_at + INTERVAL '8 hours')
-      ) sub
-    `,
-
-    // ── today_vs: coupons ─────────────────────────────────────────────────────────
+    // ── today counts (kept for alerts; not exposed in API as today_vs) ───────────
     prisma.coupon.count({ where: { createdAt: { gte: todayTaipeiStart } } }),
-    prisma.coupon.count({ where: { createdAt: { gte: yesterdayTaipeiStart, lt: yesterdaySameTime } } }),
+    prisma.claimRequest.count({ where: { createdAt: { gte: todayTaipeiStart } } }),
+    prisma.report.count({ where: { createdAt: { gte: todayTaipeiStart } } }),
+
+    // ── avg_7d (kept for alerts only; not exposed as API field) ──────────────────
     prisma.$queryRaw<{ avg: string }[]>`
       SELECT ROUND(AVG(cnt)::numeric, 1)::text AS avg
       FROM (
@@ -363,10 +427,6 @@ export const GET = route(async (req) => {
         GROUP BY DATE(created_at + INTERVAL '8 hours')
       ) sub
     `,
-
-    // ── today_vs: claims ──────────────────────────────────────────────────────────
-    prisma.claimRequest.count({ where: { createdAt: { gte: todayTaipeiStart } } }),
-    prisma.claimRequest.count({ where: { createdAt: { gte: yesterdayTaipeiStart, lt: yesterdaySameTime } } }),
     prisma.$queryRaw<{ avg: string }[]>`
       SELECT ROUND(AVG(cnt)::numeric, 1)::text AS avg
       FROM (
@@ -377,25 +437,6 @@ export const GET = route(async (req) => {
         GROUP BY DATE(created_at + INTERVAL '8 hours')
       ) sub
     `,
-
-    // ── today_vs: completed ───────────────────────────────────────────────────────
-    prisma.transaction.count({ where: { status: "COMPLETED", completedAt: { gte: todayTaipeiStart } } }),
-    prisma.transaction.count({ where: { status: "COMPLETED", completedAt: { gte: yesterdayTaipeiStart, lt: yesterdaySameTime } } }),
-    prisma.$queryRaw<{ avg: string }[]>`
-      SELECT ROUND(AVG(cnt)::numeric, 1)::text AS avg
-      FROM (
-        SELECT COUNT(*)::int AS cnt
-        FROM transactions
-        WHERE status = 'COMPLETED'
-          AND completed_at >= ${new Date(todayTaipeiStart.getTime() - 7 * DAY)}
-          AND completed_at <  ${todayTaipeiStart}
-        GROUP BY DATE(completed_at + INTERVAL '8 hours')
-      ) sub
-    `,
-
-    // ── today_vs: reports ─────────────────────────────────────────────────────────
-    prisma.report.count({ where: { createdAt: { gte: todayTaipeiStart } } }),
-    prisma.report.count({ where: { createdAt: { gte: yesterdayTaipeiStart, lt: yesterdaySameTime } } }),
     prisma.$queryRaw<{ avg: string }[]>`
       SELECT ROUND(AVG(cnt)::numeric, 1)::text AS avg
       FROM (
@@ -408,8 +449,6 @@ export const GET = route(async (req) => {
     `,
 
     // ── four_hour: 12 buckets, 4h each, 48h window, Taipei-aligned ───────────────
-    // Each metric aggregates its own table independently; UNION ALL avoids any
-    // cross-join. bkey = Taipei-aligned 'YYYY-MM-DD HH' bucket start hour.
     prisma.$queryRaw<{ metric: string; bkey: string; c: number }[]>`
       SELECT 'signups' AS metric,
         to_char(
@@ -499,8 +538,6 @@ export const GET = route(async (req) => {
     `,
 
     // ── retention: 8 cohort weeks ─────────────────────────────────────────────────
-    // cohort_users / activity CTEs are unchanged (PG uses hash semi-join for EXISTS).
-    // Aggregation now happens inside SQL → at most 8 rows returned, not per-user rows.
     prisma.$queryRaw<{
       cohort_start: Date;
       size: number;
@@ -567,7 +604,6 @@ export const GET = route(async (req) => {
       ORDER BY cohort_start
     `,
 
-    // Simpler health fields — separate queries for clarity (health detail runs after cache miss, below):
     prisma.$queryRaw<{ c: number }[]>`
       SELECT COUNT(*)::int AS c FROM claim_requests
       WHERE status = 'PENDING' AND created_at < NOW() - INTERVAL '48 hours'
@@ -576,7 +612,7 @@ export const GET = route(async (req) => {
     prisma.coupon.count({
       where: {
         status: "AVAILABLE",
-        expiryDate: { gte: now, lte: new Date(now.getTime() + 7 * DAY) },
+        expiryDate: { gte: now, lte: new Date(nowMs + 7 * DAY) },
       },
     }),
 
@@ -627,20 +663,61 @@ export const GET = route(async (req) => {
       ORDER BY r.signups DESC
     `,
 
-    // ── series.claims: daily claim_requests count, 30-day window ─────────────────
+    // ── series.claims: daily claim_requests count, 30-day window — Taipei day boundary ──
     prisma.$queryRaw<{ d: string; c: number }[]>`
-      SELECT to_char(created_at, 'YYYY-MM-DD') AS d, COUNT(*)::int AS c
+      SELECT to_char(created_at + interval '8 hours', 'YYYY-MM-DD') AS d, COUNT(*)::int AS c
       FROM claim_requests
       WHERE created_at >= ${windowStart}
       GROUP BY 1
     `,
 
-    // ── series.completed: daily completed transactions, 30-day window ─────────────
+    // ── series.completed: daily completed transactions, 30-day window — Taipei day boundary ──
     prisma.$queryRaw<{ d: string; c: number }[]>`
-      SELECT to_char(completed_at, 'YYYY-MM-DD') AS d, COUNT(*)::int AS c
+      SELECT to_char(completed_at + interval '8 hours', 'YYYY-MM-DD') AS d, COUNT(*)::int AS c
       FROM transactions
       WHERE status = 'COMPLETED' AND completed_at >= ${windowStart}
       GROUP BY 1
+    `,
+
+    // ── period: new counts in [from, to] Taipei range ────────────────────────────
+    // 5 counts in one query to avoid N round-trips.
+    prisma.$queryRaw<{
+      new_users: number;
+      new_coupons: number;
+      new_claims: number;
+      completed: number;
+      new_reports: number;
+    }[]>`
+      SELECT
+        (SELECT COUNT(*)::int FROM users        WHERE created_at >= ${range.fromUtc} AND created_at < ${range.toUtcExcl}) AS new_users,
+        (SELECT COUNT(*)::int FROM coupons      WHERE created_at >= ${range.fromUtc} AND created_at < ${range.toUtcExcl}) AS new_coupons,
+        (SELECT COUNT(*)::int FROM claim_requests WHERE created_at >= ${range.fromUtc} AND created_at < ${range.toUtcExcl}) AS new_claims,
+        (SELECT COUNT(*)::int FROM transactions  WHERE status = 'COMPLETED' AND completed_at >= ${range.fromUtc} AND completed_at < ${range.toUtcExcl}) AS completed,
+        (SELECT COUNT(*)::int FROM reports       WHERE created_at >= ${range.fromUtc} AND created_at < ${range.toUtcExcl}) AS new_reports
+    `,
+
+    // ── period_vs previous: preceding equal-length range ─────────────────────────
+    prisma.$queryRaw<{
+      new_users: number;
+      new_coupons: number;
+      new_claims: number;
+      completed: number;
+      new_reports: number;
+    }[]>`
+      SELECT
+        (SELECT COUNT(*)::int FROM users        WHERE created_at >= ${range.prevFromUtc} AND created_at < ${range.prevToUtcExcl}) AS new_users,
+        (SELECT COUNT(*)::int FROM coupons      WHERE created_at >= ${range.prevFromUtc} AND created_at < ${range.prevToUtcExcl}) AS new_coupons,
+        (SELECT COUNT(*)::int FROM claim_requests WHERE created_at >= ${range.prevFromUtc} AND created_at < ${range.prevToUtcExcl}) AS new_claims,
+        (SELECT COUNT(*)::int FROM transactions  WHERE status = 'COMPLETED' AND completed_at >= ${range.prevFromUtc} AND completed_at < ${range.prevToUtcExcl}) AS completed,
+        (SELECT COUNT(*)::int FROM reports       WHERE created_at >= ${range.prevFromUtc} AND created_at < ${range.prevToUtcExcl}) AS new_reports
+    `,
+
+    // ── active_note.today_active_count: audit 24h distinct actor ─────────────────
+    prisma.$queryRaw<{ c: number }[]>`
+      SELECT COUNT(DISTINCT a.actor_id)::int AS c
+      FROM audit_logs a
+      JOIN users u ON u.id = a.actor_id
+      WHERE a.created_at >= NOW() - INTERVAL '24 hours'
     `,
   ]);
 
@@ -660,11 +737,20 @@ export const GET = route(async (req) => {
     return arr;
   };
   // Raw daily aggregates keyed by 'YYYY-MM-DD' → the same 30-slot series shape.
+  // After fixing Taipei day boundary, SQL keys are now Taipei dates.
+  // JS keyIndex also uses Taipei dates (windowStart is 00:00 UTC, same as Taipei 08:00 start,
+  // so the shift is at most one slot off — use the corrected Taipei bucket directly).
   const dailyBucket = (rows: { d: string; c: number }[]) => {
     const arr = new Array<number>(30).fill(0);
     for (const r of rows) {
-      const i = keyIndex.get(r.d);
-      if (i !== undefined) arr[i] = Number(r.c);
+      // Build the correct JS index for a Taipei date string.
+      // windowStart is set to UTC midnight (setHours(0,0,0,0)), which corresponds to
+      // Taipei 08:00 of the same calendar day. So the Taipei day 'YYYY-MM-DD' from SQL
+      // may be windowStart's calendar day or the next — look up by recomputing the slot.
+      const slotDate = new Date(r.d + "T00:00:00+08:00"); // Taipei midnight for this date
+      // Find which slot index this corresponds to: (slotDate - windowStart) / DAY
+      const slotIdx = Math.round((slotDate.getTime() - windowStart.getTime()) / DAY);
+      if (slotIdx >= 0 && slotIdx < 30) arr[slotIdx] = Number(r.c);
     }
     return arr;
   };
@@ -699,8 +785,7 @@ export const GET = route(async (req) => {
   const weeklyCompleted: { label: string; count: number }[] = [];
   for (let w = 7; w >= 0; w--) {
     const monday = new Date(now);
-    // Roll back to this week's Monday, then subtract w weeks.
-    const dayOfWeek = monday.getDay(); // 0=Sun
+    const dayOfWeek = monday.getDay();
     const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     monday.setDate(monday.getDate() - daysToMonday - w * 7);
     monday.setHours(0, 0, 0, 0);
@@ -710,27 +795,10 @@ export const GET = route(async (req) => {
     weeklyCompleted.push({ label, count: row ? Number(row.c) : 0 });
   }
 
-  // ── New: realtime ─────────────────────────────────────────────────────────────
+  // ── realtime ──────────────────────────────────────────────────────────────────
   const rt = realtimeRaw[0] ?? { online_5m: 0, active_30m: 0, active_1h: 0, active_24h: 0 };
 
-  // ── New: today_vs ─────────────────────────────────────────────────────────────
-  const parseAvg = (rows: { avg: string }[]): number | null => {
-    const v = rows[0]?.avg;
-    return v === null || v === undefined ? null : parseFloat(v);
-  };
-  const todayVs = {
-    signups:   { today: todaySignups,   yesterday_same_time: ydaySignups,   avg_7d: parseAvg(avg7dSignups) },
-    coupons:   { today: todayCoupons,   yesterday_same_time: ydayCoupons,   avg_7d: parseAvg(avg7dCoupons) },
-    claims:    { today: todayClaims,    yesterday_same_time: ydayClaims,    avg_7d: parseAvg(avg7dClaims) },
-    completed: { today: todayCompleted, yesterday_same_time: ydayCompleted, avg_7d: parseAvg(avg7dCompleted) },
-    reports:   { today: todayReports,   yesterday_same_time: ydayReports,   avg_7d: parseAvg(avg7dReports) },
-  };
-
-  // ── New: four_hour ────────────────────────────────────────────────────────────
-  // fourHourRaw is now { metric, bkey, c }[] rows from UNION ALL.
-  // bkey format: 'YYYY-MM-DD HH' in Taipei time (same formula as SQL bucket_expr).
-  // JS builds the 12 expected bkeys using the same UTC+8 alignment as SQL, then
-  // looks up each (metric, bkey) pair — guaranteeing JS and SQL bucket keys match.
+  // ── four_hour ─────────────────────────────────────────────────────────────────
   const fourHourLabels: string[] = [];
   const fhSignups: number[] = [];
   const fhCoupons: number[] = [];
@@ -738,13 +806,11 @@ export const GET = route(async (req) => {
   const fhCompleted: number[] = [];
   const fhActive: number[] = [];
 
-  // Index SQL rows by "metric|bkey" for O(1) lookup.
   const fhIndex = new Map<string, number>();
   for (const r of fourHourRaw) {
     fhIndex.set(`${r.metric}|${r.bkey}`, Number(r.c));
   }
 
-  // Build expected 12 bucket keys using same UTC+8 + 4h-floor logic.
   for (let i = 0; i < 12; i++) {
     const bucketUtc = new Date(fourHourStart.getTime() + i * BUCKET_MS);
     const bucketTaipei = new Date(bucketUtc.getTime() + 8 * 3600 * 1000);
@@ -753,7 +819,6 @@ export const GET = route(async (req) => {
     const hh = bucketTaipei.getUTCHours();
     const hhEnd = hh + 4;
     fourHourLabels.push(`${mm}/${dd} ${String(hh).padStart(2, "0")}-${String(hhEnd).padStart(2, "0")}`);
-    // bkey must exactly match SQL to_char output: 'YYYY-MM-DD HH'
     const bkey = `${bucketTaipei.getUTCFullYear()}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")} ${String(hh).padStart(2, "0")}`;
     fhSignups.push(fhIndex.get(`signups|${bkey}`) ?? 0);
     fhCoupons.push(fhIndex.get(`coupons|${bkey}`) ?? 0);
@@ -762,14 +827,12 @@ export const GET = route(async (req) => {
     fhActive.push(fhIndex.get(`active|${bkey}`) ?? 0);
   }
 
-  // ── New: activity_heatmap ─────────────────────────────────────────────────────
-  // 7×24 per metric. weekday 0=Sun from SQL (EXTRACT DOW). Re-map to 0=Mon.
+  // ── activity_heatmap ──────────────────────────────────────────────────────────
   const makeMatrix = () => Array.from({ length: 7 }, () => new Array<number>(24).fill(0));
   const hmClaims = makeMatrix();
   const hmUploads = makeMatrix();
   const hmCompletions = makeMatrix();
   for (const r of heatmap14Raw) {
-    // SQL DOW: 0=Sun,1=Mon,...,6=Sat → re-map to 0=Mon: (DOW+6)%7
     const wd = (Number(r.weekday) + 6) % 7;
     const h = Number(r.hour);
     const c = Number(r.c);
@@ -778,9 +841,7 @@ export const GET = route(async (req) => {
     if (r.metric === "completions") hmCompletions[wd][h] = c;
   }
 
-  // ── New: retention ────────────────────────────────────────────────────────────
-  // SQL now returns at most 8 pre-aggregated rows (one per cohort week).
-  // JS just maps each cohort week to the matching SQL row (or a zero placeholder).
+  // ── retention ─────────────────────────────────────────────────────────────────
   const retentionSqlIndex = new Map<string, typeof retentionRaw[number]>();
   for (const row of retentionRaw) {
     retentionSqlIndex.set(taipeiDay(new Date(row.cohort_start).getTime()), row);
@@ -801,10 +862,9 @@ export const GET = route(async (req) => {
     };
   });
 
-  // ── New: health ────────────────────────────────────────────────────────────────
+  // ── health ────────────────────────────────────────────────────────────────────
   const pendingOver48h = Number(pendingOver48hCount[0]?.c ?? 0);
 
-  // Health metrics in a focused query (runs after the main Promise.all):
   const [healthDetail] = await Promise.all([
     prisma.$queryRaw<{
       claim_approval_rate: string | null;
@@ -844,42 +904,41 @@ export const GET = route(async (req) => {
     pending_over_48h:      pendingOver48h,
   };
 
-  // ── New: alerts ────────────────────────────────────────────────────────────────
+  // ── alerts ────────────────────────────────────────────────────────────────────
+  const parseAvg = (rows: { avg: string }[]): number | null => {
+    const v = rows[0]?.avg;
+    return v === null || v === undefined ? null : parseFloat(v);
+  };
   const alerts: { severity: "red" | "yellow"; key: string; message: string }[] = [];
-  const elapsedFraction = elapsed / DAY; // fraction of today elapsed (Taipei)
+  const elapsedFraction = elapsed / DAY;
 
-  // 1. Coupon low supply
   const avg7dCouponsVal = parseAvg(avg7dCoupons);
   if (avg7dCouponsVal !== null && avg7dCouponsVal >= 5) {
     if (todayCoupons < avg7dCouponsVal * elapsedFraction * 0.5) {
       alerts.push({ severity: "yellow", key: "low_coupons", message: `今日新增票券 ${todayCoupons} 件，低於常態（過去 7 日均 ${avg7dCouponsVal} 件）的 50%` });
     }
   }
-  // 1b. Claims low
   const avg7dClaimsVal = parseAvg(avg7dClaims);
   if (avg7dClaimsVal !== null && avg7dClaimsVal >= 5) {
     if (todayClaims < avg7dClaimsVal * elapsedFraction * 0.5) {
       alerts.push({ severity: "yellow", key: "low_claims", message: `今日申請件數 ${todayClaims} 件，低於常態（過去 7 日均 ${avg7dClaimsVal} 件）的 50%` });
     }
   }
-  // 2. Pending over 48h
   if (pendingOver48h > 100) {
     alerts.push({ severity: "red", key: "pending_48h", message: `${pendingOver48h} 件申請等待超過 48 小時，請立即處理` });
   } else if (pendingOver48h > 20) {
     alerts.push({ severity: "yellow", key: "pending_48h", message: `${pendingOver48h} 件申請等待超過 48 小時` });
   }
-  // 3. Reports spike
   const avg7dReportsVal = parseAvg(avg7dReports);
   const reportsThreshold = Math.max(5, (avg7dReportsVal ?? 0) * 2);
   if (todayReports > reportsThreshold) {
     alerts.push({ severity: "red", key: "reports_spike", message: `今日檢舉數 ${todayReports} 件，超過常態 ${avg7dReportsVal ?? 0} 件的 2 倍` });
   }
-  // 4. Expiring coupons
   if (couponExpiringCount > 50) {
     alerts.push({ severity: "yellow", key: "expiring_coupons", message: `${couponExpiringCount} 張票券 7 日內到期（AVAILABLE 狀態）` });
   }
 
-  // ── New: utm_conversion ────────────────────────────────────────────────────────
+  // ── utm_conversion ────────────────────────────────────────────────────────────
   const utmConversion = utmConversionRaw.map((r) => ({
     source:   r.source ?? "organic",
     signups:  Number(r.signups),
@@ -888,10 +947,55 @@ export const GET = route(async (req) => {
     active_7d: Number(r.active_7d),
   }));
 
+  // ── period & period_vs assembly ───────────────────────────────────────────────
+  const pr  = periodRaw[0]    ?? { new_users: 0, new_coupons: 0, new_claims: 0, completed: 0, new_reports: 0 };
+  const pvr = periodVsPrevRaw[0] ?? { new_users: 0, new_coupons: 0, new_claims: 0, completed: 0, new_reports: 0 };
+
+  const period = {
+    from:        range.from,
+    to:          range.to,
+    days:        range.days,
+    new_users:   Number(pr.new_users),
+    new_coupons: Number(pr.new_coupons),
+    new_claims:  Number(pr.new_claims),
+    completed:   Number(pr.completed),
+    new_reports: Number(pr.new_reports),
+  };
+
+  const { label_current, label_previous } = periodLabels(range);
+  const period_vs = {
+    label_current,
+    label_previous,
+    signups:   { current: Number(pr.new_users),   previous: Number(pvr.new_users) },
+    coupons:   { current: Number(pr.new_coupons), previous: Number(pvr.new_coupons) },
+    claims:    { current: Number(pr.new_claims),  previous: Number(pvr.new_claims) },
+    completed: { current: Number(pr.completed),   previous: Number(pvr.completed) },
+    reports:   { current: Number(pr.new_reports), previous: Number(pvr.new_reports) },
+  };
+
+  // ── active_note assembly ──────────────────────────────────────────────────────
+  const todayActiveCount = Number(todayActiveAuditRaw[0]?.c ?? 0);
+  const active_note = {
+    online_source:       "last_seen" as const,
+    today_active_source: "audit_logs" as const,
+    today_active_count:  todayActiveCount,
+    precise_since:       "2026-07-07",
+    note: "『在線』是精準即時打點（last_seen）；『今日活躍』是操作記錄口徑（audit_logs，含發券/申請/完成等），兩者計算方式不同、不可直接相比。精準活躍打點自 2026-07-07 起累積中。",
+  };
+
+  // ── retention_meta ────────────────────────────────────────────────────────────
+  const retention_meta = {
+    data_since: "2026-07-07",
+  };
+
   // ── Assemble response ─────────────────────────────────────────────────────────
   const data = {
     generated_at: now.toISOString(),
     cached: false,
+    // ── Period parameters (from/to Taipei, used for period & period_vs) ──────────
+    period,
+    period_vs,
+    // ── Overview (cumulative totals, unchanged) ───────────────────────────────────
     overview: {
       users: {
         total: userTotal,
@@ -993,7 +1097,7 @@ export const GET = route(async (req) => {
       active_1h:  Number(rt.active_1h),
       active_24h: Number(rt.active_24h),
     },
-    today_vs: todayVs,
+    // today_vs has been removed; use period_vs instead.
     four_hour: {
       labels:    fourHourLabels,
       signups:   fhSignups,
@@ -1008,13 +1112,15 @@ export const GET = route(async (req) => {
       completions: hmCompletions,
     },
     retention,
+    retention_meta,
+    active_note,
     health,
     alerts,
     utm_conversion: utmConversion,
   };
 
   // Store in cache.
-  responseCache.set(signupHours, { data, ts: now.getTime() });
+  responseCache.set(cacheKey, { data, ts: nowMs });
 
   return jsonOk(data);
 });

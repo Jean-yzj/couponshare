@@ -13,6 +13,10 @@ type CohortRow = {
   d30_eligible: number;
 };
 
+type RetentionMeta = {
+  data_since: string;
+};
+
 function pct(num: number, denom: number): string | null {
   if (denom === 0) return null;
   return ((num / denom) * 100).toFixed(0) + "%";
@@ -26,7 +30,13 @@ function cellBg(num: number, denom: number): string {
   return `rgba(1, 130, 253, ${alpha.toFixed(3)})`;
 }
 
-export function RetentionCohort({ retention }: { retention: CohortRow[] }) {
+export function RetentionCohort({
+  retention,
+  retentionMeta,
+}: {
+  retention: CohortRow[];
+  retentionMeta?: RetentionMeta;
+}) {
   if (!retention || retention.length === 0) {
     return (
       <Card className="p-5">
@@ -40,9 +50,15 @@ export function RetentionCohort({ retention }: { retention: CohortRow[] }) {
       <div className="mb-1 flex items-baseline gap-2">
         <h2 className="font-semibold text-ink">留存 Cohort（週）</h2>
       </div>
-      <p className="mb-4 text-[11px] text-ink-faint">
+      <p className="mb-1 text-[11px] text-ink-faint">
         D1 = 次日回訪；D7 / D30 = N 日內曾回訪（分母 = 已滿 N 日的成員）
       </p>
+      {retentionMeta && (
+        <p className="mb-4 text-[11px] text-ink-faint">
+          {retentionMeta.data_since} 前的留存僅含有操作記錄的用戶，精準活躍打點自該日起累積；未到觀察期顯示「—」
+        </p>
+      )}
+      {!retentionMeta && <div className="mb-4" />}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[360px] text-sm">
           <thead>

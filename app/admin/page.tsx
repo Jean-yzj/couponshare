@@ -9,18 +9,48 @@ import { cn, relativeTime } from "@/lib/display";
 import { CATEGORIES } from "@/lib/categories";
 import { AlertBanner } from "@/components/admin/AlertBanner";
 import { RealtimeCards } from "@/components/admin/RealtimeCards";
-import { TodayVsCards } from "@/components/admin/TodayVsCards";
+import { PeriodVsCards } from "@/components/admin/PeriodVsCards";
 import { FourHourChart } from "@/components/admin/FourHourChart";
 import { SeriesChart } from "@/components/admin/SeriesChart";
 import { ActivityHeatmap } from "@/components/admin/ActivityHeatmap";
 import { RetentionCohort } from "@/components/admin/RetentionCohort";
 import { HealthCards } from "@/components/admin/HealthCards";
 import { UtmConversionTable } from "@/components/admin/UtmConversionTable";
+import { DateRangePicker, type DateRange } from "@/components/admin/DateRangePicker";
 
-type TodayVsItem = {
-  today: number;
-  yesterday_same_time: number;
-  avg_7d: number | null;
+// ── Types aligned with /tmp/stats-contract.ts ─────────────────────────────
+
+type Period = {
+  from: string;
+  to: string;
+  days: number;
+  new_users: number;
+  new_coupons: number;
+  new_claims: number;
+  completed: number;
+  new_reports: number;
+};
+
+type PeriodVs = {
+  label_current: string;
+  label_previous: string;
+  signups: { current: number; previous: number };
+  coupons: { current: number; previous: number };
+  claims: { current: number; previous: number };
+  completed: { current: number; previous: number };
+  reports: { current: number; previous: number };
+};
+
+type ActiveNote = {
+  online_source: "last_seen";
+  today_active_source: "audit_logs";
+  today_active_count: number;
+  precise_since: string;
+  note: string;
+};
+
+type RetentionMeta = {
+  data_since: string;
 };
 
 type CohortRow = {
@@ -37,6 +67,13 @@ type CohortRow = {
 type Stats = {
   generated_at: string;
   cached?: boolean;
+
+  // NEW
+  period: Period;
+  period_vs: PeriodVs;
+  active_note: ActiveNote;
+  retention_meta: RetentionMeta;
+
   overview: {
     users: { total: number; active: number; suspended: number; new_3h: number; new_6h: number; new_12h: number; new_24h: number; new_48h: number; new_7d: number; new_30d: number };
     coupons: { total: number; new_24h: number; new_7d: number; new_30d: number };
@@ -74,20 +111,12 @@ type Stats = {
   };
   weekly_completed: { label: string; count: number }[];
   heatmap_hours: number[];
-  top_contributors: { id: string; display_name: string; avatar_url: string | null; level_name: string; contribution_score: number }[];
+  top_contributors: { id: string; display_name: string | null; avatar_url: string | null; level_name: string; contribution_score: number }[];
   top_brands: { brand: string; count: number }[];
   followed_brands: { brand: string; count: number }[];
-  recent_users: { id: string; display_name: string; avatar_url: string | null; level_name: string; provider: string; created_at: string }[];
-  recent_coupons: { id: string; title: string; brand: string; type: string; category: string; status: string; owner: string; created_at: string }[];
-  // New blocks
+  recent_users: { id: string; display_name: string | null; avatar_url: string | null; level_name: string; provider: string; created_at: string }[];
+  recent_coupons: { id: string; title: string; brand: string; type: string; category: string; status: string; owner: string | null; created_at: string }[];
   realtime: { online_5m: number; active_30m: number; active_1h: number; active_24h: number };
-  today_vs: {
-    signups: TodayVsItem;
-    coupons: TodayVsItem;
-    claims: TodayVsItem;
-    completed: TodayVsItem;
-    reports: TodayVsItem;
-  };
   four_hour: {
     labels: string[];
     signups: number[];
@@ -113,6 +142,8 @@ type Stats = {
   utm_conversion: { source: string; signups: number; sharers: number; claimers: number; active_7d: number }[];
 };
 
+// ── Constants ─────────────────────────────────────────────────────────────
+
 const CAT_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.label]));
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "草稿",
@@ -131,22 +162,45 @@ const SIGNUP_WINDOWS = [3, 6, 12, 24, 48] as const;
 type SignupHours = (typeof SIGNUP_WINDOWS)[number];
 
 const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
-
 const REFRESH_INTERVAL_MS = 60_000;
 
-function fmt2(n: number) {
-  return String(n).padStart(2, "0");
-}
-
+function fmt2(n: number) { return String(n).padStart(2, "0"); }
 function nowHMS() {
   const d = new Date();
   return `${fmt2(d.getHours())}:${fmt2(d.getMinutes())}:${fmt2(d.getSeconds())}`;
 }
 
+function taipeiToday(): string {
+  const d = new Date(Date.now() + 8 * 3600 * 1000);
+  return d.toISOString().slice(0, 10);
+}
+
+// ── Sub-tab types ─────────────────────────────────────────────────────────
+
+type SubTab = "overview" | "users" | "coupons" | "growth" | "enterprise";
+
+const SUB_TABS: { key: SubTab; label: string }[] = [
+  { key: "overview", label: "總覽" },
+  { key: "users", label: "用戶" },
+  { key: "coupons", label: "票券" },
+  { key: "growth", label: "成長" },
+  { key: "enterprise", label: "企業" },
+];
+
+// ── Main page component ───────────────────────────────────────────────────
+
 export default function AdminDashboardPage() {
+  const today = taipeiToday();
+  const [dateRange, setDateRange] = useState<DateRange>({ from: today, to: today });
   const [signupHours, setSignupHours] = useState<SignupHours>(24);
+  const [subTab, setSubTab] = useState<SubTab>("overview");
+
   const { me, loading: meLoading } = useMe();
-  const { data, loading, refetch } = useApi<Stats>(me?.is_admin ? `/api/v1/admin/stats?signup_hours=${signupHours}` : null);
+
+  const apiUrl = me?.is_admin
+    ? `/api/v1/admin/stats?from=${dateRange.from}&to=${dateRange.to}&signup_hours=${signupHours}`
+    : null;
+  const { data, loading, refetch } = useApi<Stats>(apiUrl);
   const [lastRefresh, setLastRefresh] = useState<string>("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -156,9 +210,7 @@ export default function AdminDashboardPage() {
     setLastRefresh(nowHMS());
   }, [refetch]);
 
-  useEffect(() => {
-    setLastRefresh(nowHMS());
-  }, [data]);
+  useEffect(() => { setLastRefresh(nowHMS()); }, [data]);
 
   useEffect(() => {
     timerRef.current = setInterval(doRefresh, REFRESH_INTERVAL_MS);
@@ -182,19 +234,22 @@ export default function AdminDashboardPage() {
   const o = data.overview;
   const s = data.series;
 
+  // ── Render ──────────────────────────────────────────────────────────────
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Page header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Eyebrow>Dashboard</Eyebrow>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">數據總覽</h1>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">數據後台</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            CouponShare 營運數據與趨勢　·　更新於 {relativeTime(data.generated_at)}
+            更新於 {relativeTime(data.generated_at)}
             {data.cached && <span className="ml-1 text-ink-faint">(快取)</span>}
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-ink-faint">
-          {lastRefresh && <span>更新於 {lastRefresh}</span>}
+          {lastRefresh && <span>刷新於 {lastRefresh}</span>}
           <button
             onClick={doRefresh}
             className="flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-ink-soft hover:text-ink"
@@ -208,86 +263,181 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Alerts */}
+      {/* ── TOP FIXED AREA ── (always visible, never changes with sub-tab) */}
+
+      {/* Core KPI cards — 4 big numbers */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <CoreCard
+          icon="user"
+          label="總用戶"
+          value={o.users.total}
+          sub={`期間 +${data.period?.new_users ?? 0}`}
+        />
+        <CoreCard
+          icon="ticket"
+          label="總票券"
+          value={o.coupons.total}
+          sub={`期間 +${data.period?.new_coupons ?? 0}`}
+        />
+        <CoreCard
+          icon="heart"
+          label="成功媒合"
+          value={o.transactions.completed}
+          sub={`期間 +${data.period?.completed ?? 0}`}
+        />
+        <CoreCard
+          icon="lightning"
+          label="即時在線"
+          value={data.realtime.online_5m}
+          sub="近 5 分鐘 · 新打點"
+          accent
+        />
+      </div>
+
+      {/* Date range picker */}
+      <div className="rounded-2xl border border-line bg-canvas/60 px-4 py-3">
+        <DateRangePicker value={dateRange} onChange={setDateRange} />
+      </div>
+
+      {/* Secondary sub-tabs */}
+      <div className="no-scrollbar -mx-4 flex items-center gap-0 overflow-x-auto overscroll-x-contain border-b border-line px-4 sm:-mx-6 sm:px-6">
+        {SUB_TABS.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setSubTab(t.key)}
+            className={cn(
+              "-mb-px shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors",
+              subTab === t.key
+                ? "border-accent text-accent"
+                : "border-transparent text-ink-soft hover:text-ink",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── SUB-TAB CONTENT ─────────────────────────────────────────────── */}
+
+      {subTab === "overview" && (
+        <OverviewTab data={data} o={o} s={s} />
+      )}
+      {subTab === "users" && (
+        <UsersTab data={data} o={o} s={s} signupHours={signupHours} setSignupHours={setSignupHours} />
+      )}
+      {subTab === "coupons" && (
+        <CouponsTab data={data} o={o} s={s} />
+      )}
+      {subTab === "growth" && (
+        <GrowthTab data={data} s={s} />
+      )}
+      {subTab === "enterprise" && (
+        <EnterpriseTab />
+      )}
+    </div>
+  );
+}
+
+// ── Overview tab ──────────────────────────────────────────────────────────
+
+function OverviewTab({ data, o, s }: { data: Stats; o: Stats["overview"]; s: Stats["series"] }) {
+  return (
+    <div className="space-y-6">
+      {/* Alerts — top of overview */}
       {data.alerts && data.alerts.length > 0 && (
         <AlertBanner alerts={data.alerts} />
       )}
 
-      {/* Realtime active */}
-      {data.realtime && (
+      {/* Period vs cards */}
+      {data.period_vs && (
         <section>
-          <h2 className="mb-3 font-semibold text-ink">即時活躍</h2>
-          <RealtimeCards realtime={data.realtime} />
+          <SectionTitle>期間對比</SectionTitle>
+          <PeriodVsCards periodVs={data.period_vs} />
         </section>
       )}
 
-      {/* Today vs normal */}
-      {data.today_vs && (
-        <section>
-          <h2 className="mb-3 font-semibold text-ink">今日 vs 常態</h2>
-          <TodayVsCards todayVs={data.today_vs} />
-        </section>
-      )}
+      {/* Realtime active + today active */}
+      <section>
+        <SectionTitle>即時活躍</SectionTitle>
+        {data.realtime && <RealtimeCards realtime={data.realtime} />}
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatCard icon="user" label="總會員" value={o.users.total} sub={`今日 +${o.users.new_24h}　7 日 +${o.users.new_7d}`} />
-        <StatCard icon="ticket" label="總票券" value={o.coupons.total} sub={`今日 +${o.coupons.new_24h}　7 日 +${o.coupons.new_7d}`} />
-        <StatCard icon="heart" label="成功媒合" value={o.transactions.total} sub={`贈送 ${o.transactions.gift}　交換 ${o.transactions.exchange}　已完成 ${o.transactions.completed}`} />
-        <StatCard icon="send" label="進行中申請" value={o.claims.pending} sub={`累計 ${o.claims.total} 筆`} />
-        <StatCard icon="flag" label="待處理檢舉" value={o.reports.pending} tone={o.reports.pending > 0 ? "danger" : undefined} sub={`累計 ${o.reports.total} 筆`} />
-        <StatCard icon="shield" label="待處理申訴" value={o.appeals.pending} tone={o.appeals.pending > 0 ? "accent" : undefined} sub={`累計 ${o.appeals.total} 筆`} />
-      </div>
+        {data.active_note && (
+          <div className="mt-3 rounded-xl border border-line bg-canvas/60 p-3">
+            <div className="flex flex-wrap gap-4">
+              <div>
+                <p className="text-xs font-medium text-ink">{data.realtime.online_5m.toLocaleString()}</p>
+                <p className="mt-0.5 text-[11px] text-ink-faint">近 5 分鐘有活動（精準打點）</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-ink">{data.active_note.today_active_count.toLocaleString()}</p>
+                <p className="mt-0.5 text-[11px] text-ink-faint">近 24 小時有操作記錄（發券/申請/完成等）· 純瀏覽的精準打點累積中，約 2 週後納入</p>
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] text-ink-faint">
+              「在線」是精準即時打點；「今日活躍」是操作記錄口徑，兩者計算方式不同、不可直接相比。
+            </p>
+          </div>
+        )}
+      </section>
 
-      {/* Activity + registration velocity */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <StatCard icon="lightning" label="當日活躍 DAU" value={data.active_users.dau_today} sub="今日有動作的人" tone="accent" />
-        <StatCard icon="users" label="7 日活躍 WAU" value={data.active_users.wau} sub="近 7 日活躍人數" />
-        <StatCard icon="user" label={`${data.signup_window.hours} 小時註冊`} value={data.signup_window.count} sub="依下方區間切換" />
-        <StatCard icon="user" label="7 日註冊" value={o.users.new_7d} />
-        <StatCard icon="user" label="30 日註冊" value={o.users.new_30d} />
-      </div>
-
-      {/* Registration-by-hour heatmap */}
-      <Section title="註冊熱力圖（台灣時間）">
-        <SignupWindowPicker value={signupHours} onChange={setSignupHours} />
-        <HourHeatmap hours={data.heatmap_hours} windowHours={data.signup_window.hours} />
-      </Section>
-
-      {/* North-star: weekly completed transactions */}
+      {/* North-star: weekly completed */}
       <Section title="週完成交易（北極星）">
         <WeeklyCompletedChart weeks={data.weekly_completed} />
       </Section>
 
-      {/* Trends */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <TrendChart title="每日註冊" days={s.days} values={s.signups} />
-        <TrendChart title="每日上架" days={s.days} values={s.coupons} />
-        <TrendChart title="每日媒合" days={s.days} values={s.transactions} />
-        <TrendChart title="每日活躍 DAU" days={s.days} values={s.dau} />
-        <TrendChart title="每日領券人數" days={s.days} values={s.claimers} />
-        <TrendChart title="每日分享人數" days={s.days} values={s.sharers} />
+      {/* Selected health metrics */}
+      <section>
+        <SectionTitle>精選健康指標</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatCard icon="flag" label="待處理檢舉" value={o.reports.pending} tone={o.reports.pending > 0 ? "danger" : undefined} sub={`累計 ${o.reports.total} 筆`} />
+          <StatCard icon="shield" label="待處理申訴" value={o.appeals.pending} tone={o.appeals.pending > 0 ? "accent" : undefined} sub={`累計 ${o.appeals.total} 筆`} />
+          <StatCard icon="send" label="超時待審 >48h" value={data.health?.pending_over_48h ?? 0} tone={data.health?.pending_over_48h ? "danger" : undefined} sub="申請等待超過 48 小時" />
+          <StatCard icon="heart" label="供需比（7 日）" value={data.health?.supply_demand_7d !== null && data.health?.supply_demand_7d !== undefined ? data.health.supply_demand_7d.toFixed(2) : "—"} sub="新券 / 新申請" />
+        </div>
+      </section>
+
+      {/* Admin tools at the bottom */}
+      <ScoreAdjust />
+      <KillSwitches />
+    </div>
+  );
+}
+
+// ── Users tab ─────────────────────────────────────────────────────────────
+
+function UsersTab({
+  data,
+  o,
+  s,
+  signupHours,
+  setSignupHours,
+}: {
+  data: Stats;
+  o: Stats["overview"];
+  s: Stats["series"];
+  signupHours: SignupHours;
+  setSignupHours: (v: SignupHours) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* User summary cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <StatCard icon="user" label="總用戶" value={o.users.total} />
+        <StatCard icon="user" label="今日新增" value={o.users.new_24h} />
+        <StatCard icon="user" label="7 日新增" value={o.users.new_7d} />
+        <StatCard icon="user" label="30 日新增" value={o.users.new_30d} />
+        <StatCard icon="shield" label="已停權" value={o.users.suspended} tone={o.users.suspended > 0 ? "danger" : undefined} />
       </div>
 
-      {/* 48-hour pulse */}
-      {data.four_hour && <FourHourChart fourHour={data.four_hour} />}
+      {/* Registration trend (fixed 30-day) */}
+      <Section title="註冊趨勢（固定 30 天）">
+        <TrendChart title="每日註冊" days={s.days} values={s.signups} />
+      </Section>
 
-      {/* 30-day multi-series trend */}
-      <SeriesChart series={data.series} />
-
-      {/* 7x24 activity heatmap (new) */}
-      {data.activity_heatmap && <ActivityHeatmap activityHeatmap={data.activity_heatmap} />}
-
-      {/* Activation funnel */}
-      <Section title="啟動漏斗 · 有多少人真的用起來（累計不重複人數）">
-        <FunnelRow label="註冊" value={data.activation.registered} base={data.activation.registered} />
-        <FunnelRow label="分享過券" value={data.activation.shared} base={data.activation.registered} />
-        <FunnelRow label="領取過券" value={data.activation.claimed} base={data.activation.registered} />
-        <FunnelRow label="完成交易" value={data.activation.completed} base={data.activation.registered} />
-        <p className="mt-3 border-t border-line pt-3 text-sm text-ink-soft">
-          近 7 日回訪老用戶（註冊超過 7 天、仍在使用）：
-          <span className="font-semibold text-accent">{data.activation.returning_7d.toLocaleString()}</span> 人
-        </p>
+      {/* Signup window heatmap */}
+      <Section title="註冊熱力圖（台灣時間）">
+        <SignupWindowPicker value={signupHours} onChange={setSignupHours} />
+        <HourHeatmap hours={data.heatmap_hours} windowHours={data.signup_window.hours} />
       </Section>
 
       {/* Registration source */}
@@ -307,12 +457,11 @@ export default function AdminDashboardPage() {
           </div>
         </div>
         <div className="mt-4">
-          <BarList
-            items={data.sources.by_provider.map((p) => ({ label: PROVIDER_LABEL[p.key] || p.key, count: p.count }))}
-          />
+          <BarList items={data.sources.by_provider.map((p) => ({ label: PROVIDER_LABEL[p.key] || p.key, count: p.count }))} />
         </div>
       </Section>
 
+      {/* UTM */}
       <Section title="UTM 貼文註冊">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
@@ -330,52 +479,38 @@ export default function AdminDashboardPage() {
         </div>
       </Section>
 
-      {/* Health indicators */}
-      {data.health && (
-        <section>
-          <h2 className="mb-3 font-semibold text-ink">健康指標</h2>
-          <HealthCards health={data.health} />
-        </section>
-      )}
-
-      {/* Retention cohort */}
-      {data.retention && <RetentionCohort retention={data.retention} />}
-
       {/* UTM conversion quality */}
       {data.utm_conversion && data.utm_conversion.length > 0 && (
         <UtmConversionTable rows={data.utm_conversion} />
       )}
 
-      {/* Breakdowns */}
+      {/* Age + Level */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Section title="票券分類">
-          <BarList items={data.by_category.map((c) => ({ label: CAT_LABEL[c.key] || c.key, count: c.count }))} />
-        </Section>
-        <Section title="票券狀態">
-          <BarList items={data.by_status.map((c) => ({ label: STATUS_LABEL[c.key] || c.key, count: c.count }))} />
+        <Section title="用戶年齡層">
+          <BarList items={data.by_age.map((c) => ({ label: c.key, count: c.count }))} />
         </Section>
         <Section title="會員等級">
           <BarList items={data.by_level.map((c) => ({ label: LEVEL_LABEL[c.key] || c.key, count: c.count }))} />
         </Section>
-        <Section title="用戶年齡層">
-          <BarList items={data.by_age.map((c) => ({ label: c.key, count: c.count }))} />
-        </Section>
-        <Section title="贈送 vs 交換">
-          <BarList items={data.by_type.map((c) => ({ label: TYPE_LABEL[c.key] || c.key, count: c.count }))} />
-        </Section>
       </div>
 
-      {/* Leaderboard + brands */}
+      {/* Retention cohort */}
+      {data.retention && (
+        <RetentionCohort
+          retention={data.retention}
+          retentionMeta={data.retention_meta}
+        />
+      )}
+
+      {/* Leaderboard + recent */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Section title="貢獻榜 Top 8">
-          {data.top_contributors.length === 0 ? (
-            <Empty />
-          ) : (
+          {data.top_contributors.length === 0 ? <Empty /> : (
             <div className="space-y-2.5">
               {data.top_contributors.map((u, i) => (
                 <div key={u.id} className="flex items-center gap-3">
                   <span className="w-4 shrink-0 text-center text-sm font-bold text-ink-faint">{i + 1}</span>
-                  <Avatar name={u.display_name} url={u.avatar_url} size={32} />
+                  <Avatar name={u.display_name ?? ""} url={u.avatar_url} size={32} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-ink">{u.display_name}</p>
                     <p className="text-xs text-ink-faint">{u.level_name}</p>
@@ -386,26 +521,12 @@ export default function AdminDashboardPage() {
             </div>
           )}
         </Section>
-        <div className="space-y-4">
-          <Section title="熱門品牌">
-            <BarList items={data.top_brands.map((b) => ({ label: b.brand, count: b.count }))} />
-          </Section>
-          <Section title="最多人追蹤">
-            <BarList items={data.followed_brands.map((b) => ({ label: b.brand, count: b.count }))} />
-          </Section>
-        </div>
-      </div>
-
-      {/* Recent activity */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Section title="最新註冊">
-          {data.recent_users.length === 0 ? (
-            <Empty />
-          ) : (
+          {data.recent_users.length === 0 ? <Empty /> : (
             <div className="space-y-2.5">
               {data.recent_users.map((u) => (
                 <Link key={u.id} href={`/users/${u.id}`} className="flex items-center gap-3 rounded-xl px-1 py-1 hover:bg-sand/60">
-                  <Avatar name={u.display_name} url={u.avatar_url} size={32} />
+                  <Avatar name={u.display_name ?? ""} url={u.avatar_url} size={32} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-ink">{u.display_name}</p>
                     <p className="text-xs text-ink-faint">
@@ -418,10 +539,63 @@ export default function AdminDashboardPage() {
             </div>
           )}
         </Section>
+      </div>
+    </div>
+  );
+}
+
+// ── Coupons tab ───────────────────────────────────────────────────────────
+
+function CouponsTab({ data, o, s }: { data: Stats; o: Stats["overview"]; s: Stats["series"] }) {
+  return (
+    <div className="space-y-6">
+      {/* Coupon summary cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <StatCard icon="ticket" label="總票券" value={o.coupons.total} />
+        <StatCard icon="ticket" label="今日新增" value={o.coupons.new_24h} />
+        <StatCard icon="ticket" label="可領取" value={(data.by_status.find(b => b.key === "AVAILABLE")?.count) ?? 0} />
+        <StatCard icon="ticket" label="已送出" value={(data.by_status.find(b => b.key === "CLAIMED")?.count) ?? 0} />
+        <StatCard icon="ticket" label="已過期" value={(data.by_status.find(b => b.key === "EXPIRED")?.count) ?? 0} />
+      </div>
+
+      {/* Distribution breakdowns */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Section title="票券狀態">
+          <BarList items={data.by_status.map((c) => ({ label: STATUS_LABEL[c.key] || c.key, count: c.count }))} />
+        </Section>
+        <Section title="票券分類">
+          <BarList items={data.by_category.map((c) => ({ label: CAT_LABEL[c.key] || c.key, count: c.count }))} />
+        </Section>
+        <Section title="贈送 vs 交換">
+          <BarList items={data.by_type.map((c) => ({ label: TYPE_LABEL[c.key] || c.key, count: c.count }))} />
+        </Section>
+      </div>
+
+      {/* Upload trend (fixed 30-day) */}
+      <Section title="每日上架趨勢（固定 30 天）">
+        <TrendChart title="每日上架" days={s.days} values={s.coupons} />
+      </Section>
+
+      {/* Health */}
+      {data.health && (
+        <section>
+          <SectionTitle>票券健康</SectionTitle>
+          <HealthCards health={data.health} />
+        </section>
+      )}
+
+      {/* Brands + recent */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="space-y-4">
+          <Section title="熱門品牌">
+            <BarList items={data.top_brands.map((b) => ({ label: b.brand, count: b.count }))} />
+          </Section>
+          <Section title="最多人追蹤">
+            <BarList items={data.followed_brands.map((b) => ({ label: b.brand, count: b.count }))} />
+          </Section>
+        </div>
         <Section title="最新上架">
-          {data.recent_coupons.length === 0 ? (
-            <Empty />
-          ) : (
+          {data.recent_coupons.length === 0 ? <Empty /> : (
             <div className="space-y-2.5">
               {data.recent_coupons.map((c) => (
                 <div key={c.id} className="flex items-center gap-3">
@@ -438,11 +612,89 @@ export default function AdminDashboardPage() {
           )}
         </Section>
       </div>
-
-      {/* Admin tools — parked at the very bottom, out of the daily scan path. */}
-      <ScoreAdjust />
-      <KillSwitches />
     </div>
+  );
+}
+
+// ── Growth tab ────────────────────────────────────────────────────────────
+
+function GrowthTab({ data, s }: { data: Stats; s: Stats["series"] }) {
+  return (
+    <div className="space-y-6">
+      {/* Activation funnel */}
+      <Section title="啟動漏斗 · 有多少人真的用起來（累計不重複人數）">
+        <FunnelRow label="註冊" value={data.activation.registered} base={data.activation.registered} />
+        <FunnelRow label="分享過券" value={data.activation.shared} base={data.activation.registered} />
+        <FunnelRow label="領取過券" value={data.activation.claimed} base={data.activation.registered} />
+        <FunnelRow label="完成交易" value={data.activation.completed} base={data.activation.registered} />
+        <p className="mt-3 border-t border-line pt-3 text-sm text-ink-soft">
+          近 7 日回訪老用戶（註冊超過 7 天、仍在使用）：
+          <span className="font-semibold text-accent">{data.activation.returning_7d.toLocaleString()}</span> 人
+        </p>
+      </Section>
+
+      {/* 48-hour pulse */}
+      {data.four_hour && <FourHourChart fourHour={data.four_hour} />}
+
+      {/* 30-day multi-series */}
+      <SeriesChart series={data.series} />
+
+      {/* 7x24 activity heatmap */}
+      {data.activity_heatmap && <ActivityHeatmap activityHeatmap={data.activity_heatmap} />}
+
+      {/* 近 7 日回訪 — already shown in funnel section above */}
+    </div>
+  );
+}
+
+// ── Enterprise tab ────────────────────────────────────────────────────────
+
+function EnterpriseTab() {
+  return (
+    <div className="space-y-6">
+      <Card className="p-6">
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-semibold text-ink">企業合作數據</h2>
+            <p className="mt-1 text-sm text-ink-soft">
+              企業合作數據將在品牌專區上線後提供（ROADMAP Phase 4）。
+            </p>
+          </div>
+          <Button href="/admin/business-leads" variant="outline" icon="shield">
+            查看合作名單
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ── Shared small components ───────────────────────────────────────────────
+
+function CoreCard({
+  label,
+  value,
+  sub,
+  icon,
+  accent,
+}: {
+  label: string;
+  value: number | string;
+  sub?: string;
+  icon: IconName;
+  accent?: boolean;
+}) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-center gap-1.5 text-ink-faint">
+        <Icon name={icon} size={15} />
+        <span className="text-xs">{label}</span>
+      </div>
+      <p className={cn("mt-1.5 text-3xl font-bold tabular-nums", accent ? "text-accent" : "text-ink")}>
+        {typeof value === "number" ? value.toLocaleString() : value}
+      </p>
+      {sub && <p className="mt-0.5 text-xs text-ink-soft">{sub}</p>}
+    </Card>
   );
 }
 
@@ -471,11 +723,15 @@ function StatCard({
           tone === "danger" ? "text-danger" : tone === "accent" ? "text-accent" : "text-ink",
         )}
       >
-        {value}
+        {typeof value === "number" ? value.toLocaleString() : value}
       </p>
       {sub && <p className="mt-0.5 text-xs text-ink-soft">{sub}</p>}
     </Card>
   );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h2 className="mb-3 font-semibold text-ink">{children}</h2>;
 }
 
 function TrendChart({ title, days, values }: { title: string; days: string[]; values: number[] }) {
@@ -492,7 +748,7 @@ function TrendChart({ title, days, values }: { title: string; days: string[]; va
   const area = `${P},${H - P} ${line} ${W - P},${H - P}`;
   const last = values[n - 1] ?? 0;
   return (
-    <Card className="p-5">
+    <div>
       <div className="flex items-baseline justify-between">
         <p className="text-sm font-medium text-ink">{title}</p>
         <p className="text-xs text-ink-faint">30 天共 {total}</p>
@@ -527,7 +783,7 @@ function TrendChart({ title, days, values }: { title: string; days: string[]; va
           </div>
         </>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -651,9 +907,7 @@ function ScoreAdjust() {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [result, setResult] = useState<{ display_name: string; before: number; contribution_score: number } | null>(
-    null,
-  );
+  const [result, setResult] = useState<{ display_name: string; before: number; contribution_score: number } | null>(null);
 
   async function submit() {
     const delta = Number(amount);
@@ -687,33 +941,17 @@ function ScoreAdjust() {
     <Section title="手動調整貢獻值">
       <div className="space-y-3">
         <Field label="使用者 Email">
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="user@example.com"
-          />
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" />
         </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="加減分（可為負）">
-            <Input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="例如 20 或 -5"
-            />
+            <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="例如 20 或 -5" />
           </Field>
           <Field label="備註（選填）">
-            <Input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="例如：補回被誤扣的分數"
-            />
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="例如：補回被誤扣的分數" />
           </Field>
         </div>
-        <Button loading={busy} onClick={submit} icon="plus">
-          送出調整
-        </Button>
+        <Button loading={busy} onClick={submit} icon="plus">送出調整</Button>
         {err && <p className="text-sm font-medium text-danger">{err}</p>}
         {result && (
           <div className="rounded-xl bg-pine-tint/60 p-3 text-sm text-ink">
@@ -765,12 +1003,7 @@ function KillSwitches() {
                 </p>
                 <p className="mt-0.5 text-xs text-ink-faint">{it.hint}</p>
               </div>
-              <Button
-                size="sm"
-                variant={on ? "outline" : "danger"}
-                loading={busy === it.key}
-                onClick={() => toggle(it.key, !on)}
-              >
+              <Button size="sm" variant={on ? "outline" : "danger"} loading={busy === it.key} onClick={() => toggle(it.key, !on)}>
                 {on ? "恢復" : "暫停"}
               </Button>
             </div>
@@ -854,11 +1087,12 @@ function DashSkeleton() {
   return (
     <div className="space-y-6">
       <Skeleton className="h-9 w-40 rounded-xl" />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 rounded-2xl" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-2xl" />
         ))}
       </div>
+      <Skeleton className="h-12 rounded-xl" />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} className="h-48 rounded-2xl" />

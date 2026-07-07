@@ -24,7 +24,7 @@ const ALL_SERIES: { key: Key; label: string }[] = [
   { key: "completed", label: "完成" },
   { key: "signups", label: "新增人數" },
   { key: "coupons", label: "上架" },
-  { key: "claimers", label: "領券人" },
+  { key: "claimers", label: "送出申請人" },
   { key: "sharers", label: "分享人" },
   { key: "transactions", label: "媒合" },
 ];
