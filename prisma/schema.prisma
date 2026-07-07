@@ -143,6 +143,7 @@ enum NotificationType {
   BRAND_RESTOCK
   APPEAL_UPDATED
   SOCIAL_POST_UPDATED
+  BUSINESS_LEAD_RECEIVED
 }
 
 enum AppealStatus {
@@ -549,4 +550,23 @@ model BlockedIp {
 
   @@index([userId])
   @@map("blocked_ips")
+}
+
+// 企業合作窗口 — a business owner leaves contact info via the hidden /business
+// form; the admin follows up by emailing a quote. No relation to User: leads are
+// external people, usually not platform accounts.
+model BusinessLead {
+  id          String    @id @default(uuid())
+  name        String
+  email       String
+  phone       String
+  lineId      String    @map("line_id")
+  // PENDING → CONTACTED (quote sent). Plain string keeps the manual prod
+  // migration additive-trivial (no new PG enum type needed).
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  contactedAt DateTime? @map("contacted_at")
+
+  @@index([status, createdAt])
+  @@map("business_leads")
 }

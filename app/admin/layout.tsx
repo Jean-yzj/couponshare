@@ -11,6 +11,7 @@ const TABS = [
   { href: "/admin/reports", label: "檢舉複核" },
   { href: "/admin/appeals", label: "申訴複核" },
   { href: "/admin/social-posts", label: "發文審核" },
+  { href: "/admin/business-leads", label: "企業合作" },
   { href: "/admin/suspended", label: "被停權帳號" },
   { href: "/admin/removed-coupons", label: "被下架票券" },
 ];

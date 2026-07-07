@@ -29,6 +29,7 @@ const NOTIF_ICON: Record<string, IconName> = {
   REPORT_UPDATED: "flag",
   BRAND_RESTOCK: "bell",
   APPEAL_UPDATED: "shield",
+  BUSINESS_LEAD_RECEIVED: "user",
 };
 
 export default function NotificationsPage() {
@@ -62,6 +63,7 @@ export default function NotificationsPage() {
       router.push(`/transactions/${n.reference_id}`);
     else if (n.reference_type === "transaction") router.push("/wallet");
     else if (n.reference_type === "appeal") router.push("/appeal");
+    else if (n.reference_type === "business_lead") router.push("/admin/business-leads");
   }
 
   async function markAll() {

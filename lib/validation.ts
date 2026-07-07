@@ -197,3 +197,19 @@ export const socialPostResolveSchema = z.object({
   bonus: z.union([z.literal(10), z.literal(20)]).optional(),
   note: z.string().max(500).optional().nullable(),
 });
+
+// 企業合作窗口 — public lead form (all four fields required; the admin replies by
+// email, so email format matters most).
+export const businessLeadSchema = z.object({
+  name: z.string().trim().min(1, "請填寫姓名").max(40, "姓名太長了"),
+  email: z.string().trim().email("請輸入正確的 Email").max(120),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^[0-9+\-() ]{8,20}$/, "請輸入正確的電話號碼"),
+  line_id: z.string().trim().min(1, "請填寫 LINE ID").max(80, "LINE ID 太長了"),
+});
+
+export const businessLeadStatusSchema = z.object({
+  status: z.enum(["PENDING", "CONTACTED"]),
+});
