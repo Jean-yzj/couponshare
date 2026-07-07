@@ -9,9 +9,13 @@ import { cn, relativeTime } from "@/lib/display";
 type Lead = {
   id: string;
   name: string;
+  company: string | null;
+  job_title: string | null;
   email: string;
   phone: string;
   line_id: string;
+  goals: string | null;
+  categories: string | null;
   status: "PENDING" | "CONTACTED";
   created_at: string;
   contacted_at: string | null;
@@ -104,15 +108,33 @@ export default function AdminBusinessLeadsPage() {
           rows.map((l) => (
             <Card key={l.id} className="p-4">
               <div className="flex items-center justify-between gap-2">
-                <p className="truncate font-semibold text-ink">{l.name}</p>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-ink">
+                    {l.company || l.name}
+                  </p>
+                  <p className="truncate text-xs text-ink-soft">
+                    {l.name}
+                    {l.job_title ? ` · ${l.job_title}` : ""}
+                  </p>
+                </div>
                 <Pill className={l.status === "CONTACTED" ? "bg-pine-tint text-pine" : "bg-gold-tint text-gold"}>
                   {l.status === "CONTACTED" ? "已寄報價" : "待寄報價"}
                 </Pill>
               </div>
-              <p className="mt-0.5 text-xs text-ink-faint">
+              <p className="mt-1 text-xs text-ink-faint">
                 {relativeTime(l.created_at)} 填寫
                 {l.contacted_at ? ` · ${relativeTime(l.contacted_at)} 寄出報價` : ""}
               </p>
+              {(l.goals || l.categories) && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {l.categories?.split(", ").filter(Boolean).map((c) => (
+                    <span key={`c-${c}`} className="rounded-full bg-accent-tint px-2 py-0.5 text-[11px] font-medium text-accent">{c}</span>
+                  ))}
+                  {l.goals?.split(", ").filter(Boolean).map((g) => (
+                    <span key={`g-${g}`} className="rounded-full bg-sand px-2 py-0.5 text-[11px] text-ink-soft">{g}</span>
+                  ))}
+                </div>
+              )}
 
               <div className="mt-3 space-y-1.5 text-sm">
                 <div className="flex items-center justify-between gap-2">

@@ -22,9 +22,13 @@ export const GET = route(async (req) => {
     data: leads.map((l) => ({
       id: l.id,
       name: l.name,
+      company: l.company,
+      job_title: l.jobTitle,
       email: l.email,
       phone: l.phone,
       line_id: l.lineId,
+      goals: l.goals,
+      categories: l.categories,
       status: l.status,
       created_at: l.createdAt,
       contacted_at: l.contactedAt,

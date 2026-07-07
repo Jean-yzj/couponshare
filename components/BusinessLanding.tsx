@@ -28,8 +28,7 @@ const PLACEMENTS = ["首頁官方福利區", "熱門票券區", "搜尋結果優
 type Plan = {
   name: string;
   who: string;
-  price: string;
-  unit?: string;
+  summary: string;
   tag?: string;
   hot?: boolean;
   points: string[];
@@ -38,34 +37,32 @@ type Plan = {
 const PLANS: Plan[] = [
   {
     name: "早鳥試用",
-    who: "第一次測試合作的品牌與校園店家",
-    price: "NT$5,000",
-    unit: "/ 月",
-    tag: "限前 10 家合作品牌",
-    points: ["每月 5 張官方福利券", "每張最多 100 次申請（月上限 500）", "首頁列表、搜尋結果、錢包推薦曝光", "月底提供成效數據"],
-    cta: "取得報價",
+    who: "第一次合作、想先小規模驗證成效",
+    summary: "低門檻起步，先看數據",
+    tag: "名額有限",
+    points: ["每月數張官方福利券", "首頁列表、搜尋結果、錢包推薦曝光", "月底提供成效數據"],
+    cta: "取得方案與報價",
   },
   {
     name: "標準導流",
     who: "每月固定推廣優惠與活動的品牌",
-    price: "NT$8,000",
-    unit: "/ 月",
+    summary: "穩定曝光＋申請者洞察",
     hot: true,
-    points: ["每月 10 張官方福利券", "每張最多 200 次申請（月上限 2,000）", "加上熱門票券區與詳情頁推薦、搜尋優先", "可看申請者留言", "每月成效摘要報告"],
-    cta: "取得報價",
+    points: ["每月更多福利券與更高申請名額", "加上熱門票券區與詳情頁推薦、搜尋優先", "可看申請者留言與洞察", "每月成效摘要報告"],
+    cta: "取得方案與報價",
   },
   {
     name: "精選品牌 / 品牌專案",
     who: "大檔期、新品上市、校園活動、品牌聯名",
-    price: "客製報價",
-    points: ["更高申請名額與全站重點曝光", "品牌審核、申請問題、專屬活動頁", "任務解鎖、抽選、問卷等活動機制", "可搭配社群內容曝光", "完整活動成效報告"],
+    summary: "全站重點曝光＋活動客製",
+    points: ["最高申請名額與全站重點曝光", "品牌審核、申請問題、專屬活動頁", "任務解鎖、抽選、問卷等活動機制", "可搭配社群內容曝光", "完整活動成效報告"],
     cta: "聊聊你的活動",
   },
 ];
 
 const STEPS = [
-  ["留下聯絡方式", "填寫下方合作窗口（姓名、Email、電話、LINE ID），一分鐘完成。"],
-  ["收到報價", "完整方案與報價直接寄到你的信箱，也可 LINE 細聊需求。"],
+  ["留下聯絡方式與需求", "填寫下方表單（公司、職稱、聯絡方式與行銷目標），一分鐘完成。"],
+  ["收到專屬報價", "依你的目標與產業，把量身的方案與報價寄到你的信箱，也可 LINE 細聊。"],
   ["提供素材上架", "給我們品牌與優惠內容，第一批券由平台協助上架，你不用學後台。"],
   ["看數據調整", "每月成效報告：申請數、領取數、留言洞察，用數據決定下一步。"],
 ];
@@ -109,11 +106,11 @@ export function BusinessLanding() {
         <Eyebrow>
           <Icon name="sparkle" size={13} /> Official Coupon Placement
         </Eyebrow>
-        <h1 className="mx-auto mt-4 max-w-2xl text-[1.95rem] font-extrabold leading-[1.25] tracking-tight text-ink sm:text-[2.7rem]">
-          讓品牌優惠，<br className="sm:hidden" />出現在想領券的那一刻
+        <h1 className="mx-auto mt-4 max-w-3xl text-[1.95rem] font-extrabold leading-[1.28] tracking-tight text-ink sm:text-[2.6rem]">
+          把品牌優惠，<br />交到主動找券的人手上
         </h1>
-        <p className="mx-auto mt-5 max-w-xl text-[16px] leading-relaxed text-ink-soft">
-          CouponShare 是一個票券分享社群，{members ? `${members} 位` : "上萬位"}使用者進來的目的只有一個：找優惠、領券、換券。你的品牌優惠在這裡不是被滑過的廣告，而是被主動申請的官方福利券。
+        <p className="mx-auto mt-5 max-w-xl text-balance text-[16px] leading-relaxed text-ink-soft">
+          CouponShare 有 {members ? `${members} 名` : "上萬名"}進來就是為了找優惠的用戶。你的品牌優惠在這裡不是被滑掉的廣告，而是他們主動申請、實際使用的官方福利券——同時帶來導流與品牌曝光。
         </p>
         <div className="mt-7 flex flex-col justify-center gap-2.5 sm:flex-row">
           <Button href="#apply" size="lg" icon="send">取得合作報價</Button>
@@ -122,7 +119,7 @@ export function BusinessLanding() {
         {s && (
           <div className="mx-auto mt-8 grid max-w-lg grid-cols-3 gap-2.5">
             {[
-              { label: "一起分享的人", value: s.members },
+              { label: "平台活躍用戶", value: s.members },
               { label: "已上架好券", value: s.shared },
               { label: "成功送出", value: s.sent },
             ].map((x) => (
@@ -139,7 +136,7 @@ export function BusinessLanding() {
       <section>
         <div className="text-center">
           <Eyebrow>Why it works</Eyebrow>
-          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">不是買曝光，是收「真的想要」的申請</h2>
+          <h2 className="mt-2 text-balance text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">不是買曝光，是收「真的想要」的申請</h2>
         </div>
         <div className="mt-8 grid gap-4 sm:grid-cols-3">
           {WHY.map((w) => (
@@ -158,7 +155,7 @@ export function BusinessLanding() {
       <section>
         <div className="text-center">
           <Eyebrow>How it looks</Eyebrow>
-          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">長得像一張券，不像一則廣告</h2>
+          <h2 className="mt-2 text-balance text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">長得像一張券，不像一則廣告</h2>
           <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
             企業優惠以「官方福利券」卡片呈現，與平台原生票券同一種風格，只多一個合作標籤。沒有彈窗、不擋內容，企業內容比例控制在全站三成以內。
           </p>
@@ -203,25 +200,24 @@ export function BusinessLanding() {
       <section id="plans" className="scroll-mt-20">
         <div className="text-center">
           <Eyebrow>Plans</Eyebrow>
-          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">合作方案</h2>
-          <p className="mx-auto mt-2 max-w-lg text-sm text-ink-soft">
-            不論是連鎖品牌還是校園小店都適用——從最小的早鳥方案開始，一個月看數據，成效好再升級。
+          <h2 className="mt-2 text-balance text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">合作方案</h2>
+          <p className="mx-auto mt-2 max-w-xl text-balance text-sm leading-relaxed text-ink-soft">
+            不論是連鎖品牌還是校園小店都適用。先從早鳥方案小規模驗證，成效好再升級；各方案的名額、曝光與報價，依你的需求量身提供。
           </p>
         </div>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {PLANS.map((p) => (
-            <Card key={p.name} className={cn("flex flex-col p-6", p.hot && "border-2 border-accent")}>
-              {p.hot && (
-                <span className="mb-3 w-fit rounded-full bg-accent px-3 py-0.5 text-xs font-bold text-white">最多品牌選擇</span>
-              )}
-              <p className="font-bold text-ink">{p.name}</p>
-              <p className="mt-0.5 text-xs text-ink-faint">{p.who}</p>
-              <p className="mt-3 font-display text-[26px] font-extrabold tracking-tight text-ink">
-                {p.price}
-                {p.unit && <span className="ml-1 text-sm font-semibold text-ink-faint">{p.unit}</span>}
-              </p>
+            <Card key={p.name} className={cn("flex flex-col p-6", p.hot && "border-2 border-accent shadow-lift")}>
+              <div className="flex items-center gap-2">
+                <p className="text-lg font-extrabold text-ink">{p.name}</p>
+                {p.hot && (
+                  <span className="rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold text-white">最受歡迎</span>
+                )}
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-ink-faint">{p.who}</p>
+              <p className="mt-3 text-[15px] font-semibold text-accent">{p.summary}</p>
               {p.tag && <Pill className="mt-2 w-fit bg-gold-tint text-gold">{p.tag}</Pill>}
-              <ul className="mt-4 flex-1 space-y-2">
+              <ul className="mt-4 flex-1 space-y-2 border-t border-line pt-4">
                 {p.points.map((pt) => (
                   <li key={pt} className="flex gap-2 text-sm text-ink-soft">
                     <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
@@ -241,7 +237,7 @@ export function BusinessLanding() {
       <section>
         <div className="text-center">
           <Eyebrow>Process</Eyebrow>
-          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">合作流程，四步開始</h2>
+          <h2 className="mt-2 text-balance text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">合作流程，四步開始</h2>
         </div>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map(([t, d], i) => (

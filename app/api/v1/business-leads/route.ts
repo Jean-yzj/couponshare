@@ -17,9 +17,13 @@ export const POST = route(async (req) => {
   const lead = await prisma.businessLead.create({
     data: {
       name: body.name,
+      company: body.company,
+      jobTitle: body.job_title,
       email: body.email.toLowerCase(),
       phone: body.phone,
       lineId: body.line_id,
+      goals: body.goals.length ? body.goals.join(", ") : null,
+      categories: body.categories.length ? body.categories.join(", ") : null,
     },
     select: { id: true, name: true, email: true },
   });

@@ -202,12 +202,16 @@ export const socialPostResolveSchema = z.object({
 // email, so email format matters most).
 export const businessLeadSchema = z.object({
   name: z.string().trim().min(1, "請填寫姓名").max(40, "姓名太長了"),
+  company: z.string().trim().min(1, "請填寫公司 / 品牌名稱").max(60),
+  job_title: z.string().trim().min(1, "請填寫職稱").max(40),
   email: z.string().trim().email("請輸入正確的 Email").max(120),
   phone: z
     .string()
     .trim()
     .regex(/^[0-9+\-() ]{8,20}$/, "請輸入正確的電話號碼"),
   line_id: z.string().trim().min(1, "請填寫 LINE ID").max(80, "LINE ID 太長了"),
+  goals: z.array(z.string().trim().max(20)).max(10).optional().default([]),
+  categories: z.array(z.string().trim().max(20)).max(15).optional().default([]),
 });
 
 export const businessLeadStatusSchema = z.object({

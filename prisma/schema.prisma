@@ -582,6 +582,12 @@ model BusinessLead {
   email       String
   phone       String
   lineId      String    @map("line_id")
+  // Nullable so the migration stays additive; the form now collects these too.
+  company     String?
+  jobTitle    String?   @map("job_title")
+  // Multi-selects, stored comma-joined (values contain no commas).
+  goals       String?
+  categories  String?
   // PENDING → CONTACTED (quote sent). Plain string keeps the manual prod
   // migration additive-trivial (no new PG enum type needed).
   status      String    @default("PENDING")
