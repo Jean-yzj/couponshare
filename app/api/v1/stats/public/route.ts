@@ -8,8 +8,15 @@ export const runtime = "nodejs";
 let cache: { at: number; data: { shared: number; sent: number; members: number } } | null = null;
 const TTL_MS = 60_000;
 
+// Aggregate public counts only — safe to expose cross-origin so the external
+// business pitch page can show live numbers.
+function withCors<T extends Response>(res: T): T {
+  res.headers.set("Access-Control-Allow-Origin", "*");
+  return res;
+}
+
 export const GET = route(async () => {
-  if (cache && Date.now() - cache.at < TTL_MS) return jsonOk(cache.data);
+  if (cache && Date.now() - cache.at < TTL_MS) return withCors(jsonOk(cache.data));
   const [shared, sent, members] = await Promise.all([
     prisma.auditLog.count({ where: { action: "coupon.publish" } }),
     prisma.coupon.count({ where: { status: "CLAIMED" } }),
@@ -17,5 +24,5 @@ export const GET = route(async () => {
   ]);
   const data = { shared, sent, members };
   cache = { at: Date.now(), data };
-  return jsonOk(data);
+  return withCors(jsonOk(data));
 });
