@@ -64,6 +64,7 @@ export default function NotificationsPage() {
     else if (n.reference_type === "transaction") router.push("/wallet");
     else if (n.reference_type === "appeal") router.push("/appeal");
     else if (n.reference_type === "business_lead") router.push("/admin/business-leads");
+    else if (n.reference_type === "brand_coupon" && n.reference_id) router.push(`/brand-coupons/${n.reference_id}`);
   }
 
   async function markAll() {

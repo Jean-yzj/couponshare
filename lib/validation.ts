@@ -213,3 +213,39 @@ export const businessLeadSchema = z.object({
 export const businessLeadStatusSchema = z.object({
   status: z.enum(["PENDING", "CONTACTED"]),
 });
+
+// ─── 企業官方福利券（admin-managed）───
+export const brandCreateSchema = z.object({
+  name: z.string().trim().min(1, "請填品牌名稱").max(40),
+  logo_text: z.string().trim().max(2).optional().nullable(),
+  category: z.string().trim().max(20).optional().nullable(),
+  description: z.string().trim().max(300).optional().nullable(),
+  website_url: z.string().trim().url("網址格式不正確").max(300).optional().nullable().or(z.literal("")),
+  contact_name: z.string().trim().max(40).optional().nullable(),
+  contact_email: z.string().trim().email("Email 格式不正確").max(120).optional().nullable().or(z.literal("")),
+});
+
+export const brandCouponCreateSchema = z.object({
+  title: z.string().trim().min(2, "請填券標題").max(60),
+  description: z.string().trim().max(300).optional().nullable(),
+  category: z.string().trim().max(20).optional().nullable(),
+  redeem_info: z.string().trim().max(300).optional().nullable(),
+  application_mode: z.enum(["DIRECT_CLAIM", "MESSAGE_APPLICATION"]),
+  max_applications: z.number().int().min(1).max(100000),
+  max_per_user: z.number().int().min(1).max(100).default(1),
+  cta_text: z.string().trim().max(20).optional().nullable(),
+  cta_url: z.string().trim().url("網址格式不正確").max(500).optional().nullable().or(z.literal("")),
+  usage_expiry: z.coerce.date().optional().nullable(),
+});
+
+export const brandCouponStatusSchema = z.object({
+  status: z.enum(["DRAFT", "ACTIVE", "PAUSED", "ENDED"]),
+});
+
+export const brandCouponApplySchema = z.object({
+  message: z.string().trim().max(200).optional().nullable(),
+});
+
+export const brandApplicationDecisionSchema = z.object({
+  decision: z.enum(["APPROVE", "REJECT"]),
+});

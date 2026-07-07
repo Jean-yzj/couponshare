@@ -591,3 +591,77 @@ model BusinessLead {
   @@index([status, createdAt])
   @@map("business_leads")
 }
+
+// ─── 企業官方福利券（GATED）───────────────────────────────────────────────
+// Completely separate from user Coupon: multi-applicant, quota'd, brand-owned.
+// Never queried by the user feed; the whole surface is behind the
+// `brand_coupons_enabled` flag (default off) + admin. String status/mode fields
+// keep the prod migration a trivial additive CREATE TABLE (no new PG enum type).
+
+model Brand {
+  id           String        @id @default(uuid())
+  name         String
+  logoText     String?       @map("logo_text")
+  category     String?
+  description  String?
+  websiteUrl   String?       @map("website_url")
+  contactName  String?       @map("contact_name")
+  contactEmail String?       @map("contact_email")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  coupons BrandCoupon[]
+
+  @@map("brands")
+}
+
+model BrandCoupon {
+  id               String    @id @default(uuid())
+  brandId          String    @map("brand_id")
+  title            String
+  description      String?
+  category         String?
+  redeemInfo       String?   @map("redeem_info")
+  // DIRECT_CLAIM = tap to claim; MESSAGE_APPLICATION = leave a reason, admin approves.
+  applicationMode  String    @default("DIRECT_CLAIM") @map("application_mode")
+  maxApplications  Int       @default(100) @map("max_applications")
+  maxPerUser       Int       @default(1) @map("max_per_user")
+  applicationCount Int       @default(0) @map("application_count")
+  viewCount        Int       @default(0) @map("view_count")
+  clickCount       Int       @default(0) @map("click_count")
+  ctaText          String?   @map("cta_text")
+  ctaUrl           String?   @map("cta_url")
+  startAt          DateTime? @map("start_at")
+  endAt            DateTime? @map("end_at")
+  usageExpiry      DateTime? @map("usage_expiry")
+  // DRAFT | ACTIVE | PAUSED | ENDED
+  status           String    @default("DRAFT")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  brand        Brand                    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  applications BrandCouponApplication[]
+
+  @@index([brandId])
+  @@index([status])
+  @@map("brand_coupons")
+}
+
+model BrandCouponApplication {
+  id            String    @id @default(uuid())
+  brandCouponId String    @map("brand_coupon_id")
+  // Plain scalar (no User relation) to keep this model self-contained.
+  userId        String    @map("user_id")
+  message       String?
+  // PENDING | APPROVED | REJECTED | CLAIMED
+  status        String    @default("PENDING")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  decidedAt     DateTime? @map("decided_at")
+
+  coupon BrandCoupon @relation(fields: [brandCouponId], references: [id], onDelete: Cascade)
+
+  @@unique([brandCouponId, userId])
+  @@index([brandCouponId, status])
+  @@index([userId])
+  @@map("brand_coupon_applications")
+}

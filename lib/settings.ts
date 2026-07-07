@@ -41,3 +41,6 @@ export async function setFlag(key: string, on: boolean): Promise<void> {
 
 export const FLAG_CLAIMS_PAUSED = "claims_paused";
 export const FLAG_REGISTER_PAUSED = "register_paused";
+// Master switch for the whole enterprise brand-coupon surface. Default OFF: while
+// off, brand coupons are invisible to regular users (admins can still preview).
+export const FLAG_BRAND_COUPONS = "brand_coupons_enabled";

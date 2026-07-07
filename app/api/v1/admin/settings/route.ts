@@ -3,9 +3,15 @@ import { prisma } from "@/lib/db";
 import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
 import { requireAdmin } from "@/lib/admin";
 import { writeAudit } from "@/lib/audit";
-import { getFlags, setFlag, FLAG_CLAIMS_PAUSED, FLAG_REGISTER_PAUSED } from "@/lib/settings";
+import {
+  getFlags,
+  setFlag,
+  FLAG_CLAIMS_PAUSED,
+  FLAG_REGISTER_PAUSED,
+  FLAG_BRAND_COUPONS,
+} from "@/lib/settings";
 
-const KEYS = [FLAG_CLAIMS_PAUSED, FLAG_REGISTER_PAUSED];
+const KEYS = [FLAG_CLAIMS_PAUSED, FLAG_REGISTER_PAUSED, FLAG_BRAND_COUPONS];
 
 // Emergency kill-switches. GET reports current state; POST flips one flag. Used to
 // stop the bleeding fast during an abuse incident without a redeploy.
@@ -15,7 +21,7 @@ export const GET = route(async () => {
 });
 
 const schema = z.object({
-  key: z.enum([FLAG_CLAIMS_PAUSED, FLAG_REGISTER_PAUSED]),
+  key: z.enum([FLAG_CLAIMS_PAUSED, FLAG_REGISTER_PAUSED, FLAG_BRAND_COUPONS]),
   value: z.boolean(),
 });
 
