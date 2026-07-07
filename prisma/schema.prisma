@@ -191,6 +191,8 @@ model User {
   // Taipei calendar month via bonusClaimsMonth ("2026-07"); a stale month reads 0.
   bonusClaims       Int           @default(0) @map("bonus_claims")
   bonusClaimsMonth  String?       @map("bonus_claims_month")
+  // Activity tracking: updated on every authenticated request (3-min throttle).
+  lastSeenAt        DateTime?     @map("last_seen_at")
 
   ownedCoupons         Coupon[]             @relation("OwnedCoupons")
   claimedCoupons       Coupon[]             @relation("ClaimedCoupons")
@@ -210,11 +212,13 @@ model User {
   pushTokens           PushToken[]
   blocksMade           Block[]              @relation("BlocksMade")
   blocksReceived       Block[]              @relation("BlocksReceived")
+  dailyActives         DailyActive[]
 
   @@index([referredById, createdAt])
   @@index([birthYear])
   @@index([utmSource, createdAt])
   @@index([utmCampaign, createdAt])
+  @@index([lastSeenAt])
   @@map("users")
 }
 
@@ -322,6 +326,7 @@ model ClaimRequest {
   @@index([requesterId])
   @@index([status])
   @@index([couponId, status])
+  @@index([createdAt])
   @@map("claim_requests")
 }
 
@@ -356,6 +361,7 @@ model Transaction {
 
   @@index([ownerId])
   @@index([claimantId])
+  @@index([completedAt])
   @@map("transactions")
 }
 
@@ -417,6 +423,7 @@ model Report {
   @@unique([reporterId, couponId])
   @@index([status])
   @@index([couponId])
+  @@index([createdAt])
   @@map("reports")
 }
 
@@ -550,6 +557,20 @@ model BlockedIp {
 
   @@index([userId])
   @@map("blocked_ips")
+}
+
+// Precise DAU tracking: one row per (user, Taipei calendar day).
+// Upserted by touchActivity() in lib/activity.ts (fire-and-forget).
+// audit_logs covers historical data; this table gives precision going forward.
+model DailyActive {
+  userId String   @map("user_id")
+  day    DateTime @db.Date @map("day")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([day, userId])
+  @@index([userId])
+  @@map("daily_actives")
 }
 
 // 企業合作窗口 — a business owner leaves contact info via the hidden /business

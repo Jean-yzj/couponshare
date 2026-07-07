@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { prisma } from "./db";
 import { getSessionUserId, verifySessionToken } from "./session";
 import { ApiError } from "./errors";
+import { touchActivity } from "./activity";
 
 export async function getBearerSession(): Promise<{ present: boolean; uid: string | null }> {
   const auth = (await headers()).get("authorization") || "";
@@ -17,8 +18,13 @@ export async function getCurrentUser(): Promise<User | null> {
     uid = (await getBearerSession()).uid;
   }
   if (!uid) return null;
+  // findUnique with no select returns all columns, so lastSeenAt is included
+  // once the column exists (post-migration). Until then the field is undefined
+  // and touchActivity's null-check handles it gracefully.
   const user = await prisma.user.findUnique({ where: { id: uid } });
   if (!user || user.status === "DELETED") return null;
+  // Fire-and-forget activity ping (3-min throttle, never blocks the request).
+  touchActivity(user);
   return user;
 }
 

@@ -1,15 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useApi, useMe, apiFetch, ApiErr } from "@/lib/client";
 import { Card, Avatar, Skeleton, EmptyState, Button, NeedLogin, Eyebrow, Field, Input } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 import { cn, relativeTime } from "@/lib/display";
 import { CATEGORIES } from "@/lib/categories";
+import { AlertBanner } from "@/components/admin/AlertBanner";
+import { RealtimeCards } from "@/components/admin/RealtimeCards";
+import { TodayVsCards } from "@/components/admin/TodayVsCards";
+import { FourHourChart } from "@/components/admin/FourHourChart";
+import { SeriesChart } from "@/components/admin/SeriesChart";
+import { ActivityHeatmap } from "@/components/admin/ActivityHeatmap";
+import { RetentionCohort } from "@/components/admin/RetentionCohort";
+import { HealthCards } from "@/components/admin/HealthCards";
+import { UtmConversionTable } from "@/components/admin/UtmConversionTable";
+
+type TodayVsItem = {
+  today: number;
+  yesterday_same_time: number;
+  avg_7d: number | null;
+};
+
+type CohortRow = {
+  week_start: string;
+  size: number;
+  d1: number;
+  d1_eligible: number;
+  d7: number;
+  d7_eligible: number;
+  d30: number;
+  d30_eligible: number;
+};
 
 type Stats = {
   generated_at: string;
+  cached?: boolean;
   overview: {
     users: { total: number; active: number; suspended: number; new_3h: number; new_6h: number; new_12h: number; new_24h: number; new_48h: number; new_7d: number; new_30d: number };
     coupons: { total: number; new_24h: number; new_7d: number; new_30d: number };
@@ -33,6 +60,8 @@ type Stats = {
     claimers: number[];
     sharers: number[];
     dau: number[];
+    claims: number[];
+    completed: number[];
   };
   active_users: { dau_today: number; wau: number };
   activation: { registered: number; shared: number; claimed: number; completed: number; returning_7d: number };
@@ -50,6 +79,38 @@ type Stats = {
   followed_brands: { brand: string; count: number }[];
   recent_users: { id: string; display_name: string; avatar_url: string | null; level_name: string; provider: string; created_at: string }[];
   recent_coupons: { id: string; title: string; brand: string; type: string; category: string; status: string; owner: string; created_at: string }[];
+  // New blocks
+  realtime: { online_5m: number; active_30m: number; active_1h: number; active_24h: number };
+  today_vs: {
+    signups: TodayVsItem;
+    coupons: TodayVsItem;
+    claims: TodayVsItem;
+    completed: TodayVsItem;
+    reports: TodayVsItem;
+  };
+  four_hour: {
+    labels: string[];
+    signups: number[];
+    coupons: number[];
+    claims: number[];
+    completed: number[];
+    active: number[];
+  };
+  activity_heatmap: {
+    claims: number[][];
+    uploads: number[][];
+    completions: number[][];
+  };
+  retention: CohortRow[];
+  health: {
+    claim_approval_rate: number | null;
+    avg_claims_per_coupon: number | null;
+    avg_hours_to_claim: number | null;
+    supply_demand_7d: number | null;
+    pending_over_48h: number;
+  };
+  alerts: { severity: "red" | "yellow"; key: string; message: string }[];
+  utm_conversion: { source: string; signups: number; sharers: number; claimers: number; active_7d: number }[];
 };
 
 const CAT_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.label]));
@@ -71,10 +132,42 @@ type SignupHours = (typeof SIGNUP_WINDOWS)[number];
 
 const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
 
+const REFRESH_INTERVAL_MS = 60_000;
+
+function fmt2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function nowHMS() {
+  const d = new Date();
+  return `${fmt2(d.getHours())}:${fmt2(d.getMinutes())}:${fmt2(d.getSeconds())}`;
+}
+
 export default function AdminDashboardPage() {
   const [signupHours, setSignupHours] = useState<SignupHours>(24);
   const { me, loading: meLoading } = useMe();
-  const { data, loading } = useApi<Stats>(me?.is_admin ? `/api/v1/admin/stats?signup_hours=${signupHours}` : null);
+  const { data, loading, refetch } = useApi<Stats>(me?.is_admin ? `/api/v1/admin/stats?signup_hours=${signupHours}` : null);
+  const [lastRefresh, setLastRefresh] = useState<string>("");
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const doRefresh = useCallback(() => {
+    if (document.visibilityState !== "visible") return;
+    refetch();
+    setLastRefresh(nowHMS());
+  }, [refetch]);
+
+  useEffect(() => {
+    setLastRefresh(nowHMS());
+  }, [data]);
+
+  useEffect(() => {
+    timerRef.current = setInterval(doRefresh, REFRESH_INTERVAL_MS);
+    document.addEventListener("visibilitychange", doRefresh);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      document.removeEventListener("visibilitychange", doRefresh);
+    };
+  }, [doRefresh]);
 
   if (meLoading) return <DashSkeleton />;
   if (!me) return <NeedLogin message="登入後即可使用管理功能。" />;
@@ -91,13 +184,50 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Eyebrow>Dashboard</Eyebrow>
-        <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">數據總覽</h1>
-        <p className="mt-1 text-sm text-ink-soft">
-          CouponShare 營運數據與趨勢　·　更新於 {relativeTime(data.generated_at)}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Eyebrow>Dashboard</Eyebrow>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">數據總覽</h1>
+          <p className="mt-1 text-sm text-ink-soft">
+            CouponShare 營運數據與趨勢　·　更新於 {relativeTime(data.generated_at)}
+            {data.cached && <span className="ml-1 text-ink-faint">(快取)</span>}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-ink-faint">
+          {lastRefresh && <span>更新於 {lastRefresh}</span>}
+          <button
+            onClick={doRefresh}
+            className="flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-ink-soft hover:text-ink"
+            title="手動刷新"
+          >
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13.5 8A5.5 5.5 0 0 1 3.1 11.4M2.5 8A5.5 5.5 0 0 1 12.9 4.6M2.5 12V9h3M13.5 4v3h-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            刷新
+          </button>
+        </div>
       </div>
+
+      {/* Alerts */}
+      {data.alerts && data.alerts.length > 0 && (
+        <AlertBanner alerts={data.alerts} />
+      )}
+
+      {/* Realtime active */}
+      {data.realtime && (
+        <section>
+          <h2 className="mb-3 font-semibold text-ink">即時活躍</h2>
+          <RealtimeCards realtime={data.realtime} />
+        </section>
+      )}
+
+      {/* Today vs normal */}
+      {data.today_vs && (
+        <section>
+          <h2 className="mb-3 font-semibold text-ink">今日 vs 常態</h2>
+          <TodayVsCards todayVs={data.today_vs} />
+        </section>
+      )}
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -138,6 +268,15 @@ export default function AdminDashboardPage() {
         <TrendChart title="每日領券人數" days={s.days} values={s.claimers} />
         <TrendChart title="每日分享人數" days={s.days} values={s.sharers} />
       </div>
+
+      {/* 48-hour pulse */}
+      {data.four_hour && <FourHourChart fourHour={data.four_hour} />}
+
+      {/* 30-day multi-series trend */}
+      <SeriesChart series={data.series} />
+
+      {/* 7x24 activity heatmap (new) */}
+      {data.activity_heatmap && <ActivityHeatmap activityHeatmap={data.activity_heatmap} />}
 
       {/* Activation funnel */}
       <Section title="啟動漏斗 · 有多少人真的用起來（累計不重複人數）">
@@ -190,6 +329,22 @@ export default function AdminDashboardPage() {
           <UtmPostList posts={data.utm.top_posts} />
         </div>
       </Section>
+
+      {/* Health indicators */}
+      {data.health && (
+        <section>
+          <h2 className="mb-3 font-semibold text-ink">健康指標</h2>
+          <HealthCards health={data.health} />
+        </section>
+      )}
+
+      {/* Retention cohort */}
+      {data.retention && <RetentionCohort retention={data.retention} />}
+
+      {/* UTM conversion quality */}
+      {data.utm_conversion && data.utm_conversion.length > 0 && (
+        <UtmConversionTable rows={data.utm_conversion} />
+      )}
 
       {/* Breakdowns */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
