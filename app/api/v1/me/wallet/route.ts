@@ -9,8 +9,9 @@ import { couponCardSelect, txnSelect } from "@/lib/selects";
 // even for heavy contributors.
 export const GET = route(async () => {
   const user = await requireUser();
+  const now = new Date();
 
-  const [listed, applied, received, transactions] = await Promise.all([
+  const [listed, applied, received, receivedExpired, receivedUsed, transactions] = await Promise.all([
     prisma.coupon.findMany({
       where: { ownerId: user.id },
       select: couponCardSelect,
@@ -30,10 +31,29 @@ export const GET = route(async () => {
       orderBy: { createdAt: "desc" },
       take: 50,
     }),
+    // Received coupons, split so "我領取的" only shows immediately-usable ones:
+    // usedAt set → 已使用; expiry passed & unused → 已過期; otherwise → usable.
     prisma.coupon.findMany({
-      where: { claimantId: user.id, status: "CLAIMED" },
+      where: {
+        claimantId: user.id,
+        status: "CLAIMED",
+        usedAt: null,
+        OR: [{ expiryDate: null }, { expiryDate: { gte: now } }],
+      },
       select: couponCardSelect,
       orderBy: { claimedAt: "desc" },
+      take: 50,
+    }),
+    prisma.coupon.findMany({
+      where: { claimantId: user.id, status: "CLAIMED", usedAt: null, expiryDate: { lt: now } },
+      select: couponCardSelect,
+      orderBy: { expiryDate: "desc" },
+      take: 50,
+    }),
+    prisma.coupon.findMany({
+      where: { claimantId: user.id, status: "CLAIMED", usedAt: { not: null } },
+      select: couponCardSelect,
+      orderBy: { usedAt: "desc" },
       take: 50,
     }),
     prisma.transaction.findMany({
@@ -55,6 +75,8 @@ export const GET = route(async () => {
       coupon: feedCoupon(cr.coupon),
     })),
     received: received.map((c) => feedCoupon(c)),
+    received_expired: receivedExpired.map((c) => feedCoupon(c)),
+    received_used: receivedUsed.map((c) => feedCoupon(c)),
     transactions: transactions.map((t) => transactionView(t, user.id)),
   });
 });

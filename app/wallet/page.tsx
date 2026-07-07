@@ -39,6 +39,8 @@ type Wallet = {
   listed: FeedCoupon[];
   applied: Applied[];
   received: FeedCoupon[];
+  received_expired: FeedCoupon[];
+  received_used: FeedCoupon[];
   transactions: Txn[];
 };
 
@@ -47,6 +49,7 @@ const TABS = [
   { key: "listed", label: "我上架的" },
   { key: "applied", label: "我申請的" },
   { key: "received", label: "我領取的" },
+  { key: "used", label: "已使用" },
   { key: "expired", label: "已過期" },
   { key: "cancelled", label: "已取消" },
 ] as const;
@@ -102,7 +105,10 @@ export default function WalletPage() {
   if (error && !data) return <LoadFailed onRetry={refetch} />;
 
   const listedActive = data?.listed.filter((c) => !["EXPIRED", "CANCELLED"].includes(c.status)) ?? [];
-  const expired = data?.listed.filter((c) => c.status === "EXPIRED") ?? [];
+  // 已過期 = my own expired listings + received coupons whose expiry passed (still
+  // CLAIMED but no longer usable). 已使用 = received coupons the user marked used.
+  const expired = [...(data?.listed.filter((c) => c.status === "EXPIRED") ?? []), ...(data?.received_expired ?? [])];
+  const used = data?.received_used ?? [];
   const cancelled = data?.listed.filter((c) => c.status === "CANCELLED") ?? [];
 
   return (
@@ -176,7 +182,9 @@ export default function WalletPage() {
             <EmptyState icon="send" title="還沒有申請紀錄" hint="去探索頁找找喜歡的票券吧。" action={<Button href="/" variant="outline">前往探索</Button>} />
           )
         ) : tab === "received" ? (
-          <CouponGrid items={data?.received ?? []} empty="還沒有成功領取的票券" hint="被持有者選中後就會出現在這裡。" />
+          <CouponGrid items={data?.received ?? []} empty="還沒有可使用的票券" hint="被持有者選中後就會出現在這裡。過期或已使用的會自動移到對應分頁。" />
+        ) : tab === "used" ? (
+          <CouponGrid items={used} empty="還沒有標記為已使用的票券" hint="在票券頁點「標記為已使用」後會移到這裡。" />
         ) : tab === "expired" ? (
           <CouponGrid items={expired} empty="沒有已過期的票券" />
         ) : tab === "cancelled" ? (

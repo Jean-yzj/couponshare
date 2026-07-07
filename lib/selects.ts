@@ -29,6 +29,7 @@ export const couponCardSelect = {
   viewCount: true,
   claimRequestCount: true,
   createdAt: true,
+  usedAt: true,
   owner: { select: ownerSelect },
 } satisfies Prisma.CouponSelect;
 

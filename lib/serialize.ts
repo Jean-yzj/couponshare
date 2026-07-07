@@ -57,7 +57,7 @@ export function publicUser(u: OwnerRelation) {
 // Feed card. NEVER includes barcode_* fields (PRD §8.1, AC §17.2).
 // `myRequestStatus` (when a viewer is signed in) surfaces "已申請 / 已獲得" on the card.
 export function feedCoupon(
-  c: FeedCouponRecord & { owner?: OwnerRelation | null },
+  c: FeedCouponRecord & { usedAt?: Date | null; owner?: OwnerRelation | null },
   myRequestStatus?: ClaimRequestStatus | null,
 ) {
   return {
@@ -74,6 +74,7 @@ export function feedCoupon(
     claim_request_count: c.claimRequestCount,
     my_request_status: myRequestStatus ?? null,
     created_at: c.createdAt,
+    used_at: c.usedAt ?? null,
     owner: c.owner ? publicUser(c.owner) : null,
   };
 }
@@ -116,6 +117,7 @@ export function couponDetail(
     is_claimant: isClaimant,
     claimant_id: c.claimantId,
     claimed_at: c.claimedAt,
+    used_at: c.usedAt,
     cancelled_at: c.cancelledAt,
     created_at: c.createdAt,
     owner: c.owner ? publicUser(c.owner) : null,

@@ -60,6 +60,7 @@ type Detail = {
   my_request_status: string | null;
   my_request_id: string | null;
   claimed_at: string | null;
+  used_at: string | null;
   created_at: string;
   owner: Owner | null;
   owner_rating?: { avg: number | null; count: number };
@@ -100,6 +101,7 @@ export default function CouponDetailPage() {
   const [actingId, setActingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [markingUsed, setMarkingUsed] = useState(false);
   const [adminRemoving, setAdminRemoving] = useState(false);
   const [adminSuspending, setAdminSuspending] = useState(false);
   const brandsApi = useApi<{ brands: string[] }>(me ? "/api/v1/me/brands" : null);
@@ -143,6 +145,22 @@ export default function CouponDetailPage() {
       alert(e instanceof ApiErr ? e.message : "操作失敗");
     } finally {
       setActingId(null);
+    }
+  }
+
+  async function markUsed(used: boolean) {
+    if (used && !confirm("標記為已使用後，這張券會移到錢包的「已使用」專區。確定嗎？")) return;
+    setMarkingUsed(true);
+    try {
+      await apiFetch(`/api/v1/coupons/${coupon!.id}/use`, {
+        method: "POST",
+        body: JSON.stringify({ used }),
+      });
+      await refetch();
+    } catch (e) {
+      alert(e instanceof ApiErr ? e.message : "操作失敗");
+    } finally {
+      setMarkingUsed(false);
     }
   }
 
@@ -357,9 +375,9 @@ export default function CouponDetailPage() {
       {/* Claimant: success + barcode */}
       {coupon.is_claimant && coupon.status === "CLAIMED" && (
         <Card className="mt-4 p-5">
-          <div className="flex items-center gap-2 text-pine">
-            <Icon name="shieldCheck" size={20} />
-            <p className="font-semibold">你已成功領取這張票券</p>
+          <div className={cn("flex items-center gap-2", coupon.used_at ? "text-ink-faint" : "text-pine")}>
+            <Icon name={coupon.used_at ? "check" : "shieldCheck"} size={20} />
+            <p className="font-semibold">{coupon.used_at ? "這張票券已標記為已使用" : "你已成功領取這張票券"}</p>
           </div>
           <p className="mt-1 text-sm text-ink-soft">
             {coupon.type === "GIFT"
@@ -389,6 +407,15 @@ export default function CouponDetailPage() {
             {coupon.type === "EXCHANGE" && !coupon.exchange_revealed && coupon.transaction_id && (
               <Button icon="swap" href={`/transactions/${coupon.transaction_id}`}>
                 前往亮碼交換
+              </Button>
+            )}
+            {coupon.used_at ? (
+              <Button variant="outline" icon="check" loading={markingUsed} onClick={() => markUsed(false)}>
+                已使用 · 取消標記
+              </Button>
+            ) : (
+              <Button variant="outline" icon="check" loading={markingUsed} onClick={() => markUsed(true)}>
+                標記為已使用
               </Button>
             )}
             <Button variant="outline" href="/wallet" icon="wallet">

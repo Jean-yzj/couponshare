@@ -277,6 +277,9 @@ model Coupon {
   claimRequestCount    Int             @default(0) @map("claim_request_count")
   reportCount          Int             @default(0) @map("report_count")
   claimedAt            DateTime?       @map("claimed_at")
+  // Claimant-set redemption marker. Nullable → additive migration. A claimed coupon
+  // with usedAt set moves to the wallet's "已使用" tab; still CLAIMED, just marked used.
+  usedAt               DateTime?       @map("used_at")
   cancelledAt          DateTime?       @map("cancelled_at")
   createdAt            DateTime        @default(now()) @map("created_at")
   updatedAt            DateTime        @updatedAt @map("updated_at")
