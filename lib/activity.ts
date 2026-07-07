@@ -38,12 +38,13 @@ export function touchActivity(user: ActivityUser): void {
       data: { lastSeenAt: new Date(now) },
     });
 
-    // 2. If Taipei calendar day changed (or this is the first ping), upsert DailyActive.
+    // 2. If Taipei calendar day changed (or this is the first ping), record DailyActive.
+    // createMany + skipDuplicates compiles to INSERT ... ON CONFLICT DO NOTHING —
+    // atomic under concurrent requests, unlike upsert which can race to P2002 here.
     if (crossedDay) {
-      await prisma.dailyActive.upsert({
-        where: { day_userId: { day: new Date(todayTaipei), userId: user.id } },
-        create: { day: new Date(todayTaipei), userId: user.id },
-        update: {},
+      await prisma.dailyActive.createMany({
+        data: [{ day: new Date(todayTaipei), userId: user.id }],
+        skipDuplicates: true,
       });
     }
   })().catch(() => {
