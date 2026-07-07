@@ -5,8 +5,19 @@ import Link from "next/link";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
 import { Button, Card, Field, Input, Skeleton, EmptyState, NeedLogin, Pill } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { cn } from "@/lib/display";
 
-type Brand = { id: string; name: string; logo_text: string | null; category: string | null; coupon_count: number; created_at: string };
+type Brand = {
+  id: string;
+  name: string;
+  logo_text: string | null;
+  logo_url: string | null;
+  category: string | null;
+  plan: string;
+  has_owner: boolean;
+  coupon_count: number;
+  created_at: string;
+};
 
 export default function AdminBrandsPage() {
   const { me, loading: meLoading } = useMe();
@@ -20,6 +31,13 @@ export default function AdminBrandsPage() {
   const [creating, setCreating] = useState(false);
   const [flagBusy, setFlagBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const [assignEmail, setAssignEmail] = useState("");
+  const [assignBrand, setAssignBrand] = useState("");
+  const [assignPlan, setAssignPlan] = useState<"PRO" | "MAX">("PRO");
+  const [assigning, setAssigning] = useState(false);
+  const [assignErr, setAssignErr] = useState<string | null>(null);
+  const [assignMsg, setAssignMsg] = useState<string | null>(null);
 
   if (meLoading) return <div className="flex justify-center py-20"><Skeleton className="h-8 w-8 rounded-full" /></div>;
   if (!me) return <NeedLogin message="登入後即可使用管理功能。" />;
@@ -65,6 +83,31 @@ export default function AdminBrandsPage() {
     }
   }
 
+  async function assignOwner() {
+    if (!assignEmail.trim() || !assignBrand.trim()) {
+      setAssignErr("請填 Email 與品牌名稱");
+      return;
+    }
+    setAssigning(true);
+    setAssignErr(null);
+    setAssignMsg(null);
+    try {
+      const res = await apiFetch<{ user: { display_name: string; email: string } }>("/api/v1/admin/brands/assign", {
+        method: "POST",
+        body: JSON.stringify({ email: assignEmail.trim(), brand_name: assignBrand.trim(), plan: assignPlan }),
+      });
+      setAssignMsg(`已將 ${res.user.display_name}（${res.user.email}）設為「${assignBrand.trim()}」的企業帳號（${assignPlan} 方案）。`);
+      setAssignEmail("");
+      setAssignBrand("");
+      setAssignPlan("PRO");
+      await refetch();
+    } catch (e) {
+      setAssignErr(e instanceof ApiErr ? e.message : "指派失敗");
+    } finally {
+      setAssigning(false);
+    }
+  }
+
   const brands = data?.data ?? [];
 
   return (
@@ -89,9 +132,48 @@ export default function AdminBrandsPage() {
         </Button>
       </Card>
 
+      {/* Assign a business account by email */}
+      <Card className="mt-4 space-y-3 p-4">
+        <div>
+          <p className="font-semibold text-ink">指派企業帳號</p>
+          <p className="mt-0.5 text-xs text-ink-faint">
+            輸入對方註冊時用的 Email，為他開通可自助上架福利券的企業後台。對方需已註冊過。
+          </p>
+        </div>
+        <Field label="使用者 Email" required>
+          <Input type="email" value={assignEmail} onChange={(e) => setAssignEmail(e.target.value)} placeholder="someone@example.com" />
+        </Field>
+        <Field label="品牌名稱" required>
+          <Input value={assignBrand} onChange={(e) => setAssignBrand(e.target.value)} placeholder="例如：某某咖啡" maxLength={40} />
+        </Field>
+        <Field label="方案">
+          <div className="grid grid-cols-2 gap-2">
+            {(["PRO", "MAX"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setAssignPlan(p)}
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-center transition-colors",
+                  assignPlan === p ? "border-accent bg-accent-tint" : "border-line bg-paper hover:border-accent/30",
+                )}
+              >
+                <span className={cn("block text-sm font-semibold", assignPlan === p ? "text-accent" : "text-ink")}>
+                  {p === "PRO" ? "Pro" : "Max"}
+                </span>
+                <span className="block text-[11px] text-ink-faint">{p === "PRO" ? "標準功能" : "含任務解鎖"}</span>
+              </button>
+            ))}
+          </div>
+        </Field>
+        {assignErr && <p className="text-sm text-danger">{assignErr}</p>}
+        {assignMsg && <p className="rounded-lg bg-pine-tint/50 px-3 py-2 text-sm text-pine">{assignMsg}</p>}
+        <Button icon="user" loading={assigning} onClick={assignOwner}>指派為企業帳號</Button>
+      </Card>
+
       {/* Create brand */}
       <Card className="mt-4 space-y-3 p-4">
-        <p className="font-semibold text-ink">新增合作品牌</p>
+        <p className="font-semibold text-ink">新增合作品牌（平台代管）</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="品牌名稱" required>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="例如：某某咖啡" maxLength={40} />
@@ -114,12 +196,26 @@ export default function AdminBrandsPage() {
           brands.map((b) => (
             <Link key={b.id} href={`/admin/brands/${b.id}`} className="block">
               <Card className="flex items-center gap-3 p-4 transition-colors hover:border-accent/30">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-tint text-lg font-extrabold text-accent">
-                  {b.logo_text || b.name.slice(0, 1)}
-                </span>
+                {b.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={b.logo_url} alt="" className="h-11 w-11 shrink-0 rounded-xl border border-line object-cover" />
+                ) : (
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-tint text-lg font-extrabold text-accent">
+                    {b.logo_text || b.name.slice(0, 1)}
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-ink">{b.name}</p>
-                  <p className="text-xs text-ink-faint">{b.category || "未分類"} · {b.coupon_count} 張券</p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <p className="truncate font-semibold text-ink">{b.name}</p>
+                    {b.has_owner && (
+                      <Pill className={b.plan === "MAX" ? "bg-grape-tint text-grape" : "bg-accent-tint text-accent"}>
+                        {b.plan === "MAX" ? "Max" : "Pro"}
+                      </Pill>
+                    )}
+                  </div>
+                  <p className="text-xs text-ink-faint">
+                    {b.category || "未分類"} · {b.coupon_count} 張券 · {b.has_owner ? "已指派企業主" : "平台代管"}
+                  </p>
                 </div>
                 <Icon name="chevronRight" size={18} className="text-ink-faint" />
               </Card>

@@ -620,6 +620,10 @@ model Brand {
   // The platform user who manages this brand (brand self-serve back office).
   // Nullable → additive; admin-created brands may have no owner.
   ownerUserId  String?       @map("owner_user_id")
+  // Plan tier set by admin — PRO (base) or MAX. TASK_UNLOCK coupons are MAX-only.
+  plan         String        @default("PRO")
+  // Optional logo image (data-URI); falls back to logoText badge when absent.
+  logoUrl      String?       @map("logo_url")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
@@ -636,8 +640,14 @@ model BrandCoupon {
   description      String?
   category         String?
   redeemInfo       String?   @map("redeem_info")
-  // DIRECT_CLAIM = tap to claim; MESSAGE_APPLICATION = leave a reason, admin approves.
+  // Optional coupon image (data-URI) shown on the card / detail.
+  imageUrl         String?   @map("image_url")
+  // DIRECT_CLAIM = tap to claim; MESSAGE_APPLICATION = leave a reason, brand approves;
+  // TASK_UNLOCK = do a task first (MAX plan only), then claim (honour-system).
   applicationMode  String    @default("DIRECT_CLAIM") @map("application_mode")
+  // For TASK_UNLOCK: what the user must do, and an optional link to do it.
+  taskInstruction  String?   @map("task_instruction")
+  taskUrl          String?   @map("task_url")
   maxApplications  Int       @default(100) @map("max_applications")
   maxPerUser       Int       @default(1) @map("max_per_user")
   applicationCount Int       @default(0) @map("application_count")

@@ -10,6 +10,7 @@ type BrandPage = {
     id: string;
     name: string;
     logo_text: string | null;
+    logo_url: string | null;
     category: string | null;
     description: string | null;
     website_url: string | null;
@@ -43,9 +44,14 @@ export default function BrandPublicPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <Card className="flex items-center gap-4 p-5 sm:p-6">
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-tint text-xl font-extrabold text-accent">
-          {brand.logo_text || brand.name.slice(0, 1)}
-        </span>
+        {brand.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={brand.logo_url} alt="" className="h-14 w-14 shrink-0 rounded-2xl border border-line object-cover" />
+        ) : (
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-tint text-xl font-extrabold text-accent">
+            {brand.logo_text || brand.name.slice(0, 1)}
+          </span>
+        )}
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="truncate text-xl font-extrabold tracking-tight text-ink">{brand.name}</h1>
@@ -64,7 +70,7 @@ export default function BrandPublicPage() {
       ) : (
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {coupons.map((c) => (
-            <BrandCouponCard key={c.id} coupon={c} brandName={brand.name} brandLogo={brand.logo_text} />
+            <BrandCouponCard key={c.id} coupon={c} brandName={brand.name} brandLogo={brand.logo_text} brandLogoUrl={brand.logo_url} />
           ))}
         </div>
       )}

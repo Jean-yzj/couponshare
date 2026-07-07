@@ -228,12 +228,18 @@ export const brandCreateSchema = z.object({
   contact_email: z.string().trim().email("Email 格式不正確").max(120).optional().nullable().or(z.literal("")),
 });
 
+// Data-URI image (logo / coupon image). Magic-byte validated server-side too.
+const dataUriImage = z.string().startsWith("data:image/").max(700_000);
+
 export const brandCouponCreateSchema = z.object({
   title: z.string().trim().min(2, "請填券標題").max(60),
   description: z.string().trim().max(300).optional().nullable(),
   category: z.string().trim().max(20).optional().nullable(),
   redeem_info: z.string().trim().max(300).optional().nullable(),
-  application_mode: z.enum(["DIRECT_CLAIM", "MESSAGE_APPLICATION"]),
+  image_url: dataUriImage.optional().nullable().or(z.literal("")),
+  application_mode: z.enum(["DIRECT_CLAIM", "MESSAGE_APPLICATION", "TASK_UNLOCK"]),
+  task_instruction: z.string().trim().max(300).optional().nullable(),
+  task_url: z.string().trim().url("網址格式不正確").max(500).optional().nullable().or(z.literal("")),
   max_applications: z.number().int().min(1).max(100000),
   max_per_user: z.number().int().min(1).max(100).default(1),
   cta_text: z.string().trim().max(20).optional().nullable(),
@@ -244,6 +250,23 @@ export const brandCouponCreateSchema = z.object({
 export const brandCouponStatusSchema = z.object({
   status: z.enum(["DRAFT", "ACTIVE", "PAUSED", "ENDED"]),
 });
+
+// Brand owner edits their brand's public identity.
+export const brandEditSchema = z.object({
+  name: z.string().trim().min(1, "請填品牌名稱").max(40),
+  category: z.string().trim().max(20).optional().nullable().or(z.literal("")),
+  description: z.string().trim().max(300).optional().nullable().or(z.literal("")),
+  logo_url: dataUriImage.optional().nullable().or(z.literal("")),
+});
+
+// Admin assigns a person (by email) as a brand owner, with a plan tier.
+export const adminAssignBrandSchema = z.object({
+  email: z.string().trim().email("請輸入正確的 Email"),
+  brand_name: z.string().trim().min(1, "請填品牌名稱").max(40),
+  plan: z.enum(["PRO", "MAX"]),
+});
+
+export const brandPlanSchema = z.object({ plan: z.enum(["PRO", "MAX"]) });
 
 export const brandCouponApplySchema = z.object({
   message: z.string().trim().max(200).optional().nullable(),

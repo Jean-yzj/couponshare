@@ -14,7 +14,7 @@ export const GET = route(async (req, ctx) => {
 
   const coupon = await prisma.brandCoupon.findUnique({
     where: { id },
-    include: { brand: { select: { id: true, name: true, logoText: true, category: true } } },
+    include: { brand: { select: { id: true, name: true, logoText: true, logoUrl: true, category: true } } },
   });
   if (!coupon) throw new ApiError("NOT_FOUND");
 
@@ -34,7 +34,10 @@ export const GET = route(async (req, ctx) => {
     title: coupon.title,
     description: coupon.description,
     category: coupon.category,
+    image_url: coupon.imageUrl,
     application_mode: coupon.applicationMode,
+    task_instruction: coupon.taskInstruction,
+    task_url: coupon.taskUrl,
     status: coupon.status,
     remaining: Math.max(0, coupon.maxApplications - coupon.applicationCount),
     max_applications: coupon.maxApplications,
@@ -47,6 +50,7 @@ export const GET = route(async (req, ctx) => {
       id: coupon.brand.id,
       name: coupon.brand.name,
       logo_text: coupon.brand.logoText,
+      logo_url: coupon.brand.logoUrl,
       category: coupon.brand.category,
     },
     my_status: mine?.status ?? null,

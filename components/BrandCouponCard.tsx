@@ -5,6 +5,7 @@ export type BrandCouponCardData = {
   id: string;
   title: string;
   category?: string | null;
+  image_url?: string | null;
   remaining: number;
   max_applications: number;
   application_mode: string;
@@ -16,10 +17,12 @@ export function BrandCouponCard({
   coupon,
   brandName,
   brandLogo,
+  brandLogoUrl,
 }: {
   coupon: BrandCouponCardData;
   brandName: string;
   brandLogo?: string | null;
+  brandLogoUrl?: string | null;
 }) {
   const soldOut = coupon.remaining <= 0;
   const claimed = coupon.max_applications - coupon.remaining;
@@ -29,11 +32,20 @@ export function BrandCouponCard({
       href={`/brand-coupons/${coupon.id}`}
       className="block rounded-2xl border border-line bg-paper p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-lift"
     >
+      {coupon.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={coupon.image_url} alt="" className="mb-3 h-24 w-full rounded-xl border border-line object-cover" />
+      )}
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-tint text-xs font-bold text-accent">
-            {brandLogo || brandName.slice(0, 1)}
-          </span>
+          {brandLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={brandLogoUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg border border-line object-cover" />
+          ) : (
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-tint text-xs font-bold text-accent">
+              {brandLogo || brandName.slice(0, 1)}
+            </span>
+          )}
           <span className="truncate text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
             {brandName}
             {coupon.category ? ` · ${coupon.category}` : ""}

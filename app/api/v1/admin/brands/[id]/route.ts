@@ -1,9 +1,33 @@
 import { prisma } from "@/lib/db";
-import { route, jsonOk } from "@/lib/api";
+import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireAdmin } from "@/lib/admin";
+import { writeAudit } from "@/lib/audit";
+import { brandPlanSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
+
+// Admin changes a brand's plan tier (PRO / MAX). MAX unlocks TASK_UNLOCK coupons.
+export const POST = route(async (req, ctx) => {
+  const admin = await requireAdmin();
+  const { id } = await ctx.params;
+  const { plan } = await readBody(req, brandPlanSchema);
+  const brand = await prisma.brand.findUnique({ where: { id }, select: { plan: true } });
+  if (!brand) throw new ApiError("NOT_FOUND");
+  await prisma.brand.update({ where: { id }, data: { plan } });
+  const meta = clientMeta(req);
+  await writeAudit(prisma, {
+    actorId: admin.id,
+    action: "admin.brand.plan",
+    targetType: "brand",
+    targetId: id,
+    before: { plan: brand.plan },
+    after: { plan },
+    ip: meta.ip,
+    ua: meta.ua,
+  });
+  return jsonOk({ id, plan });
+});
 
 // Admin: one brand's dashboard payload — brand info + every coupon with its live
 // stats (views / applications / claims). This is what a brand would see in their
@@ -36,11 +60,14 @@ export const GET = route(async (req, ctx) => {
       id: brand.id,
       name: brand.name,
       logo_text: brand.logoText,
+      logo_url: brand.logoUrl,
       category: brand.category,
       description: brand.description,
       website_url: brand.websiteUrl,
       contact_name: brand.contactName,
       contact_email: brand.contactEmail,
+      plan: brand.plan,
+      owner_user_id: brand.ownerUserId,
       created_at: brand.createdAt,
     },
     coupons: coupons.map((c) => ({

@@ -2,28 +2,30 @@ import { prisma } from "@/lib/db";
 import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireActiveUser } from "@/lib/auth";
+import { ownsCoupon } from "@/lib/brand-access";
 import { writeAudit } from "@/lib/audit";
 import { validateDataUriImage } from "@/lib/image";
 import { brandCouponCreateSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
-// Brand owner uploads an official coupon for a brand they manage.
+// Brand owner edits an existing coupon (title, mode, redeem, image, task, CTA).
 export const POST = route(async (req, ctx) => {
   const user = await requireActiveUser();
-  const { brandId } = await ctx.params;
-  const brand = await prisma.brand.findUnique({ where: { id: brandId }, select: { ownerUserId: true, plan: true } });
-  if (!brand || brand.ownerUserId !== user.id) throw new ApiError("FORBIDDEN");
+  const { id } = await ctx.params;
+  const brandId = await ownsCoupon(user.id, id);
+  if (!brandId) throw new ApiError("FORBIDDEN");
+  const brand = await prisma.brand.findUnique({ where: { id: brandId }, select: { plan: true } });
   const body = await readBody(req, brandCouponCreateSchema);
 
-  if (body.application_mode === "TASK_UNLOCK" && brand.plan !== "MAX") {
+  if (body.application_mode === "TASK_UNLOCK" && brand?.plan !== "MAX") {
     throw new ApiError("VALIDATION_ERROR", { message: "「任務解鎖」是 Max 方案專屬，請升級後使用。" });
   }
   const isTask = body.application_mode === "TASK_UNLOCK";
 
-  const coupon = await prisma.brandCoupon.create({
+  await prisma.brandCoupon.update({
+    where: { id },
     data: {
-      brandId,
       title: body.title,
       description: body.description || null,
       category: body.category || null,
@@ -37,20 +39,18 @@ export const POST = route(async (req, ctx) => {
       ctaText: body.cta_text || null,
       ctaUrl: body.cta_url || null,
       usageExpiry: body.usage_expiry || null,
-      status: "ACTIVE",
     },
-    select: { id: true },
   });
 
   const meta = clientMeta(req);
   await writeAudit(prisma, {
     actorId: user.id,
-    action: "brand.coupon.create",
+    action: "brand.coupon.edit",
     targetType: "brand_coupon",
-    targetId: coupon.id,
-    after: { brandId, title: body.title },
+    targetId: id,
+    after: { title: body.title },
     ip: meta.ip,
     ua: meta.ua,
   });
-  return jsonOk({ id: coupon.id }, 201);
+  return jsonOk({ id });
 });

@@ -27,7 +27,9 @@ export const POST = route(async (req, ctx) => {
     throw new ApiError("VALIDATION_ERROR", { message: "這張券目前無法領取" });
   }
 
-  const direct = coupon.applicationMode === "DIRECT_CLAIM";
+  // TASK_UNLOCK claims immediately too — the task is an honour-system gate in the
+  // UI (the user confirms they did it before this call fires).
+  const direct = coupon.applicationMode === "DIRECT_CLAIM" || coupon.applicationMode === "TASK_UNLOCK";
   try {
     await prisma.$transaction(async (tx) => {
       await tx.brandCouponApplication.create({
