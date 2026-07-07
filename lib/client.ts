@@ -120,6 +120,7 @@ export type Me = {
   risk_flag: boolean;
   status: string;
   is_admin?: boolean;
+  is_brand_owner?: boolean;
   daily_claim_limit: number;
   daily_publish_limit: number;
   next_level: { level: string; name: string; needScore: number; needGifts: number } | null;

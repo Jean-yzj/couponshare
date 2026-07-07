@@ -236,6 +236,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                           <Icon name="instagram" size={17} />
                           聯絡創作者
                         </a>
+                        {(me.is_brand_owner || me.is_admin) && (
+                          <MenuItem
+                            href="/brand"
+                            icon="ticket"
+                            label="企業後台"
+                            onClick={() => setMenuOpen(false)}
+                          />
+                        )}
                         {me.is_admin && (
                           <MenuItem
                             href="/admin"

@@ -19,7 +19,11 @@ export const GET = route(async () => {
   // Recompute the level here (not just count gifts) so a tier earned via this
   // month's gifts drops back to the score-based tier once the month rolls over,
   // even for users who don't open the score page.
-  const [recomputed, quota] = await Promise.all([recomputeLevel(prisma, user.id), applyQuota(user)]);
+  const [recomputed, quota, ownedBrands] = await Promise.all([
+    recomputeLevel(prisma, user.id),
+    applyQuota(user),
+    prisma.brand.count({ where: { ownerUserId: user.id } }),
+  ]);
   const userLevel = recomputed?.level ?? user.userLevel;
   const gifts = recomputed?.monthlyGifts ?? 0;
   const level = LEVELS[userLevel];
@@ -39,6 +43,7 @@ export const GET = route(async () => {
       risk_flag: user.riskFlag,
       status: user.status,
       is_admin: isAdmin(user),
+      is_brand_owner: ownedBrands > 0,
       daily_claim_limit: dailyClaim,
       daily_publish_limit: level.dailyPublish,
       next_level: nextLevelTarget(user.contributionScore, gifts),

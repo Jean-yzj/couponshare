@@ -617,11 +617,15 @@ model Brand {
   websiteUrl   String?       @map("website_url")
   contactName  String?       @map("contact_name")
   contactEmail String?       @map("contact_email")
+  // The platform user who manages this brand (brand self-serve back office).
+  // Nullable → additive; admin-created brands may have no owner.
+  ownerUserId  String?       @map("owner_user_id")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
   coupons BrandCoupon[]
 
+  @@index([ownerUserId])
   @@map("brands")
 }
 
