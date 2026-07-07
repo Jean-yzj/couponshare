@@ -297,7 +297,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Ops todo — 每天要處理的營運待辦，置頂顯眼（解決檢舉/申訴看不到） */}
-      <OpsTodoBar reports={o.reports.pending} appeals={o.appeals.pending} overdue={data.health?.pending_over_48h ?? 0} />
+      <OpsTodoBar reports={o.reports.pending} appeals={o.appeals.pending} />
 
       {/* Date range picker */}
       <div className="rounded-2xl border border-line bg-canvas/60 px-4 py-3">
@@ -345,43 +345,31 @@ export default function AdminDashboardPage() {
 
 // ── Ops todo bar ──────────────────────────────────────────────────────────
 
-function OpsTodoBar({ reports, appeals, overdue }: { reports: number; appeals: number; overdue: number }) {
-  const items: { label: string; value: number; href: string | null }[] = [
+function OpsTodoBar({ reports, appeals }: { reports: number; appeals: number }) {
+  // Only show a chip when there is actually something to review — a 0-count chip
+  // reads as "still pending" even when it's clear. All zero → the green all-clear.
+  const items = [
     { label: "待檢舉複核", value: reports, href: "/admin/reports" },
     { label: "待申訴複核", value: appeals, href: "/admin/appeals" },
-    { label: "超時待審 >48h", value: overdue, href: null },
-  ];
-  if (reports + appeals + overdue === 0) {
+  ].filter((it) => it.value > 0);
+  if (items.length === 0) {
     return (
       <div className="flex items-center gap-2 rounded-xl border border-pine/30 bg-pine-tint/40 px-3 py-2 text-sm text-pine">
         <Icon name="check" size={15} />
-        <span>目前沒有待處理的檢舉、申訴或超時案件</span>
+        <span>目前沒有待處理的檢舉或申訴</span>
       </div>
     );
   }
   return (
     <div className="flex flex-wrap gap-2">
-      {items.map((it) => {
-        const urgent = it.value > 0;
-        const body = (
-          <div
-            className={cn(
-              "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
-              urgent ? "border-danger/40 bg-danger-tint/60 text-danger" : "border-line bg-canvas/60 text-ink-faint",
-            )}
-          >
+      {items.map((it) => (
+        <Link key={it.label} href={it.href} className="hover:opacity-80">
+          <div className="flex items-center gap-2 rounded-xl border border-danger/40 bg-danger-tint/60 px-3 py-2 text-sm text-danger transition-colors">
             <span className="text-xs">{it.label}</span>
             <span className="font-bold tabular-nums">{it.value}</span>
           </div>
-        );
-        return it.href && urgent ? (
-          <Link key={it.label} href={it.href} className="hover:opacity-80">
-            {body}
-          </Link>
-        ) : (
-          <div key={it.label}>{body}</div>
-        );
-      })}
+        </Link>
+      ))}
     </div>
   );
 }
