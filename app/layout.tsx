@@ -4,9 +4,14 @@ import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 
 // GenSenRounded 2 TW (源泉圓體, Bold) — a chunky, rounded Traditional-Chinese
-// font, self-hosted so it works under the CSP (font-src 'self'). The bold weight
-// is declared across a 400–800 range so every UI weight uses these round, heavy
-// glyphs with no thin fallback — that's what gives the whole UI its cute, bubbly feel.
+// font, self-hosted so it works under the CSP (font-src 'self'). It gives headings
+// and brand text their cute, bubbly feel.
+//
+// SUBSET to ~370KB (from 1.1MB): covers all static UI text + every current coupon
+// title/brand, so headings and coupon names render round. User display names use
+// the system font (--font-sans) — they're too diverse to subset. Regenerate the
+// subset the original (kept in git history before this commit) with pyftsubset if
+// show mixed rounded/system glyphs. The original 1.1MB font stays in git history.
 const round = localFont({
   src: "./fonts/gensen-rounded-bold.woff2",
   variable: "--font-round",

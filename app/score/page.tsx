@@ -144,7 +144,7 @@ export default function ScorePage() {
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-display text-xl font-extrabold">{me.display_name}</p>
+              <p className="truncate font-sans text-xl font-extrabold">{me.display_name}</p>
               <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm">
                 <Icon name="medal" size={12} /> LV.{levelNum} · {data.level_name}
                 <span className="tracking-tight text-white/90">{"★".repeat(curMeta.stars)}</span>

@@ -112,7 +112,7 @@ export default function ProfilePage() {
           <Avatar name={user.display_name} url={user.avatar_url} size={64} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h1 className="truncate text-xl font-bold text-ink">{user.display_name}</h1>
+              <h1 className="truncate font-sans text-xl font-bold text-ink">{user.display_name}</h1>
               <LevelBadge level={user.user_level} />
             </div>
             <p className="mt-0.5 text-xs text-ink-faint">於 {formatDate(user.created_at)} 加入</p>
@@ -192,7 +192,7 @@ export default function ProfilePage() {
       )}
 
       {/* Their coupons */}
-      <h2 className="mb-3 mt-7 font-semibold text-ink">{user.display_name} 正在分享</h2>
+      <h2 className="mb-3 mt-7 font-sans font-semibold text-ink">{user.display_name} 正在分享</h2>
       {coupons.length === 0 ? (
         <Card className="p-6 text-center text-sm text-ink-soft">目前沒有正在分享的票券。</Card>
       ) : (
