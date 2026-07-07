@@ -41,6 +41,10 @@
   .btn.primary:hover{background:var(--accent-press)}
   .btn.ghost{border:1.5px solid var(--line);background:var(--paper);color:var(--ink)}
   .hero .note{margin-top:14px;font-size:13px;color:var(--ink-faint)}
+  .stats{display:none;grid-template-columns:repeat(3,1fr);gap:10px;max-width:520px;margin:28px auto 0}
+  .stats div{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 8px}
+  .stats b{display:block;font-size:22px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+  .stats span{font-size:12px;color:var(--ink-faint)}
 
   section{padding:56px 0}
   section.alt{background:var(--paper);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
@@ -134,12 +138,17 @@
 <div class="wrap hero">
   <p class="eyebrow">Official Coupon Placement</p>
   <h1>把品牌優惠，放進<br>使用者本來就在找券的地方</h1>
-  <p class="lead">CouponShare 是一個票券分享社群，16,000 多位使用者進來的目的只有一個：找優惠、領券、換券。你的品牌優惠在這裡不是被滑過的廣告，而是被主動申請的官方福利券。</p>
+  <p class="lead">CouponShare 是一個票券分享社群，<span data-members-exact>上萬位</span>使用者進來的目的只有一個：找優惠、領券、換券。你的品牌優惠在這裡不是被滑過的廣告，而是被主動申請的官方福利券。</p>
   <div class="cta-row">
     <a class="btn primary" href="https://couponshare.lazybearlife.com/business">取得合作報價</a>
     <a class="btn ghost" href="#plans">先看方案</a>
   </div>
   <p class="note">留下聯絡方式後，完整方案與報價會直接寄到你的信箱。</p>
+  <div id="live-stats" class="stats">
+    <div><b id="stat-members">–</b><span>一起分享的人</span></div>
+    <div><b id="stat-shared">–</b><span>已上架好券</span></div>
+    <div><b id="stat-sent">–</b><span>成功送出</span></div>
+  </div>
 </div>
 
 <section class="alt">
@@ -276,7 +285,7 @@
 
 <div class="wrap">
   <div class="final">
-    <h2>用一張福利券，認識一萬多個正在找優惠的人</h2>
+    <h2>用一張福利券，認識 <span data-members-about>上萬</span>個正在找優惠的人</h2>
     <p>留下聯絡方式，我會把完整的合作方案與報價寄到你的信箱。從一個月的早鳥方案開始，用數據說話。</p>
     <a class="btn" href="https://couponshare.lazybearlife.com/business">取得合作報價</a>
   </div>
@@ -286,5 +295,27 @@
   <div class="wrap">© CouponShare · 把用不到的優惠券，和需要的人分享</div>
 </footer>
 
+<script>
+// Live numbers straight from the platform (60s-cached aggregate counts, CORS-open).
+// If the fetch fails (offline / opened without network) the page keeps its
+// evergreen wording ("上萬位") and simply hides the stats strip.
+fetch("https://couponshare.lazybearlife.com/api/v1/stats/public")
+  .then(function (r) { return r.json(); })
+  .then(function (s) {
+    if (!s || typeof s.members !== "number" || s.members <= 0) return;
+    var fmt = function (n) { return n.toLocaleString("en-US"); };
+    document.querySelectorAll("[data-members-exact]").forEach(function (el) {
+      el.textContent = fmt(s.members) + " 位";
+    });
+    document.querySelectorAll("[data-members-about]").forEach(function (el) {
+      el.textContent = fmt(Math.floor(s.members / 1000) * 1000) + " 多";
+    });
+    document.getElementById("stat-members").textContent = fmt(s.members);
+    document.getElementById("stat-shared").textContent = fmt(s.shared);
+    document.getElementById("stat-sent").textContent = fmt(s.sent);
+    document.getElementById("live-stats").style.display = "grid";
+  })
+  .catch(function () {});
+</script>
 </body>
 </html>
