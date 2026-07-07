@@ -11,14 +11,15 @@ type Stats = { shared: number; sent: number; members: number };
 
 const WHY: { icon: IconName; title: string; body: string }[] = [
   { icon: "search", title: "場景對了", body: "優惠出現在使用者瀏覽票券、搜尋品牌、管理錢包的時刻——他們正帶著「想領券」的意圖，而不是被廣告打斷。" },
-  { icon: "eye", title: "成效可追蹤", body: "曝光、點擊、申請、成功領取，每一層都有數據。你會知道有多少人真的對優惠有興趣，而不是只有一個觸及數。" },
+  { icon: "eye", title: "每張券都有數據", body: "每張券的瀏覽、點擊、申請、成功領取次數都看得到。你會知道有多少人真的對優惠有興趣，而不是只有一個觸及數。" },
   { icon: "users", title: "年輕族群精準", body: "以學生與年輕上班族為主的社群，特別適合飲料咖啡甜點、超商零售、課程與 App 註冊等校園與青年市場推廣。" },
 ];
 
 const CHECKS = [
   ["一張券、多人申請", "你設定名額（100、300、500 次），使用者主動申請領取。"],
   ["四種申請模式", "直接領取、留言申請（看得到申請理由）、品牌審核挑人發放、任務解鎖。"],
-  ["多個原生曝光位", "首頁福利區、熱門票券、搜尋與分類優先、錢包底部推薦、票券詳情頁推薦。"],
+  ["每張券的數據都看得到", "瀏覽次數、點擊、申請、成功領取——每一張券、每個曝光位置都拆得出來。"],
+  ["不只領取，還有額外曝光", "券被領走的次數以外，還在首頁、搜尋、錢包等版位持續露出，讓更多人看見你的品牌。"],
   ["月報看得懂", "每月一份成效報告：各券申請率、各曝光位成效、申請留言洞察。"],
 ];
 
@@ -108,10 +109,8 @@ export function BusinessLanding() {
         <Eyebrow>
           <Icon name="sparkle" size={13} /> Official Coupon Placement
         </Eyebrow>
-        <h1 className="mx-auto mt-4 max-w-3xl text-[2rem] font-extrabold leading-[1.2] tracking-tight text-ink sm:text-[2.6rem]">
-          把品牌優惠，放進
-          <br />
-          使用者本來就在找券的地方
+        <h1 className="mx-auto mt-4 max-w-2xl text-[1.95rem] font-extrabold leading-[1.25] tracking-tight text-ink sm:text-[2.7rem]">
+          讓品牌優惠，<br className="sm:hidden" />出現在想領券的那一刻
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-[16px] leading-relaxed text-ink-soft">
           CouponShare 是一個票券分享社群，{members ? `${members} 位` : "上萬位"}使用者進來的目的只有一個：找優惠、領券、換券。你的品牌優惠在這裡不是被滑過的廣告，而是被主動申請的官方福利券。
@@ -184,7 +183,10 @@ export function BusinessLanding() {
       {/* Placements */}
       <section className="rounded-[28px] bg-accent-tint/40 px-6 py-10 text-center sm:py-12">
         <Eyebrow>Placements</Eyebrow>
-        <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">你的券會出現在這些地方</h2>
+        <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">你買到的不只是「被領走的次數」</h2>
+        <p className="mx-auto mt-2.5 max-w-xl text-sm leading-relaxed text-ink-soft">
+          除了券被申請、領取的次數，每張券還會在平台的多個原生版位持續露出——等於同時買到「導流」和「額外品牌曝光」。
+        </p>
         <div className="mx-auto mt-6 flex max-w-xl flex-wrap justify-center gap-2.5">
           {PLACEMENTS.map((p) => (
             <span key={p} className="rounded-full border border-line bg-paper px-4 py-2 text-sm text-ink-soft">
@@ -202,7 +204,9 @@ export function BusinessLanding() {
         <div className="text-center">
           <Eyebrow>Plans</Eyebrow>
           <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">合作方案</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-ink-soft">建議從早鳥方案開始，一個月看數據，成效好再升級。</p>
+          <p className="mx-auto mt-2 max-w-lg text-sm text-ink-soft">
+            不論是連鎖品牌還是校園小店都適用——從最小的早鳥方案開始，一個月看數據，成效好再升級。
+          </p>
         </div>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {PLANS.map((p) => (
