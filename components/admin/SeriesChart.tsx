@@ -21,7 +21,7 @@ type Key = "dau" | "signups" | "coupons" | "claims" | "completed" | "claimers" |
 const ALL_SERIES: { key: Key; label: string }[] = [
   { key: "dau", label: "DAU" },
   { key: "claims", label: "申請" },
-  { key: "completed", label: "完成" },
+  { key: "completed", label: "雙方完成" },
   { key: "signups", label: "新增人數" },
   { key: "coupons", label: "上架" },
   { key: "claimers", label: "送出申請人" },
@@ -40,7 +40,7 @@ const COLORS: Record<Key, string> = {
   transactions: "#64748b",
 };
 
-const DEFAULT_ACTIVE: Set<Key> = new Set(["dau", "claims", "completed"]);
+const DEFAULT_ACTIVE: Set<Key> = new Set(["dau", "claims", "transactions"]);
 
 export function SeriesChart({ series }: { series: SeriesData }) {
   const [active, setActive] = useState<Set<Key>>(DEFAULT_ACTIVE);

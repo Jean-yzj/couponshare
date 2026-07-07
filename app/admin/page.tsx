@@ -28,6 +28,7 @@ type Period = {
   new_coupons: number;
   new_claims: number;
   completed: number;
+  sent: number;
   new_reports: number;
 };
 
@@ -38,6 +39,7 @@ type PeriodVs = {
   coupons: { current: number; previous: number };
   claims: { current: number; previous: number };
   completed: { current: number; previous: number };
+  sent: { current: number; previous: number };
   reports: { current: number; previous: number };
 };
 
@@ -77,7 +79,7 @@ type Stats = {
   overview: {
     users: { total: number; active: number; suspended: number; new_3h: number; new_6h: number; new_12h: number; new_24h: number; new_48h: number; new_7d: number; new_30d: number };
     coupons: { total: number; new_24h: number; new_7d: number; new_30d: number };
-    transactions: { total: number; completed: number; gift: number; exchange: number };
+    transactions: { total: number; completed: number; sent: number; both_confirmed: number; gift: number; exchange: number };
     claims: { total: number; pending: number };
     reports: { total: number; pending: number };
     appeals: { total: number; pending: number };
@@ -281,9 +283,9 @@ export default function AdminDashboardPage() {
         />
         <CoreCard
           icon="heart"
-          label="成功媒合"
-          value={o.transactions.completed}
-          sub={`期間 +${data.period?.completed ?? 0}`}
+          label="成功送出"
+          value={o.transactions.sent}
+          sub={`期間 +${data.period?.sent ?? 0}`}
         />
         <CoreCard
           icon="lightning"
@@ -293,6 +295,9 @@ export default function AdminDashboardPage() {
           accent
         />
       </div>
+
+      {/* Ops todo — 每天要處理的營運待辦，置頂顯眼（解決檢舉/申訴看不到） */}
+      <OpsTodoBar reports={o.reports.pending} appeals={o.appeals.pending} overdue={data.health?.pending_over_48h ?? 0} />
 
       {/* Date range picker */}
       <div className="rounded-2xl border border-line bg-canvas/60 px-4 py-3">
@@ -338,17 +343,55 @@ export default function AdminDashboardPage() {
   );
 }
 
+// ── Ops todo bar ──────────────────────────────────────────────────────────
+
+function OpsTodoBar({ reports, appeals, overdue }: { reports: number; appeals: number; overdue: number }) {
+  const items: { label: string; value: number; href: string | null }[] = [
+    { label: "待檢舉複核", value: reports, href: "/admin/reports" },
+    { label: "待申訴複核", value: appeals, href: "/admin/appeals" },
+    { label: "超時待審 >48h", value: overdue, href: null },
+  ];
+  if (reports + appeals + overdue === 0) {
+    return (
+      <div className="flex items-center gap-2 rounded-xl border border-pine/30 bg-pine-tint/40 px-3 py-2 text-sm text-pine">
+        <Icon name="check" size={15} />
+        <span>目前沒有待處理的檢舉、申訴或超時案件</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((it) => {
+        const urgent = it.value > 0;
+        const body = (
+          <div
+            className={cn(
+              "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
+              urgent ? "border-danger/40 bg-danger-tint/60 text-danger" : "border-line bg-canvas/60 text-ink-faint",
+            )}
+          >
+            <span className="text-xs">{it.label}</span>
+            <span className="font-bold tabular-nums">{it.value}</span>
+          </div>
+        );
+        return it.href && urgent ? (
+          <Link key={it.label} href={it.href} className="hover:opacity-80">
+            {body}
+          </Link>
+        ) : (
+          <div key={it.label}>{body}</div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Overview tab ──────────────────────────────────────────────────────────
 
 function OverviewTab({ data, o, s }: { data: Stats; o: Stats["overview"]; s: Stats["series"] }) {
   return (
     <div className="space-y-6">
-      {/* Alerts — top of overview */}
-      {data.alerts && data.alerts.length > 0 && (
-        <AlertBanner alerts={data.alerts} />
-      )}
-
-      {/* Period vs cards */}
+      {/* Period vs cards — 核心數據置於總覽頁最前 */}
       {data.period_vs && (
         <section>
           <SectionTitle>期間對比</SectionTitle>
@@ -381,20 +424,29 @@ function OverviewTab({ data, o, s }: { data: Stats; o: Stats["overview"]; s: Sta
       </section>
 
       {/* North-star: weekly completed */}
-      <Section title="週完成交易（北極星）">
+      <Section title="週成功送出（北極星）">
         <WeeklyCompletedChart weeks={data.weekly_completed} />
       </Section>
 
-      {/* Selected health metrics */}
+      {/* Selected health metrics — 平台健康（待辦已置於頂部待辦條） */}
       <section>
-        <SectionTitle>精選健康指標</SectionTitle>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard icon="flag" label="待處理檢舉" value={o.reports.pending} tone={o.reports.pending > 0 ? "danger" : undefined} sub={`累計 ${o.reports.total} 筆`} />
-          <StatCard icon="shield" label="待處理申訴" value={o.appeals.pending} tone={o.appeals.pending > 0 ? "accent" : undefined} sub={`累計 ${o.appeals.total} 筆`} />
-          <StatCard icon="send" label="超時待審 >48h" value={data.health?.pending_over_48h ?? 0} tone={data.health?.pending_over_48h ? "danger" : undefined} sub="申請等待超過 48 小時" />
+        <SectionTitle>平台健康</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <StatCard icon="checkCircle" label="雙方確認完成" value={o.transactions.both_confirmed} sub="雙方都按完成（真正走完全程）" />
           <StatCard icon="heart" label="供需比（7 日）" value={data.health?.supply_demand_7d !== null && data.health?.supply_demand_7d !== undefined ? data.health.supply_demand_7d.toFixed(2) : "—"} sub="新券 / 新申請" />
+          <StatCard icon="hourglass" label="平均送出時數" value={data.health?.avg_hours_to_claim !== null && data.health?.avg_hours_to_claim !== undefined ? `${data.health.avg_hours_to_claim.toFixed(1)}h` : "—"} sub="上架到送出" />
+          <StatCard icon="send" label="平均每券申請" value={data.health?.avg_claims_per_coupon !== null && data.health?.avg_claims_per_coupon !== undefined ? data.health.avg_claims_per_coupon.toFixed(1) : "—"} sub="需求熱度" />
+          <StatCard icon="check" label="申請通過率" value={data.health?.claim_approval_rate !== null && data.health?.claim_approval_rate !== undefined ? `${Math.round(data.health.claim_approval_rate * 100)}%` : "—"} sub="核准 / 已回覆" />
         </div>
       </section>
+
+      {/* Alerts — 收斂下沉，不佔第一屏 */}
+      {data.alerts && data.alerts.length > 0 && (
+        <section>
+          <SectionTitle>異常提醒</SectionTitle>
+          <AlertBanner alerts={data.alerts} />
+        </section>
+      )}
 
       {/* Admin tools at the bottom */}
       <ScoreAdjust />
@@ -626,7 +678,7 @@ function GrowthTab({ data, s }: { data: Stats; s: Stats["series"] }) {
         <FunnelRow label="註冊" value={data.activation.registered} base={data.activation.registered} />
         <FunnelRow label="分享過券" value={data.activation.shared} base={data.activation.registered} />
         <FunnelRow label="領取過券" value={data.activation.claimed} base={data.activation.registered} />
-        <FunnelRow label="完成交易" value={data.activation.completed} base={data.activation.registered} />
+        <FunnelRow label="雙方確認完成" value={data.activation.completed} base={data.activation.registered} />
         <p className="mt-3 border-t border-line pt-3 text-sm text-ink-soft">
           近 7 日回訪老用戶（註冊超過 7 天、仍在使用）：
           <span className="font-semibold text-accent">{data.activation.returning_7d.toLocaleString()}</span> 人
@@ -1046,7 +1098,7 @@ function WeeklyCompletedChart({ weeks }: { weeks: { label: string; count: number
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <p className="text-sm text-ink-soft">每週完成交易筆數（含當週）</p>
+        <p className="text-sm text-ink-soft">每週成功送出張數（含當週）</p>
         <p className="text-xs text-ink-faint">8 週共 {total} 筆</p>
       </div>
       {total === 0 ? (

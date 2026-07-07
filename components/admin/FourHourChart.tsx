@@ -20,7 +20,7 @@ const SERIES: { key: SeriesKey; label: string }[] = [
   { key: "claims", label: "申請" },
   { key: "coupons", label: "上架" },
   { key: "signups", label: "新增人數" },
-  { key: "completed", label: "完成" },
+  { key: "completed", label: "雙方完成" },
 ];
 
 const COLORS: Record<SeriesKey, string> = {

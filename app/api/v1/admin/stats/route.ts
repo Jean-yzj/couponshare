@@ -383,19 +383,19 @@ export const GET = route(async (req) => {
     // Activation funnel: distinct users who ever shared / claimed / completed.
     prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.action = 'coupon.publish'`,
     prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT cr.requester_id)::int AS c FROM claim_requests cr JOIN users u ON u.id = cr.requester_id`,
-    prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT uid)::int AS c FROM (SELECT owner_id AS uid FROM transactions WHERE status = 'COMPLETED' UNION SELECT claimant_id FROM transactions WHERE status = 'COMPLETED') t`,
+    prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT uid)::int AS c FROM (SELECT owner_id AS uid FROM transactions WHERE status = 'COMPLETED' AND owner_completed AND claimant_completed UNION SELECT claimant_id FROM transactions WHERE status = 'COMPLETED' AND owner_completed AND claimant_completed) t`,
     // Returning: active in last 7d AND registered more than 7d ago.
     prisma.$queryRaw<{ c: number }[]>`SELECT COUNT(DISTINCT a.actor_id)::int AS c FROM audit_logs a JOIN users u ON u.id = a.actor_id WHERE a.created_at >= ${since(7)} AND u.created_at < ${since(7)}`,
     // Registration source: how many came in through a friend's invite link.
     prisma.user.count({ where: { referredById: { not: null } } }),
     prisma.user.groupBy({ by: ["loginProvider"], _count: true }),
-    // Weekly completed transactions: past 8 weeks (Monday-based), current week included.
+    // Weekly successful sends (coupon CLAIMED): past 8 weeks (Monday-based, Taipei), current week included.
     prisma.$queryRaw<{ week: string; c: number }[]>`
-      SELECT to_char(date_trunc('week', completed_at), 'YYYY-MM-DD') AS week,
+      SELECT to_char(date_trunc('week', claimed_at + interval '8 hours'), 'YYYY-MM-DD') AS week,
              COUNT(*)::int AS c
-      FROM transactions
-      WHERE completed_at IS NOT NULL
-        AND completed_at >= date_trunc('week', NOW()) - INTERVAL '7 weeks'
+      FROM coupons
+      WHERE status = 'CLAIMED' AND claimed_at IS NOT NULL
+        AND claimed_at >= date_trunc('week', NOW() + interval '8 hours') - INTERVAL '7 weeks'
       GROUP BY 1
       ORDER BY 1
     `,
@@ -491,7 +491,7 @@ export const GET = route(async (req) => {
         ),
         COUNT(*)::int
       FROM transactions
-      WHERE completed_at >= ${fourHourStart} AND completed_at < ${fourHourEnd}
+      WHERE completed_at >= ${fourHourStart} AND completed_at < ${fourHourEnd} AND owner_completed AND claimant_completed
       GROUP BY 2
       UNION ALL
       SELECT 'active',
@@ -531,7 +531,7 @@ export const GET = route(async (req) => {
                EXTRACT(HOUR FROM completed_at + INTERVAL '8 hours')::int,
                COUNT(*)::int
         FROM transactions
-        WHERE completed_at >= (SELECT s FROM range_start)
+        WHERE completed_at >= (SELECT s FROM range_start) AND owner_completed AND claimant_completed
         GROUP BY 2, 3
       ) sub
       GROUP BY metric, weekday, hour
@@ -675,7 +675,7 @@ export const GET = route(async (req) => {
     prisma.$queryRaw<{ d: string; c: number }[]>`
       SELECT to_char(completed_at + interval '8 hours', 'YYYY-MM-DD') AS d, COUNT(*)::int AS c
       FROM transactions
-      WHERE status = 'COMPLETED' AND completed_at >= ${windowStart}
+      WHERE status = 'COMPLETED' AND owner_completed AND claimant_completed AND completed_at >= ${windowStart}
       GROUP BY 1
     `,
 
@@ -686,6 +686,7 @@ export const GET = route(async (req) => {
       new_coupons: number;
       new_claims: number;
       completed: number;
+      sent: number;
       new_reports: number;
     }[]>`
       SELECT
@@ -693,6 +694,7 @@ export const GET = route(async (req) => {
         (SELECT COUNT(*)::int FROM coupons      WHERE created_at >= ${range.fromUtc} AND created_at < ${range.toUtcExcl}) AS new_coupons,
         (SELECT COUNT(*)::int FROM claim_requests WHERE created_at >= ${range.fromUtc} AND created_at < ${range.toUtcExcl}) AS new_claims,
         (SELECT COUNT(*)::int FROM transactions  WHERE status = 'COMPLETED' AND completed_at >= ${range.fromUtc} AND completed_at < ${range.toUtcExcl}) AS completed,
+        (SELECT COUNT(*)::int FROM coupons       WHERE status = 'CLAIMED' AND claimed_at >= ${range.fromUtc} AND claimed_at < ${range.toUtcExcl}) AS sent,
         (SELECT COUNT(*)::int FROM reports       WHERE created_at >= ${range.fromUtc} AND created_at < ${range.toUtcExcl}) AS new_reports
     `,
 
@@ -702,6 +704,7 @@ export const GET = route(async (req) => {
       new_coupons: number;
       new_claims: number;
       completed: number;
+      sent: number;
       new_reports: number;
     }[]>`
       SELECT
@@ -709,6 +712,7 @@ export const GET = route(async (req) => {
         (SELECT COUNT(*)::int FROM coupons      WHERE created_at >= ${range.prevFromUtc} AND created_at < ${range.prevToUtcExcl}) AS new_coupons,
         (SELECT COUNT(*)::int FROM claim_requests WHERE created_at >= ${range.prevFromUtc} AND created_at < ${range.prevToUtcExcl}) AS new_claims,
         (SELECT COUNT(*)::int FROM transactions  WHERE status = 'COMPLETED' AND completed_at >= ${range.prevFromUtc} AND completed_at < ${range.prevToUtcExcl}) AS completed,
+        (SELECT COUNT(*)::int FROM coupons       WHERE status = 'CLAIMED' AND claimed_at >= ${range.prevFromUtc} AND claimed_at < ${range.prevToUtcExcl}) AS sent,
         (SELECT COUNT(*)::int FROM reports       WHERE created_at >= ${range.prevFromUtc} AND created_at < ${range.prevToUtcExcl}) AS new_reports
     `,
 
@@ -865,7 +869,7 @@ export const GET = route(async (req) => {
   // ── health ────────────────────────────────────────────────────────────────────
   const pendingOver48h = Number(pendingOver48hCount[0]?.c ?? 0);
 
-  const [healthDetail] = await Promise.all([
+  const [healthDetail, bothConfirmedCount] = await Promise.all([
     prisma.$queryRaw<{
       claim_approval_rate: string | null;
       avg_claims_per_coupon: string | null;
@@ -894,6 +898,9 @@ export const GET = route(async (req) => {
         END AS supply_demand_7d
       FROM claim_requests
     `,
+    // Genuinely completed = BOTH parties confirmed (owner AND claimant). Distinct from
+    // status=COMPLETED, which for GIFT flips true on a single party's tap. See complete/route.ts.
+    prisma.transaction.count({ where: { status: "COMPLETED", ownerCompleted: true, claimantCompleted: true } }),
   ]);
   const hd = healthDetail[0] ?? { claim_approval_rate: null, avg_claims_per_coupon: null, avg_hours_to_claim: null, supply_demand_7d: null };
   const health = {
@@ -947,9 +954,13 @@ export const GET = route(async (req) => {
     active_7d: Number(r.active_7d),
   }));
 
+  // Successful sends = coupons that reached a recipient (status CLAIMED). This is what
+  // operators mean by "送出成功", distinct from both parties tapping confirm (COMPLETED).
+  const couponClaimedTotal = byStatus.find((x) => x.status === "CLAIMED")?._count ?? 0;
+
   // ── period & period_vs assembly ───────────────────────────────────────────────
-  const pr  = periodRaw[0]    ?? { new_users: 0, new_coupons: 0, new_claims: 0, completed: 0, new_reports: 0 };
-  const pvr = periodVsPrevRaw[0] ?? { new_users: 0, new_coupons: 0, new_claims: 0, completed: 0, new_reports: 0 };
+  const pr  = periodRaw[0]    ?? { new_users: 0, new_coupons: 0, new_claims: 0, completed: 0, sent: 0, new_reports: 0 };
+  const pvr = periodVsPrevRaw[0] ?? { new_users: 0, new_coupons: 0, new_claims: 0, completed: 0, sent: 0, new_reports: 0 };
 
   const period = {
     from:        range.from,
@@ -959,6 +970,7 @@ export const GET = route(async (req) => {
     new_coupons: Number(pr.new_coupons),
     new_claims:  Number(pr.new_claims),
     completed:   Number(pr.completed),
+    sent:        Number(pr.sent),
     new_reports: Number(pr.new_reports),
   };
 
@@ -970,6 +982,7 @@ export const GET = route(async (req) => {
     coupons:   { current: Number(pr.new_coupons), previous: Number(pvr.new_coupons) },
     claims:    { current: Number(pr.new_claims),  previous: Number(pvr.new_claims) },
     completed: { current: Number(pr.completed),   previous: Number(pvr.completed) },
+    sent:      { current: Number(pr.sent),        previous: Number(pvr.sent) },
     reports:   { current: Number(pr.new_reports), previous: Number(pvr.new_reports) },
   };
 
@@ -1015,7 +1028,7 @@ export const GET = route(async (req) => {
         new_7d: couponNew7,
         new_30d: couponNew30,
       },
-      transactions: { total: txnTotal, completed: txnCompleted, gift: txnGift, exchange: txnExchange },
+      transactions: { total: txnTotal, completed: txnCompleted, sent: couponClaimedTotal, both_confirmed: bothConfirmedCount, gift: txnGift, exchange: txnExchange },
       claims: { total: claimTotal, pending: claimPending },
       reports: { total: reportTotal, pending: reportPending },
       appeals: { total: appealTotal, pending: appealPending },

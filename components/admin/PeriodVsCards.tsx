@@ -12,6 +12,7 @@ type PeriodVs = {
   coupons: VsItem;
   claims: VsItem;
   completed: VsItem;
+  sent: VsItem;
   reports: VsItem;
 };
 
@@ -102,8 +103,8 @@ export function PeriodVsCards({ periodVs }: { periodVs: PeriodVs }) {
         labelPrevious={periodVs.label_previous}
       />
       <VsCard
-        label="期間完成交易"
-        item={periodVs.completed}
+        label="期間成功送出"
+        item={periodVs.sent}
         labelCurrent={periodVs.label_current}
         labelPrevious={periodVs.label_previous}
       />

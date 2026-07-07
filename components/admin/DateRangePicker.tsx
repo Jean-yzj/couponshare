@@ -113,9 +113,7 @@ export function DateRangePicker({
         </div>
       )}
 
-      <span className="text-[11px] text-ink-faint">
-        影響上方統計數字；下方趨勢圖為各自固定窗口
-      </span>
+      <span className="text-[11px] text-ink-faint">僅影響統計數字</span>
     </div>
   );
 }

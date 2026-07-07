@@ -15,7 +15,7 @@ type MetricKey = "claims" | "uploads" | "completions";
 const METRIC_LABELS: Record<MetricKey, string> = {
   claims: "申請",
   uploads: "上架",
-  completions: "完成",
+  completions: "雙方完成",
 };
 
 const DAYS = ["一", "二", "三", "四", "五", "六", "日"];
