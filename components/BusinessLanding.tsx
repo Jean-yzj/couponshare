@@ -24,12 +24,10 @@ const FITS: { tag: string; use: string; icon: IconName }[] = [
 
 const PLACEMENTS = ["首頁官方福利區", "熱門票券區", "搜尋結果優先", "分類頁推薦", "錢包底部推薦", "票券詳情頁推薦"];
 
-type Plan = { name: string; price: string; unit: string; who: string; tag?: string; hot?: boolean; points: string[]; cta: string };
+type Plan = { name: string; who: string; tag?: string; hot?: boolean; points: string[]; cta: string };
 const PLANS: Plan[] = [
   {
     name: "早鳥試用",
-    price: "NT$5,000",
-    unit: "/ 月",
     tag: "限前 10 家合作品牌",
     who: "第一次合作、想先小規模驗證成效",
     points: ["每月 5 張官方福利券", "每張最多 100 次申請（月上限 500）", "首頁列表、搜尋結果、錢包推薦曝光", "月底提供成效數據"],
@@ -37,8 +35,6 @@ const PLANS: Plan[] = [
   },
   {
     name: "標準導流",
-    price: "NT$8,000",
-    unit: "/ 月",
     hot: true,
     who: "每月固定推廣優惠與活動的品牌",
     points: ["每月 10 張官方福利券", "每張最多 200 次申請（月上限 2,000）", "加上熱門票券區與詳情頁推薦、搜尋優先", "可看申請者留言與洞察", "每月成效摘要報告"],
@@ -46,8 +42,6 @@ const PLANS: Plan[] = [
   },
   {
     name: "品牌專案",
-    price: "NT$30,000",
-    unit: "起 / 檔",
     who: "大檔期、新品上市、校園活動、品牌聯名",
     points: ["專屬活動頁與全站重點曝光", "任務解鎖、抽選、問卷等機制", "可搭配社群內容曝光", "完整活動成效報告"],
     cta: "聊聊你的活動",
@@ -152,7 +146,7 @@ export function BusinessLanding() {
         </p>
         <div className="mt-7 flex flex-col items-stretch justify-center gap-2.5 sm:flex-row sm:items-center">
           <Button href="#apply" size="lg" icon="send">索取合作方案</Button>
-          <Button href="#plans" size="lg" variant="outline">看 5,000 元試用方案</Button>
+          <Button href="#plans" size="lg" variant="outline">看合作方案</Button>
         </div>
         {s && (
           <p className="mt-5 text-sm text-ink-faint">
@@ -257,7 +251,7 @@ export function BusinessLanding() {
         </p>
       </section>
 
-      {/* Plans (with prices) */}
+      {/* Plans */}
       <section id="plans" className="scroll-mt-20">
         <div className="text-center">
           <Eyebrow>Plans</Eyebrow>
@@ -271,14 +265,10 @@ export function BusinessLanding() {
             <Card key={p.name} className={cn("flex flex-col p-6", p.hot && "border-2 border-accent shadow-lift")}>
               <div className="flex items-center gap-2">
                 <p className="text-lg font-extrabold text-ink">{p.name}</p>
-                {p.hot && <span className="rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold text-white">最受歡迎</span>}
+                {p.hot && <span className="rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold text-white">最推薦</span>}
               </div>
               <p className="mt-1 text-xs leading-relaxed text-ink-faint">{p.who}</p>
-              <p className="mt-3 font-display text-[26px] font-extrabold tracking-tight text-ink">
-                {p.price}
-                <span className="ml-1 text-sm font-semibold text-ink-faint">{p.unit}</span>
-              </p>
-              {p.tag && <Pill className="mt-2 w-fit bg-gold-tint text-gold">{p.tag}</Pill>}
+              {p.tag && <Pill className="mt-3 w-fit bg-gold-tint text-gold">{p.tag}</Pill>}
               <ul className="mt-4 flex-1 space-y-2 border-t border-line pt-4">
                 {p.points.map((pt) => (
                   <li key={pt} className="flex gap-2 text-sm text-ink-soft">
@@ -294,7 +284,7 @@ export function BusinessLanding() {
           ))}
         </div>
         <p className="mx-auto mt-4 max-w-xl text-center text-xs text-ink-faint">
-          以上為參考價，實際名額、檔期與加購（社群曝光、活動頁製作等）依需求調整。
+          實際名額、檔期與合作方式（社群曝光、活動頁製作等）都可依你的需求一起討論。
         </p>
       </section>
 

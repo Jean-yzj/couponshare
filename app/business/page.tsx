@@ -6,7 +6,7 @@ import { BusinessLanding } from "@/components/BusinessLanding";
 // direct link, not something regular users or search should surface.
 const OG_TITLE = "CouponShare 企業合作 · 官方福利券投放";
 const OG_DESC =
-  "讓你的優惠被真正想領券的人看到。用官方福利券投放優惠，可設申請名額、追蹤申請與領取成效，早鳥方案 NT$5,000 / 月起。";
+  "讓你的優惠被真正想領券的人看到。用官方福利券投放優惠，可設申請名額、追蹤申請與領取成效，歡迎一起聊聊合作方式。";
 
 // noindex (a B2B sales page handed out by link, not for search), but with proper
 // OG/Twitter so the link preview reads as an enterprise page, not the consumer app.
