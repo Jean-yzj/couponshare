@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
 import { Button, Card, Field, Input, Textarea, Skeleton, EmptyState, NeedLogin, Pill } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -314,7 +313,10 @@ function BrandEditForm({ brand, onDone, onCancel }: { brand: Brand; onDone: () =
 
 export default function BrandOwnerPage() {
   const { me, loading: meLoading } = useMe();
-  const { data, loading, refetch } = useApi<OwnerData>(me ? "/api/v1/brand/me" : null);
+  const [activeBrandId, setActiveBrandId] = useState<string | null>(null);
+  const { data, loading, refetch } = useApi<OwnerData>(
+    me ? `/api/v1/brand/me${activeBrandId ? `?brandId=${activeBrandId}` : ""}` : null,
+  );
   const [newBrand, setNewBrand] = useState({ name: "", category: "" });
   const [creatingBrand, setCreatingBrand] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -392,9 +394,17 @@ export default function BrandOwnerPage() {
       {brands.length > 1 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {brands.map((b) => (
-            <Link key={b.id} href={`/brand?brandId=${b.id}`} className={cn("rounded-full border px-3 py-1.5 text-sm", b.id === brand.id ? "border-accent bg-accent text-white" : "border-line bg-paper text-ink-soft")}>
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => setActiveBrandId(b.id)}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                b.id === brand.id ? "border-accent bg-accent text-white" : "border-line bg-paper text-ink-soft hover:border-accent/40",
+              )}
+            >
               {b.name}
-            </Link>
+            </button>
           ))}
         </div>
       )}
