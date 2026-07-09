@@ -29,6 +29,7 @@ export const GET = route(async (req) => {
       line_id: l.lineId,
       goals: l.goals,
       categories: l.categories,
+      plan: l.plan,
       status: l.status,
       created_at: l.createdAt,
       contacted_at: l.contactedAt,

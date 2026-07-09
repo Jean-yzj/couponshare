@@ -210,6 +210,8 @@ export const businessLeadSchema = z.object({
   job_title: z.string().trim().max(40).optional().or(z.literal("")),
   phone: z.string().trim().max(20).optional().or(z.literal("")),
   line_id: z.string().trim().max(80).optional().or(z.literal("")),
+  // Which plan the lead picked on /business (optional free-text label).
+  plan: z.string().trim().max(40).optional().or(z.literal("")),
   categories: z.array(z.string().trim().max(20)).max(15).optional().default([]),
 });
 

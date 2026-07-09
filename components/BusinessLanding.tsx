@@ -122,6 +122,12 @@ function MockCoupon() {
 
 export function BusinessLanding() {
   const [s, setS] = useState<Stats | null>(null);
+  const [plan, setPlan] = useState<string | null>(null);
+
+  function pickPlan(name: string) {
+    setPlan(name);
+    document.getElementById("apply")?.scrollIntoView({ behavior: "smooth" });
+  }
   useEffect(() => {
     apiFetch<Stats>("/api/v1/stats/public")
       .then((d) => setS(d))
@@ -277,7 +283,7 @@ export function BusinessLanding() {
                   </li>
                 ))}
               </ul>
-              <Button href="#apply" full variant={p.hot ? "primary" : "outline"} className="mt-5">
+              <Button full variant={p.hot ? "primary" : "outline"} className="mt-5" onClick={() => pickPlan(p.name)}>
                 {p.cta}
               </Button>
             </Card>
@@ -312,6 +318,9 @@ export function BusinessLanding() {
         <BusinessLeadForm
           title="留 Email，我寄你完整方案與範例報表"
           subtitle="填品牌與合作目標即可，一分鐘完成。我會依你的產業與目標，把量身的方案、報價與範例報表寄到你的信箱。"
+          plan={plan}
+          onPlanChange={setPlan}
+          planOptions={PLANS.map((p) => p.name)}
         />
       </section>
     </div>

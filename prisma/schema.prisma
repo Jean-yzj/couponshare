@@ -592,6 +592,8 @@ model BusinessLead {
   // Multi-selects, stored comma-joined (values contain no commas).
   goals       String?
   categories  String?
+  // The plan the lead picked on /business (nullable, additive). Free-text label.
+  plan        String?
   // PENDING → CONTACTED (quote sent). Plain string keeps the manual prod
   // migration additive-trivial (no new PG enum type needed).
   status      String    @default("PENDING")

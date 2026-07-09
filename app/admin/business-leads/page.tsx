@@ -16,6 +16,7 @@ type Lead = {
   line_id: string | null;
   goals: string | null;
   categories: string | null;
+  plan: string | null;
   status: "PENDING" | "CONTACTED";
   created_at: string;
   contacted_at: string | null;
@@ -121,6 +122,11 @@ export default function AdminBusinessLeadsPage() {
                   {l.status === "CONTACTED" ? "已寄報價" : "待寄報價"}
                 </Pill>
               </div>
+              {l.plan && (
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-accent-tint px-2.5 py-1 text-xs font-semibold text-accent">
+                  <Icon name="ticket" size={13} /> 想了解方案：{l.plan}
+                </p>
+              )}
               <p className="mt-1 text-xs text-ink-faint">
                 {relativeTime(l.created_at)} 填寫
                 {l.contacted_at ? ` · ${relativeTime(l.contacted_at)} 寄出報價` : ""}

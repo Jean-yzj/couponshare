@@ -24,6 +24,7 @@ export const POST = route(async (req) => {
       lineId: body.line_id?.trim() || null,
       goals: body.goals.length ? body.goals.join(", ") : null,
       categories: body.categories.length ? body.categories.join(", ") : null,
+      plan: body.plan?.trim() || null,
     },
     select: { id: true, name: true, email: true },
   });
@@ -43,12 +44,13 @@ export const POST = route(async (req) => {
         },
         select: { id: true },
       });
+      const planNote = body.plan?.trim() ? `，想了解「${body.plan.trim()}」方案` : "";
       for (const admin of admins) {
         await notify(prisma, {
           userId: admin.id,
           type: "BUSINESS_LEAD_RECEIVED",
           title: "新的企業合作洽詢",
-          body: `${lead.name}（${lead.email}）填寫了企業合作窗口，記得寄報價給他。`,
+          body: `${lead.name}（${lead.email}）填寫了企業合作窗口${planNote}，記得寄報價給他。`,
           referenceType: "business_lead",
           referenceId: lead.id,
         });

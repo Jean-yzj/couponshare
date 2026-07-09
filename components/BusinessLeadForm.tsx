@@ -15,9 +15,15 @@ const CATEGORIES = ["超商", "咖啡", "手搖飲", "甜點", "速食", "餐廳
 export function BusinessLeadForm({
   title = "企業合作窗口",
   subtitle = "想把品牌優惠以「官方福利券」的形式放上 CouponShare？留下聯絡方式，我會把完整的合作方案與報價寄到你的信箱。",
+  plan = null,
+  onPlanChange,
+  planOptions,
 }: {
   title?: string;
   subtitle?: string;
+  plan?: string | null;
+  onPlanChange?: (p: string | null) => void;
+  planOptions?: string[];
 } = {}) {
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
@@ -55,6 +61,7 @@ export function BusinessLeadForm({
           email: email.trim(),
           phone: phone.trim() || undefined,
           line_id: lineId.trim() || undefined,
+          plan: plan?.trim() || undefined,
           goals,
           categories,
         }),
@@ -92,6 +99,33 @@ export function BusinessLeadForm({
       </div>
 
       <Card className="mt-6 space-y-5 p-5 sm:p-7">
+        {planOptions && planOptions.length > 0 && (
+          <div>
+            <p className="mb-2 text-sm font-medium text-ink">
+              你想了解的方案 <span className="font-normal text-ink-faint">（選填，可更改）</span>
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {planOptions.map((o) => {
+                const on = plan === o;
+                return (
+                  <button
+                    key={o}
+                    type="button"
+                    onClick={() => onPlanChange?.(on ? null : o)}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-sm transition-colors",
+                      on
+                        ? "border-accent bg-accent text-white"
+                        : "border-line bg-paper text-ink-soft hover:border-accent/40 hover:text-ink",
+                    )}
+                  >
+                    {o}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="公司 / 品牌名稱" required>
             <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="例如：某某咖啡" maxLength={60} autoComplete="organization" />
