@@ -16,6 +16,7 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { compressForUpload } from "@/lib/client-image";
 import { cn } from "@/lib/display";
 import { CATEGORIES, REDEEM_KINDS } from "@/lib/categories";
 import { brandsForCategory, ALL_BRAND_NAMES, normalizeBrand } from "@/lib/brands";
@@ -119,9 +120,10 @@ export default function NewCouponPage() {
         draftId.current = created.id;
       }
       if (redeemMethod === "image" && file && !uploaded.current) {
-        setStepText("加密上傳條碼中…");
+        setStepText("壓縮並加密上傳條碼中…");
+        const uploadBlob = await compressForUpload(file);
         const fd = new FormData();
-        fd.append("file", file);
+        fd.append("file", uploadBlob, "barcode.jpg");
         await apiFetch(`/api/v1/coupons/${draftId.current}/barcode`, { method: "POST", body: fd });
         uploaded.current = true;
       }
