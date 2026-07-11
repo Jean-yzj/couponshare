@@ -460,6 +460,23 @@ function UsersTab({
 }) {
   return (
     <div className="space-y-6">
+      {/* Account recovery (admin-assisted forgot password) */}
+      <Link
+        href="/admin/account-recovery"
+        className="flex items-center justify-between gap-3 rounded-xl border border-line bg-paper px-4 py-3 transition-colors hover:border-accent/40"
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-tint text-accent">
+            <Icon name="lock" size={16} />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-ink">帳號救援・忘記密碼協助</p>
+            <p className="text-xs text-ink-faint">為忘記密碼的 Email 帳號產生一次性重設連結</p>
+          </div>
+        </div>
+        <Icon name="chevronRight" size={18} className="text-ink-faint" />
+      </Link>
+
       {/* User summary cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard icon="user" label="總用戶" value={o.users.total} />

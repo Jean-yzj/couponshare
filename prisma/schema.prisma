@@ -604,6 +604,22 @@ model BusinessLead {
   @@map("business_leads")
 }
 
+// One-time password-reset tokens for the admin-assisted "forgot password" flow.
+// Standalone (no FK relation) to keep the migration additive. Only the token HASH
+// is stored; single-use (usedAt) with an expiry.
+model PasswordReset {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  tokenHash   String    @unique @map("token_hash")
+  expiresAt   DateTime  @map("expires_at")
+  usedAt      DateTime? @map("used_at")
+  createdById String?   @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("password_resets")
+}
+
 // ─── 企業官方福利券（GATED）───────────────────────────────────────────────
 // Completely separate from user Coupon: multi-applicant, quota'd, brand-owned.
 // Never queried by the user feed; the whole surface is behind the

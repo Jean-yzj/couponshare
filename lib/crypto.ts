@@ -37,6 +37,17 @@ export function safeEqual(a: string, b: string): boolean {
   return ba.length === bb.length && timingSafeEqual(ba, bb);
 }
 
+// ─────────────── Opaque one-time tokens (password reset) ───────────────
+// The raw token travels in the reset link; only its SHA-256 hash is stored, so a
+// database leak can't be turned into a usable reset link.
+export function generateToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 // ─────────────── Barcode encryption (AES-256-GCM) — PRD §16.1 ───────────────
 
 function barcodeKey(): Buffer {

@@ -219,6 +219,17 @@ export const businessLeadStatusSchema = z.object({
   status: z.enum(["PENDING", "CONTACTED"]),
 });
 
+// Admin generates a one-time reset link for an email-login user who forgot their password.
+export const adminResetLinkSchema = z.object({
+  email: z.string().trim().email("請輸入正確的 Email"),
+});
+
+// A user sets a new password using a one-time reset token (from the admin's link).
+export const resetPasswordSchema = z.object({
+  token: z.string().min(10).max(500),
+  password: z.string().min(6, "密碼至少 6 個字").max(200),
+});
+
 // ─── 企業官方福利券（admin-managed）───
 export const brandCreateSchema = z.object({
   name: z.string().trim().min(1, "請填品牌名稱").max(40),
