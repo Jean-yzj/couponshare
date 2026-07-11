@@ -170,12 +170,11 @@ export const GET = route(async (req) => {
         owner: { select: { displayName: true } },
       },
     }),
-    prisma.user.findMany({ where: { createdAt: { gte: windowStart } }, select: { createdAt: true } }),
-    prisma.coupon.findMany({ where: { createdAt: { gte: windowStart } }, select: { createdAt: true } }),
-    prisma.transaction.findMany({
-      where: { createdAt: { gte: windowStart } },
-      select: { createdAt: true },
-    }),
+    // Daily counts aggregated in SQL (GROUP BY) instead of pulling every row into
+    // memory — these scale with 30-day volume and were previously unbounded.
+    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(created_at, 'YYYY-MM-DD') AS d, COUNT(*)::int AS c FROM users WHERE created_at >= ${windowStart} GROUP BY 1`,
+    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(created_at, 'YYYY-MM-DD') AS d, COUNT(*)::int AS c FROM coupons WHERE created_at >= ${windowStart} GROUP BY 1`,
+    prisma.$queryRaw<{ d: string; c: number }[]>`SELECT to_char(created_at, 'YYYY-MM-DD') AS d, COUNT(*)::int AS c FROM transactions WHERE created_at >= ${windowStart} GROUP BY 1`,
     prisma.user.count({ where: { createdAt: { gte: since(0.125) } } }),
     prisma.user.count({ where: { createdAt: { gte: since(0.25) } } }),
     prisma.user.count({ where: { createdAt: { gte: since(0.5) } } }),
@@ -249,14 +248,6 @@ export const GET = route(async (req) => {
     keyIndex.set(dayKey(d), i);
     days.push(`${d.getMonth() + 1}/${d.getDate()}`);
   }
-  const bucket = (rows: { createdAt: Date }[]) => {
-    const arr = new Array<number>(30).fill(0);
-    for (const r of rows) {
-      const i = keyIndex.get(dayKey(new Date(r.createdAt)));
-      if (i !== undefined) arr[i] += 1;
-    }
-    return arr;
-  };
   // Raw daily aggregates keyed by 'YYYY-MM-DD' → the same 30-slot series shape.
   const dailyBucket = (rows: { d: string; c: number }[]) => {
     const arr = new Array<number>(30).fill(0);
@@ -344,9 +335,9 @@ export const GET = route(async (req) => {
     weekly_completed: weeklyCompleted,
     series: {
       days,
-      signups: bucket(userTs),
-      coupons: bucket(couponTs),
-      transactions: bucket(txnTs),
+      signups: dailyBucket(userTs),
+      coupons: dailyBucket(couponTs),
+      transactions: dailyBucket(txnTs),
       claimers: dailyBucket(dailyClaimersRaw),
       sharers: dailyBucket(dailySharersRaw),
       dau: dauSeries,

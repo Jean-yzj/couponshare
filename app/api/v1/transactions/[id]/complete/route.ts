@@ -12,64 +12,74 @@ import { writeAudit } from "@/lib/audit";
 export const POST = route(async (req, ctx) => {
   const { id } = await ctx.params;
   const user = await requireUser();
+  const meta = clientMeta(req);
 
-  const t = await prisma.transaction.findUnique({ where: { id } });
-  if (!t) throw new ApiError("NOT_FOUND");
-  const isOwner = t.ownerId === user.id;
-  const isClaimant = t.claimantId === user.id;
-  if (!isOwner && !isClaimant) throw new ApiError("FORBIDDEN");
-  if (t.status === "COMPLETED") {
-    return jsonOk({ transaction_id: id, status: "COMPLETED" });
-  }
-  if (t.status === "DISPUTED") {
-    throw new ApiError("VALIDATION_ERROR", { message: "此交易已回報問題，複核中" });
-  }
-  if (t.transactionType === "EXCHANGE" && !t.revealedAt) {
-    throw new ApiError("VALIDATION_ERROR", { message: "請先雙方確認亮碼後再完成" });
-  }
+  // Everything runs under a row lock on the transaction. Without it, the read +
+  // guard + flag-update + finalize are non-atomic: two parties (or a double-click)
+  // could both finalize — duplicating notifications/audit — and a complete that
+  // read a stale CREATED status could overwrite a DISPUTED that landed in between,
+  // wrongly crediting a disputed exchange. Locking + re-checking closes both.
+  const result = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM transactions WHERE id = ${id} FOR UPDATE`;
 
-  const updated = await prisma.transaction.update({
-    where: { id },
-    data: isOwner ? { ownerCompleted: true } : { claimantCompleted: true },
-  });
+    const t = await tx.transaction.findUnique({ where: { id } });
+    if (!t) throw new ApiError("NOT_FOUND");
+    const isOwner = t.ownerId === user.id;
+    const isClaimant = t.claimantId === user.id;
+    if (!isOwner && !isClaimant) throw new ApiError("FORBIDDEN");
+    if (t.status === "COMPLETED") return { done: true as const };
+    if (t.status === "DISPUTED") {
+      throw new ApiError("VALIDATION_ERROR", { message: "此交易已回報問題，複核中" });
+    }
+    if (t.transactionType === "EXCHANGE" && !t.revealedAt) {
+      throw new ApiError("VALIDATION_ERROR", { message: "請先雙方確認亮碼後再完成" });
+    }
 
-  const done =
-    updated.transactionType === "EXCHANGE"
-      ? updated.ownerCompleted && updated.claimantCompleted
-      : updated.ownerCompleted || updated.claimantCompleted;
-
-  if (done) {
-    await prisma.$transaction(async (tx) => {
-      await tx.transaction.update({
-        where: { id },
-        data: { status: "COMPLETED", completedAt: new Date() },
-      });
-      // Exchange: both sides gave a coupon → both earn the exchange credit (only now).
-      if (updated.transactionType === "EXCHANGE") {
-        for (const uid of [t.ownerId, t.claimantId]) {
-          await applyScore(tx, {
-            userId: uid,
-            eventType: "COUPON_EXCHANGED",
-            delta: SCORE_RULES.COUPON_EXCHANGED,
-            referenceType: "TRANSACTION",
-            referenceId: id,
-            description: "成功完成交換",
-          });
-        }
-      }
+    const updated = await tx.transaction.update({
+      where: { id },
+      data: isOwner ? { ownerCompleted: true } : { claimantCompleted: true },
     });
 
-    const other = isOwner ? t.claimantId : t.ownerId;
-    await notify(prisma, {
-      userId: other,
+    const done =
+      updated.transactionType === "EXCHANGE"
+        ? updated.ownerCompleted && updated.claimantCompleted
+        : updated.ownerCompleted || updated.claimantCompleted;
+
+    if (!done) {
+      return {
+        done: false as const,
+        ownerCompleted: updated.ownerCompleted,
+        claimantCompleted: updated.claimantCompleted,
+      };
+    }
+
+    await tx.transaction.update({
+      where: { id },
+      data: { status: "COMPLETED", completedAt: new Date() },
+    });
+    // Exchange: both sides gave a coupon → both earn the exchange credit (only now).
+    if (updated.transactionType === "EXCHANGE") {
+      for (const uid of [t.ownerId, t.claimantId]) {
+        await applyScore(tx, {
+          userId: uid,
+          eventType: "COUPON_EXCHANGED",
+          delta: SCORE_RULES.COUPON_EXCHANGED,
+          referenceType: "TRANSACTION",
+          referenceId: id,
+          description: "成功完成交換",
+        });
+      }
+    }
+
+    await notify(tx, {
+      userId: isOwner ? t.claimantId : t.ownerId,
       type: "TRANSACTION_COMPLETED",
       title: "交易已完成",
       body: "對方已確認完成，別忘了留下評價與感謝",
       referenceType: "transaction",
       referenceId: id,
     });
-    const meta = clientMeta(req);
-    await writeAudit(prisma, {
+    await writeAudit(tx, {
       actorId: user.id,
       action: "transaction.complete",
       targetType: "transaction",
@@ -78,14 +88,15 @@ export const POST = route(async (req, ctx) => {
       ip: meta.ip,
       ua: meta.ua,
     });
-    return jsonOk({ transaction_id: id, status: "COMPLETED" });
-  }
+    return { done: true as const };
+  });
 
+  if (result.done) return jsonOk({ transaction_id: id, status: "COMPLETED" });
   return jsonOk({
     transaction_id: id,
     status: "CREATED",
-    owner_completed: updated.ownerCompleted,
-    claimant_completed: updated.claimantCompleted,
+    owner_completed: result.ownerCompleted,
+    claimant_completed: result.claimantCompleted,
     waiting_for_other: true,
   });
 });

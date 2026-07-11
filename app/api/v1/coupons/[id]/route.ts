@@ -16,6 +16,20 @@ export const GET = route(async (req, ctx) => {
   const coupon = await prisma.coupon.findUnique({ where: { id }, include: { owner: true } });
   if (!coupon) throw new ApiError("COUPON_NOT_FOUND");
 
+  // Respect level-gated visibility (matches the feed filter): a level-restricted
+  // coupon's details must not be readable by lower-tier / anonymous viewers who
+  // stumble onto the id. The owner and the chosen claimant always retain access.
+  const isOwner = !!viewer && viewer.id === coupon.ownerId;
+  const isClaimant = !!viewer && viewer.id === coupon.claimantId;
+  if (!isOwner && !isClaimant) {
+    const lvl = viewer?.userLevel ?? null;
+    const allowed =
+      coupon.visibilityLevel === "PUBLIC" ||
+      (coupon.visibilityLevel === "LEVEL_2_ONLY" && (lvl === "LEVEL_2" || lvl === "LEVEL_3")) ||
+      (coupon.visibilityLevel === "LEVEL_3_ONLY" && lvl === "LEVEL_3");
+    if (!allowed) throw new ApiError("FORBIDDEN", { message: "此票券僅限特定等級會員查看" });
+  }
+
   if (viewer && viewer.id !== coupon.ownerId) {
     await prisma.coupon
       .update({ where: { id }, data: { viewCount: { increment: 1 } } })

@@ -91,6 +91,10 @@ export async function verifyGoogleIdToken(idToken: string) {
   return {
     sub: payload.sub,
     email: payload.email.trim().toLowerCase(),
+    // Whether Google has verified the user owns this email. Must be checked before
+    // linking to an existing account — an unverified email can be an arbitrary
+    // address the attacker doesn't control (account-takeover vector).
+    emailVerified: payload.email_verified === true || payload.email_verified === "true",
     name: payload.name || payload.email,
     picture: payload.picture ?? null,
   };

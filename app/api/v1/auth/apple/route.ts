@@ -35,6 +35,12 @@ export const POST = route(async (req) => {
   const existingByEmail = identity.email
     ? await prisma.user.findFirst({ where: { email: { equals: identity.email, mode: "insensitive" } } })
     : null;
+  // Account-takeover guard: matching by appleSub is a strong identity, but linking
+  // by email to a pre-existing (non-Apple) account is only safe when Apple has
+  // verified the email. Otherwise refuse to attach to that account.
+  if (!existingByApple && existingByEmail && !identity.emailVerified) {
+    throw new ApiError("EMAIL_NOT_VERIFIED");
+  }
   const existing = existingByApple ?? existingByEmail;
   if (existing?.status === "DELETED") throw new ApiError("INVALID_CREDENTIALS");
 

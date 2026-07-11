@@ -96,6 +96,35 @@ Apple 路由已算出 `emailVerified` 但完全沒用（風險較低，仍應補
 
 ---
 
+## 修復狀態（本分支）
+
+以下項目已於本分支修復並通過 typecheck + build：
+
+| 項目 | 狀態 | 摘要 |
+|------|------|------|
+| H1 原生登入帳號接管 | ✅ 已修 | `verifyGoogleIdToken` 回傳 `emailVerified`；native/apple 連結既有帳號前檢查，新增 `EMAIL_NOT_VERIFIED` 錯誤 |
+| H2 配額 TOCTOU | ✅ 已修 | 領取交易內先 `pg_advisory_xact_lock(user)`，鎖內重算 burst + quota |
+| H3 cron 覆寫 | ✅ 已修 | expire/stale/pending-timeout 改條件式 `updateMany`（status 守衛），count=0 跳過副作用 |
+| M1 approve 過期 | ✅ 已修 | 鎖內加 `expiryDate` 檢查 |
+| M2 complete 非原子 | ✅ 已修 | 整段包進 `$transaction` + `FOR UPDATE` + 狀態重查；dispute 端同步加鎖重查 |
+| M3 無 migration | ✅ 已建立 | 產生 `prisma/migrations/0_init` 基線 + `db:migrate*` scripts + `docs/MIGRATIONS.md`（含既有 DB baseline 步驟） |
+| M4 env 驗證 | ✅ 已修 | `instrumentation.ts` 開機 fail-fast + 補 `.env.example` |
+| M5 backup 快照 | ✅ 已緩解 | 還原改為 FK 違規時逐列 fallback、跳過孤兒列並記錄，不再整批 abort |
+| M6 CSP/HSTS | ⚠️ 部分 | 已加 HSTS + `upgrade-insecure-requests`；**未**改 nonce（見下方說明） |
+| M7 多實例 cron | ✅ 已修 | scheduler 以 `pg_try_advisory_xact_lock` 單一實例執行 |
+| M8 normalize-brands 授權 | ✅ 已修 | 改用 `requireAdmin` |
+| M9 stats 無上限查詢 | ✅ 已修 | 3 個時間序列改 `GROUP BY` |
+| L1 感謝訊息假 500 | ✅ 已修 | `applyScore` 包 try/catch |
+| L2 亮碼重複通知 | ✅ 已修 | 條件式 `updateMany(revealedAt:null)` 單次觸發 |
+| L3 count 語意不一致 | ✅ 已修 | reject 同步 decrement |
+| L4 分級券 detail 外洩 | ✅ 已修 | detail 依等級 gate（owner/claimant 例外） |
+| L7 無程式碼 CI | ✅ 已修 | 新增 `.github/workflows/ci.yml`（typecheck + build）與 `typecheck` script |
+
+**未修（附理由）：**
+- **M6 nonce-based CSP** — Next 16 的 nonce 方案會強制所有頁面轉為動態渲染（現有 `/login`、`/leaderboard`、`/terms` 等靜態頁會失去靜態最佳化並有 runtime 風險）。為換取一個 MEDIUM 等級的強化而犧牲效能與穩定性不划算，且本專案無 XSS sink（已確認無 `dangerouslySetInnerHTML`）。已改加 HSTS。若要強制 strict CSP，可另開工作改走 middleware nonce 或實驗性 SRI。
+- **L5 postcss（2 個 moderate）** — 上游經 Next 傳遞，修復會把 Next 降版，維持現狀。
+- **L6 `package.json#prisma` 棄用警告** — 遷 `prisma.config.ts` 屬 Prisma early-access，改錯會讓所有 prisma 指令（含 build 的 generate）失效；在 Prisma 7 升級時一併處理較安全。此為無害警告，不影響功能。
+
 ## 建議修復順序
 
 1. **H1 原生登入帳號接管** — 安全最優先，修法小而安全。

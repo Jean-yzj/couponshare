@@ -34,13 +34,36 @@ async function main() {
   let bytes = 0;
   const counts: Record<string, number> = {};
 
+  const skipped: Record<string, number> = {};
   const flush = async () => {
     if (curModel && buf.length) {
       if (!dryRun) {
-        const r = await (
-          p as unknown as Record<string, { createMany: (a: unknown) => Promise<{ count: number }> }>
-        )[curModel].createMany({ data: buf, skipDuplicates: true });
-        counts[curModel] = (counts[curModel] ?? 0) + r.count;
+        const model = (
+          p as unknown as Record<
+            string,
+            {
+              createMany: (a: unknown) => Promise<{ count: number }>;
+              create: (a: unknown) => Promise<unknown>;
+            }
+          >
+        )[curModel];
+        try {
+          const r = await model.createMany({ data: buf, skipDuplicates: true });
+          counts[curModel] = (counts[curModel] ?? 0) + r.count;
+        } catch {
+          // The backup is not a point-in-time snapshot (it spans many requests), so a
+          // child row can reference a parent that wasn't captured. Rather than abort
+          // the whole restore on one FK violation, fall back to per-row inserts and
+          // skip only the offending rows (logged), so the rest of the data lands.
+          for (const row of buf) {
+            try {
+              await model.create({ data: row });
+              counts[curModel] = (counts[curModel] ?? 0) + 1;
+            } catch {
+              skipped[curModel] = (skipped[curModel] ?? 0) + 1;
+            }
+          }
+        }
       } else {
         counts[curModel] = (counts[curModel] ?? 0) + buf.length;
       }
@@ -71,6 +94,9 @@ async function main() {
   await flush();
 
   console.log(`${dryRun ? "[dry-run] parsed" : "restored"}:`, JSON.stringify(counts));
+  if (Object.keys(skipped).length) {
+    console.warn("skipped (FK/constraint violations):", JSON.stringify(skipped));
+  }
 }
 
 main()

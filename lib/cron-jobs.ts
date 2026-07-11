@@ -18,9 +18,20 @@ export async function runExpireCoupons() {
     select: { id: true, ownerId: true, title: true, status: true },
     take: 500,
   });
+  let expired = 0;
   for (const c of expiring) {
     await prisma.$transaction(async (tx) => {
-      await tx.coupon.update({ where: { id: c.id }, data: { status: "EXPIRED" } });
+      // Conditional update: only expire if the coupon is STILL available/pending.
+      // Between the findMany above and here an approval may have locked and claimed
+      // it (approve takes FOR UPDATE); blindly writing EXPIRED would clobber that
+      // CLAIMED state, orphan the live transaction, and lock the claimant out of the
+      // barcode. count===0 means someone else moved it — skip all side effects.
+      const res = await tx.coupon.updateMany({
+        where: { id: c.id, status: { in: ["AVAILABLE", "PENDING"] } },
+        data: { status: "EXPIRED" },
+      });
+      if (res.count === 0) return;
+      expired++;
       await tx.claimRequest.updateMany({
         where: { couponId: c.id, status: "PENDING" },
         data: { status: "EXPIRED" },
@@ -50,9 +61,17 @@ export async function runExpireCoupons() {
     select: { id: true, ownerId: true, title: true },
     take: 500,
   });
+  let delistedStale = 0;
   for (const c of stale) {
     await prisma.$transaction(async (tx) => {
-      await tx.coupon.update({ where: { id: c.id }, data: { status: "EXPIRED" } });
+      // Only delist if still AVAILABLE — a fresh application (which flips it toward
+      // PENDING/CLAIMED) between the query and here must win over auto-delisting.
+      const res = await tx.coupon.updateMany({
+        where: { id: c.id, status: "AVAILABLE", claimRequestCount: 0 },
+        data: { status: "EXPIRED" },
+      });
+      if (res.count === 0) return;
+      delistedStale++;
       await notify(tx, {
         userId: c.ownerId,
         type: "COUPON_EXPIRED",
@@ -71,7 +90,7 @@ export async function runExpireCoupons() {
     });
   }
 
-  return { expired: expiring.length, delisted_stale: stale.length };
+  return { expired, delisted_stale: delistedStale };
 }
 
 // Warn owners of coupons expiring within 24h (de-duped to once per 20h).
@@ -117,9 +136,18 @@ export async function runPendingTimeout() {
     take: 500,
   });
 
+  let reverted = 0;
   for (const c of stale) {
     await prisma.$transaction(async (tx) => {
-      await tx.coupon.update({ where: { id: c.id }, data: { status: "AVAILABLE" } });
+      // Only revert coupons that are STILL pending — an approval that claimed the
+      // coupon (setting CLAIMED and creating the transaction) must not be reverted
+      // back to AVAILABLE, which would re-list it and orphan the transaction.
+      const res = await tx.coupon.updateMany({
+        where: { id: c.id, status: "PENDING" },
+        data: { status: "AVAILABLE" },
+      });
+      if (res.count === 0) return;
+      reverted++;
       await tx.claimRequest.updateMany({
         where: { couponId: c.id, status: "PENDING" },
         data: { status: "EXPIRED" },
@@ -141,5 +169,5 @@ export async function runPendingTimeout() {
       });
     });
   }
-  return { reverted: stale.length };
+  return { reverted };
 }

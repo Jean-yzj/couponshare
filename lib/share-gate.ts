@@ -1,8 +1,10 @@
-import type { User } from "@prisma/client";
+import type { Prisma, PrismaClient, User } from "@prisma/client";
 import { prisma } from "./db";
 import { LEVELS } from "./levels";
 import { startOfTodayTaipei } from "./time";
 import { REFERRAL_BONUS } from "./referral";
+
+type Db = PrismaClient | Prisma.TransactionClient;
 
 // Applications a brand-new user gets before they must share their first coupon.
 export const FREE_CLAIMS_BEFORE_SHARE = 3;
@@ -35,19 +37,23 @@ export const CLAIM_MIN_INTERVAL_MS = 5_000;
  *    without becoming an unlimited-claim exploit.
  *
  * Each submitted application counts (approved / rejected / pending alike).
+ *
+ * Pass a transaction client (`db`) when the caller has serialized this user (e.g.
+ * a per-user advisory lock) so the counts are consistent under concurrency — the
+ * default `prisma` client is fine for read-only, best-effort checks.
  */
-export async function applyQuota(user: User) {
+export async function applyQuota(user: User, db: Db = prisma) {
   const dayStart = startOfTodayTaipei();
   const [publishedEver, publishedToday, totalApplied, appliedToday, referralsToday] =
     await Promise.all([
-      prisma.auditLog.count({ where: { actorId: user.id, action: "coupon.publish" } }),
-      prisma.auditLog.count({
+      db.auditLog.count({ where: { actorId: user.id, action: "coupon.publish" } }),
+      db.auditLog.count({
         where: { actorId: user.id, action: "coupon.publish", createdAt: { gte: dayStart } },
       }),
-      prisma.claimRequest.count({ where: { requesterId: user.id } }),
-      prisma.claimRequest.count({ where: { requesterId: user.id, createdAt: { gte: dayStart } } }),
+      db.claimRequest.count({ where: { requesterId: user.id } }),
+      db.claimRequest.count({ where: { requesterId: user.id, createdAt: { gte: dayStart } } }),
       // Friends who signed up through this user's invite link today → bonus claims.
-      prisma.user.count({ where: { referredById: user.id, createdAt: { gte: dayStart } } }),
+      db.user.count({ where: { referredById: user.id, createdAt: { gte: dayStart } } }),
     ]);
 
   const hasShared = publishedEver > 0;

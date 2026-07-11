@@ -37,6 +37,14 @@ export const POST = route(async (req, ctx) => {
     : null;
 
   await prisma.$transaction(async (tx) => {
+    // Re-check status under a row lock so a `complete` racing this dispute can't be
+    // clobbered (and vice-versa): whichever grabs the lock first sets the terminal
+    // state, the other observes it and aborts.
+    await tx.$queryRaw`SELECT id FROM transactions WHERE id = ${id} FOR UPDATE`;
+    const locked = await tx.transaction.findUnique({ where: { id }, select: { status: true } });
+    if (!locked) throw new ApiError("NOT_FOUND");
+    if (locked.status === "COMPLETED") throw new ApiError("VALIDATION_ERROR", { message: "交易已完成" });
+    if (locked.status === "DISPUTED") throw new ApiError("VALIDATION_ERROR", { message: "此交易已回報問題，複核中" });
     await tx.transaction.update({
       where: { id },
       data: { status: "DISPUTED", disputedAt: new Date() },

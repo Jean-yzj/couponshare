@@ -5,6 +5,7 @@ export const ERROR_REGISTRY = {
   UNAUTHORIZED: { status: 401, message: "尚未登入" },
   INVALID_CREDENTIALS: { status: 401, message: "帳號或密碼錯誤" },
   PASSWORD_LOGIN_UNAVAILABLE: { status: 409, message: "這個 Email 是用 Google 建立的，請按「使用 Google 繼續」登入" },
+  EMAIL_NOT_VERIFIED: { status: 403, message: "此帳號的電子郵件尚未驗證，無法用來登入既有帳號" },
   FORBIDDEN: { status: 403, message: "權限不足" },
   USER_SUSPENDED: { status: 403, message: "帳號已被停權" },
   EMAIL_TAKEN: { status: 409, message: "此 Email 已被註冊" },

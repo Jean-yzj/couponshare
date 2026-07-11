@@ -18,9 +18,22 @@ export const POST = route(async (req, ctx) => {
     throw new ApiError("INVALID_STATUS_TRANSITION", { from: cr.status, to: "REJECTED" });
   }
 
-  await prisma.claimRequest.update({
-    where: { id },
-    data: { status: "REJECTED", rejectedAt: new Date(), ownerResponseMessage: body.reason ?? null },
+  // Un-count the application (matches cancel) so claimRequestCount tracks live
+  // applications — otherwise a coupon whose only applicant was rejected keeps a
+  // stale count and never qualifies for the zero-interest auto-delist.
+  await prisma.$transaction(async (tx) => {
+    await tx.claimRequest.update({
+      where: { id },
+      data: {
+        status: "REJECTED",
+        rejectedAt: new Date(),
+        ownerResponseMessage: body.reason ?? null,
+      },
+    });
+    await tx.coupon.update({
+      where: { id: cr.couponId },
+      data: { claimRequestCount: { decrement: 1 } },
+    });
   });
 
   await notify(prisma, {

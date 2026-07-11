@@ -35,6 +35,10 @@ export const POST = route(async (req, ctx) => {
     if (locked.status !== "AVAILABLE" && locked.status !== "PENDING") {
       throw new ApiError("COUPON_NOT_AVAILABLE");
     }
+    // Don't let an owner approve (and score +10 for) a coupon that has since expired.
+    if (locked.expiryDate && locked.expiryDate <= new Date()) {
+      throw new ApiError("COUPON_EXPIRED");
+    }
     if (cr.status !== "PENDING") {
       throw new ApiError("INVALID_STATUS_TRANSITION", { from: cr.status, to: "APPROVED" });
     }

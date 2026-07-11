@@ -56,14 +56,21 @@ export const POST = route(async (req, ctx) => {
   // A message from the claimant counts as thanking the giver — award the giver the
   // "揪感心" recognition (+2), once per transaction (applyScore is idempotent).
   if (user.id === t.claimantId) {
-    await applyScore(prisma, {
-      userId: t.ownerId,
-      eventType: "THANK_YOU_MESSAGE",
-      delta: SCORE_RULES.THANK_YOU_MESSAGE,
-      referenceType: "TRANSACTION",
-      referenceId: id,
-      description: "領取者的感謝訊息",
-    });
+    // Idempotent (unique ledger key), but two concurrent messages could both try to
+    // create the row — the loser hits P2002. The message is already saved, so a
+    // failed bonus must not surface as a 500; swallow it like the publish route does.
+    try {
+      await applyScore(prisma, {
+        userId: t.ownerId,
+        eventType: "THANK_YOU_MESSAGE",
+        delta: SCORE_RULES.THANK_YOU_MESSAGE,
+        referenceType: "TRANSACTION",
+        referenceId: id,
+        description: "領取者的感謝訊息",
+      });
+    } catch (err) {
+      console.error("[messages] thank-you score failed", err);
+    }
   }
 
   return jsonOk({ id: msg.id, image_url: msg.imageUrl, created_at: msg.createdAt }, 201);

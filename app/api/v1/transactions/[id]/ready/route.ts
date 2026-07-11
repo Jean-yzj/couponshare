@@ -35,17 +35,25 @@ export const POST = route(async (req, ctx) => {
 
     let revealed = !!updated.revealedAt;
     if (!revealed && updated.ownerReady && updated.claimantReady) {
-      await tx.transaction.update({ where: { id }, data: { revealedAt: new Date() } });
-      revealed = true;
-      for (const uid of [t.ownerId, t.claimantId]) {
-        await notify(tx, {
-          userId: uid,
-          type: "TRANSACTION_MESSAGE",
-          title: "雙方已確認，條碼已亮出",
-          body: "你們現在可以查看彼此的條碼完成交換了",
-          referenceType: "transaction",
-          referenceId: id,
-        });
+      // Conditional set so only the FIRST writer to observe both-ready flips
+      // revealedAt and sends the notifications — a concurrent second "ready" that
+      // also sees both flags true won't double-notify.
+      const res = await tx.transaction.updateMany({
+        where: { id, revealedAt: null },
+        data: { revealedAt: new Date() },
+      });
+      if (res.count === 1) {
+        revealed = true;
+        for (const uid of [t.ownerId, t.claimantId]) {
+          await notify(tx, {
+            userId: uid,
+            type: "TRANSACTION_MESSAGE",
+            title: "雙方已確認，條碼已亮出",
+            body: "你們現在可以查看彼此的條碼完成交換了",
+            referenceType: "transaction",
+            referenceId: id,
+          });
+        }
       }
     }
     return { revealed, owner_ready: updated.ownerReady, claimant_ready: updated.claimantReady };

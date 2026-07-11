@@ -46,37 +46,47 @@ export const POST = route(async (req, ctx) => {
     throw new ApiError("FORBIDDEN", { message: "此票券僅限傳奇會員申請" });
   }
 
-  // Anti-burst: at most one application per CLAIM_MIN_INTERVAL_MS from the same user.
-  // A bot firing the instant a coupon drops gets throttled; a human's browsing pace
-  // never trips it. Keyed by user (not IP) so shared mobile networks / CGNAT — very
-  // common in Taiwan — don't punish real people applying from the same carrier.
-  const lastClaim = await prisma.claimRequest.findFirst({
-    where: { requesterId: user.id },
-    orderBy: { createdAt: "desc" },
-    select: { createdAt: true },
-  });
-  if (lastClaim) {
-    const sinceMs = Date.now() - lastClaim.createdAt.getTime();
-    if (sinceMs < CLAIM_MIN_INTERVAL_MS) {
-      throw new ApiError("RATE_LIMITED", {
-        retry_after_seconds: Math.ceil((CLAIM_MIN_INTERVAL_MS - sinceMs) / 1000),
-      });
-    }
-  }
-
-  // Application quota: a lifetime 3 before the first share, then a per-level daily
-  // limit plus capped share/referral bonuses, all under a hard daily ceiling
-  // (MAX_DAILY_CLAIMS) so nobody can farm unlimited claims. PRD §8.2 + user request.
-  const quota = await applyQuota(user);
-  if (quota.remaining <= 0) {
-    if (!quota.hasShared) throw new ApiError("SHARE_FIRST");
-    // Only nudge "share for +3" when sharing would actually help; otherwise the user
-    // has hit the hard daily ceiling and should just come back tomorrow.
-    throw new ApiError(quota.canShareForMore ? "DAILY_CLAIM_LIMIT_EXCEEDED" : "DAILY_CLAIM_HARD_CAP");
-  }
-
   try {
     const created = await prisma.$transaction(async (tx) => {
+      // Serialize this user's claim attempts. The anti-burst and daily-quota checks
+      // below are read-then-act, so without a per-user lock a bot firing parallel
+      // requests at DIFFERENT coupons would have each request read a stale count and
+      // slip past both the 5s throttle and MAX_DAILY_CLAIMS (they lock different
+      // coupon rows, so the coupon FOR UPDATE below never serializes them). A
+      // transaction-scoped advisory lock on the user id forces them one-at-a-time.
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${user.id})::bigint)`;
+
+      // Anti-burst: at most one application per CLAIM_MIN_INTERVAL_MS from the same
+      // user. Keyed by user (not IP) so shared mobile networks / CGNAT — very common
+      // in Taiwan — don't punish real people applying from the same carrier.
+      const lastClaim = await tx.claimRequest.findFirst({
+        where: { requesterId: user.id },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      });
+      if (lastClaim) {
+        const sinceMs = Date.now() - lastClaim.createdAt.getTime();
+        if (sinceMs < CLAIM_MIN_INTERVAL_MS) {
+          throw new ApiError("RATE_LIMITED", {
+            retry_after_seconds: Math.ceil((CLAIM_MIN_INTERVAL_MS - sinceMs) / 1000),
+          });
+        }
+      }
+
+      // Application quota: a lifetime 3 before the first share, then a per-level
+      // daily limit plus capped share/referral bonuses, all under a hard daily
+      // ceiling (MAX_DAILY_CLAIMS) so nobody can farm unlimited claims. Re-counted
+      // under the advisory lock so it holds against concurrent requests.
+      const quota = await applyQuota(user, tx);
+      if (quota.remaining <= 0) {
+        if (!quota.hasShared) throw new ApiError("SHARE_FIRST");
+        // Only nudge "share for +3" when sharing would actually help; otherwise the
+        // user has hit the hard daily ceiling and should just come back tomorrow.
+        throw new ApiError(
+          quota.canShareForMore ? "DAILY_CLAIM_LIMIT_EXCEEDED" : "DAILY_CLAIM_HARD_CAP",
+        );
+      }
+
       await tx.$queryRaw`SELECT id FROM coupons WHERE id = ${couponId} FOR UPDATE`;
 
       const locked = await tx.coupon.findUnique({ where: { id: couponId } });
