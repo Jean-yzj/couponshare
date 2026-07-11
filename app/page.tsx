@@ -3,6 +3,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { CATEGORY_KEYS, REDEEM_KIND_KEYS } from "@/lib/categories";
 import { prisma } from "@/lib/db";
 import { getCouponFeed } from "@/lib/feed";
+import type { Metadata } from "next";
+
+// The homepage owns the site-root canonical (the root layout no longer sets one).
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 const LIMIT = 12;
 type SearchParams = { [key: string]: string | string[] | undefined };

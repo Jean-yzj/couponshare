@@ -3,7 +3,8 @@ import Link from "next/link";
 import { Icon } from "@/components/icons";
 
 export const metadata: Metadata = {
-  title: "使用條款 — CouponShare",
+  title: "使用條款",
+  alternates: { canonical: "/terms" },
   description:
     "CouponShare 使用條款。本平台為使用者間之票券媒合服務，票券由使用者自行上傳，並歡迎品牌洽談合作。",
 };

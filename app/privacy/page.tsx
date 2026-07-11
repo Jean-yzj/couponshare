@@ -3,7 +3,8 @@ import Link from "next/link";
 import { Icon } from "@/components/icons";
 
 export const metadata: Metadata = {
-  title: "隱私權政策 — CouponShare",
+  title: "隱私權政策",
+  alternates: { canonical: "/privacy" },
   description:
     "CouponShare 隱私權政策。說明本平台如何蒐集、處理、利用及保護您的個人資料，並依個人資料保護法辦理。",
 };

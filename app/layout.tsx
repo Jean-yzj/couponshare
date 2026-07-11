@@ -38,7 +38,8 @@ export const metadata: Metadata = {
     "優惠券", "票券", "兌換券", "折價券", "分享", "贈送", "交換",
     "超商優惠", "咖啡買一送一", "免費兌換", "CouponShare",
   ],
-  alternates: { canonical: SITE_URL },
+  // No global canonical here — that would point every page at the homepage.
+  // Each page declares its own (app/page.tsx, /terms, /privacy, …).
   robots: { index: true, follow: true },
   openGraph: {
     type: "website",
@@ -47,8 +48,9 @@ export const metadata: Metadata = {
     url: SITE_URL,
     title: SITE_TITLE,
     description: SITE_DESC,
+    images: [{ url: "/og-default.png", width: 1200, height: 630, alt: "CouponShare" }],
   },
-  twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESC },
+  twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESC, images: ["/og-default.png"] },
 };
 
 export const viewport: Viewport = {

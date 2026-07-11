@@ -11,7 +11,7 @@ const OG_DESC =
 // noindex (a B2B sales page handed out by link, not for search), but with proper
 // OG/Twitter so the link preview reads as an enterprise page, not the consumer app.
 export const metadata: Metadata = {
-  title: "企業合作方案 — CouponShare",
+  title: "企業合作方案",
   description: OG_DESC,
   robots: { index: false, follow: false },
   openGraph: { title: OG_TITLE, description: OG_DESC, type: "website" },
