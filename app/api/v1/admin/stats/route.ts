@@ -562,6 +562,7 @@ export const GET = route(async (req) => {
         FROM audit_logs
         WHERE actor_id IS NOT NULL
           AND created_at >= ${cohortStarts[0]}
+        GROUP BY actor_id, DATE(created_at + INTERVAL '8 hours')
         UNION
         SELECT user_id, day AS active_day
         FROM daily_actives
@@ -569,26 +570,33 @@ export const GET = route(async (req) => {
       ),
       per_user AS (
         SELECT
+          cu.user_id,
           cu.cohort_start,
           cu.registered_at,
-          EXISTS (
-            SELECT 1 FROM activity a
-            WHERE a.user_id = cu.user_id
-              AND a.active_day = DATE(cu.registered_at + INTERVAL '8 hours' + INTERVAL '1 day')
+          COALESCE(
+            BOOL_OR(a.active_day = DATE(cu.registered_at + INTERVAL '8 hours' + INTERVAL '1 day')),
+            false
           ) AS has_d1,
-          EXISTS (
-            SELECT 1 FROM activity a
-            WHERE a.user_id = cu.user_id
-              AND a.active_day > DATE(cu.registered_at + INTERVAL '8 hours')
+          COALESCE(
+            BOOL_OR(
+              a.active_day > DATE(cu.registered_at + INTERVAL '8 hours')
               AND a.active_day <= DATE(cu.registered_at + INTERVAL '8 hours') + 7
+            ),
+            false
           ) AS has_d7,
-          EXISTS (
-            SELECT 1 FROM activity a
-            WHERE a.user_id = cu.user_id
-              AND a.active_day > DATE(cu.registered_at + INTERVAL '8 hours')
+          COALESCE(
+            BOOL_OR(
+              a.active_day > DATE(cu.registered_at + INTERVAL '8 hours')
               AND a.active_day <= DATE(cu.registered_at + INTERVAL '8 hours') + 30
+            ),
+            false
           ) AS has_d30
         FROM cohort_users cu
+        LEFT JOIN activity a
+          ON a.user_id = cu.user_id
+         AND a.active_day > DATE(cu.registered_at + INTERVAL '8 hours')
+         AND a.active_day <= DATE(cu.registered_at + INTERVAL '8 hours') + 30
+        GROUP BY cu.user_id, cu.cohort_start, cu.registered_at
       )
       SELECT
         cohort_start::timestamptz AS cohort_start,
