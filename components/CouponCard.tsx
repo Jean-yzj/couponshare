@@ -56,19 +56,21 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
               : "border-line group-hover:border-accent/40",
         )}
       >
-        {/* Category-tinted brand header */}
-        <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: cs.tint }}>
+        {/* Category-coloured brand header — full-saturation ticket top */}
+        <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundImage: cs.grad }}>
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-soft ring-2 ring-white/60"
-            style={{ backgroundImage: cs.grad, textShadow: "0 1px 1px rgba(0,0,0,.22)" }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-extrabold shadow-soft ring-2 ring-white/70"
+            style={{ color: cs.solid }}
           >
             {c.brand.trim()[0] ?? "?"}
           </span>
-          <span className="min-w-0 flex-1 truncate text-xs font-bold text-ink">{c.brand}</span>
           <span
-            className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
-            style={{ backgroundColor: cs.solid }}
+            className="min-w-0 flex-1 truncate text-[13px] font-extrabold text-white"
+            style={{ textShadow: "0 1px 2px rgba(0,0,0,.18)" }}
           >
+            {c.brand}
+          </span>
+          <span className="shrink-0 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold text-ink shadow-sm">
             {isGift ? "贈送" : "交換"}
           </span>
         </div>
