@@ -18,6 +18,7 @@ import {
   EmptyState,
 } from "@/components/ui";
 import { Modal } from "@/components/Modal";
+import { CategoryIcon } from "@/components/CategoryIcon";
 import { BarcodeModal } from "@/components/BarcodeModal";
 import { RedeemCodeModal } from "@/components/RedeemCodeModal";
 import { ReportModal } from "@/components/ReportModal";
@@ -271,9 +272,9 @@ export default function CouponDetailPage() {
             <div className="flex min-w-0 items-start gap-3">
               <span
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg font-bold text-white shadow-soft"
-                style={{ backgroundImage: cs.grad, textShadow: "0 1px 1px rgba(0,0,0,.22)" }}
+                style={{ backgroundImage: cs.grad }}
               >
-                {coupon.brand.trim()[0] ?? "?"}
+                <CategoryIcon category={coupon.category} size={26} />
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-wide text-accent">{coupon.brand}</p>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cn, expiryText } from "@/lib/display";
 import { Avatar } from "./ui";
 import { Icon, type IconName } from "./icons";
+import { CategoryIcon } from "./CategoryIcon";
 import { CATEGORY_LABEL, categoryStyle, REDEEM_KIND_LABEL, REDEEM_KIND_STYLE } from "@/lib/categories";
 
 export type FeedOwner = {
@@ -60,9 +61,10 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
         <div className="flex items-center gap-2 px-3 py-2.5" style={{ backgroundColor: cs.tint }}>
           <span
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-soft ring-2 ring-white/60"
-            style={{ backgroundImage: cs.grad, textShadow: "0 1px 1px rgba(0,0,0,.22)" }}
+            style={{ backgroundImage: cs.grad }}
+            aria-label={c.category ? CATEGORY_LABEL[c.category] : undefined}
           >
-            {c.brand.trim()[0] ?? "?"}
+            <CategoryIcon category={c.category} size={18} />
           </span>
           <span className="min-w-0 flex-1 truncate text-xs font-bold text-ink">{c.brand}</span>
           <span
