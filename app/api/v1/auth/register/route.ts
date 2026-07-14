@@ -14,7 +14,10 @@ import { utmCreateData } from "@/lib/utm";
 
 export const POST = route(async (req) => {
   // Throttle account creation per IP — also makes email-enumeration probing impractical.
-  throttle(req, "register", 8, 60 * 60_000);
+  // 20/hr (not 8): Taiwan mobile carriers use CGNAT, so many legitimate first-time
+  // users legitimately share one public IP during a viral spike. Still a hard brake on
+  // single-IP spam, and FLAG_REGISTER_PAUSED + isIpBlocked remain as stronger backstops.
+  throttle(req, "register", 20, 60 * 60_000);
   // Emergency kill-switch: pause new signups during a mass-registration attack.
   if (await getFlag(FLAG_REGISTER_PAUSED)) {
     throw new ApiError("VALIDATION_ERROR", { message: "目前暫停開放新帳號註冊，請稍後再試。" });

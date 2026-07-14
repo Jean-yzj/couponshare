@@ -24,6 +24,16 @@ function isPrivate(ip: string): boolean {
 // right-most PUBLIC entry is the one our infrastructure added, not attacker-chosen.
 // (Taking split(",")[0] — the left-most — trusts whatever the client claimed.)
 export function clientIp(req: NextRequest): string | null {
+  // Behind Cloudflare, CF-Connecting-IP is the authoritative real-client address —
+  // Cloudflare sets it at the edge and it cannot be forged through the proxy. We MUST
+  // prefer it: once CF is in front, the right-most PUBLIC entry of X-Forwarded-For is
+  // Cloudflare's *edge egress* IP (a small shared pool), so the XFF logic below would
+  // collapse thousands of distinct users onto a handful of IPs — one shared rate-limit
+  // bucket (mass false "操作太頻繁" on register/login) and one blocked user poisoning a
+  // whole edge. cf-connecting-ip restores true per-client keying.
+  const cf = req.headers.get("cf-connecting-ip");
+  if (cf && !isPrivate(cf)) return cf;
+
   const fwd = req.headers.get("x-forwarded-for");
   if (fwd) {
     const parts = fwd
