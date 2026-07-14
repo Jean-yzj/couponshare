@@ -345,10 +345,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               隱私權政策
             </Link>
             <span className="text-line">·</span>
-            <a href="mailto:iamlazybear2023@gmail.com" className="transition-colors hover:text-ink">
-              聯絡我們
-            </a>
-            <span className="text-line">·</span>
             <a
               href="https://www.instagram.com/lazybearlife_"
               target="_blank"
