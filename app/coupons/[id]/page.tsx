@@ -266,21 +266,18 @@ export default function CouponDetailPage() {
 
       {/* Header */}
       <Card className="overflow-hidden">
-        <div className="border-b border-line px-5 pt-5 pb-4" style={{ backgroundImage: cs.grad }}>
+        <div className="border-b border-line px-5 pt-5 pb-4" style={{ backgroundColor: cs.tint }}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
               <span
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-lg font-extrabold shadow-soft ring-2 ring-white/70"
-                style={{ color: cs.solid }}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg font-bold text-white shadow-soft"
+                style={{ backgroundImage: cs.grad, textShadow: "0 1px 1px rgba(0,0,0,.22)" }}
               >
                 {coupon.brand.trim()[0] ?? "?"}
               </span>
               <div className="min-w-0">
-                <p className="text-xs font-bold uppercase tracking-wide text-white/85">{coupon.brand}</p>
-                <h1
-                  className="mt-0.5 text-2xl font-extrabold leading-snug tracking-tight text-white"
-                  style={{ textShadow: "0 1px 2px rgba(0,0,0,.2)" }}
-                >
+                <p className="text-xs font-bold uppercase tracking-wide text-accent">{coupon.brand}</p>
+                <h1 className="mt-0.5 text-2xl font-extrabold leading-snug tracking-tight text-ink">
                   {coupon.title}
                 </h1>
               </div>
