@@ -22,7 +22,8 @@ const FITS: { tag: string; use: string; icon: IconName }[] = [
   { tag: "電商・零售", use: "折扣碼測試、新品曝光", icon: "ticket" },
 ];
 
-const PLACEMENTS = ["首頁官方福利區", "熱門票券區", "搜尋結果優先", "分類頁推薦", "錢包底部推薦", "票券詳情頁推薦"];
+const PLACEMENTS = ["首頁官方福利區", "品牌專頁", "票券詳情頁"];
+const PLACEMENTS_UPCOMING = ["熱門票券區", "搜尋結果優先", "分類頁推薦", "錢包底部推薦"];
 
 type Plan = { name: string; who: string; tag?: string; hot?: boolean; points: string[]; cta: string };
 const PLANS: Plan[] = [
@@ -30,14 +31,14 @@ const PLANS: Plan[] = [
     name: "早鳥試用",
     tag: "限前 10 家合作品牌",
     who: "第一次合作、想先小規模驗證成效",
-    points: ["每月 5 張官方福利券", "每張最多 100 次申請（月上限 500）", "首頁列表、搜尋結果、錢包推薦曝光", "月底提供成效數據"],
+    points: ["每月 5 張官方福利券", "每張最多 100 次申請（月上限 500）", "首頁官方福利區曝光", "月底提供成效數據"],
     cta: "選這個方案",
   },
   {
     name: "標準導流",
     hot: true,
     who: "每月固定推廣優惠與活動的品牌",
-    points: ["每月 10 張官方福利券", "每張最多 200 次申請（月上限 2,000）", "加上熱門票券區與詳情頁推薦、搜尋優先", "可看申請者留言與洞察", "每月成效摘要報告"],
+    points: ["每月 10 張官方福利券", "每張最多 200 次申請（月上限 2,000）", "首頁官方福利區＋品牌專頁曝光", "新曝光版位上線後自動納入", "可看申請者留言與洞察", "每月成效摘要報告"],
     cta: "選這個方案",
   },
   {
@@ -148,7 +149,7 @@ export function BusinessLanding() {
           讓你的優惠，<br />被真正想領券的人看到
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-balance text-[15px] leading-relaxed text-ink-soft sm:text-base">
-          CouponShare 有 {members ? `${members} 名` : "上萬名"}用戶，進站就是為了瀏覽、申請、收藏優惠券。品牌用「官方福利券」投放優惠，就能拿到申請數、領取數與使用者留言洞察——不是廣告版位，是一個可追蹤的投放產品。
+          CouponShare 有 {members ? `${members} 名` : "上萬名"}用戶，進站就是為了瀏覽、申請、收藏優惠券。品牌用「官方福利券」投放優惠，就能拿到申請數、領取數與使用者留言洞察——不只是版位曝光，是一個可追蹤的投放產品。
         </p>
         <div className="mt-7 flex flex-col items-stretch justify-center gap-2.5 sm:flex-row sm:items-center">
           <Button href="#apply" size="lg" icon="send">索取合作方案</Button>
@@ -251,7 +252,15 @@ export function BusinessLanding() {
               {p}
             </span>
           ))}
+          {PLACEMENTS_UPCOMING.map((p) => (
+            <span key={p} className="rounded-full border border-dashed border-line bg-paper/60 px-3.5 py-1.5 text-sm text-ink-faint">
+              {p}・建置中
+            </span>
+          ))}
         </div>
+        <p className="mx-auto mt-3 max-w-lg text-[13px] leading-relaxed text-ink-faint">
+          標示「建置中」的版位上線後，標準方案以上自動納入、不另收費；合約以簽約當時已可提供的版位為準。
+        </p>
         <p className="mx-auto mt-5 max-w-lg text-[13px] leading-relaxed text-ink-faint">
           為了守住社群體驗，企業內容佔比全站上限 30%——這也是你的券不會被當廣告滑掉的原因。
         </p>

@@ -101,6 +101,7 @@ export default function BrandCouponDetailPage() {
           </div>
           <h1 className="mt-3 text-2xl font-extrabold leading-snug">{c.title}</h1>
           {c.description && <p className="mt-2 text-sm leading-relaxed text-white/90">{c.description}</p>}
+          <p className="mt-2 text-[11px] text-white/70">品牌付費合作刊登內容；優惠由品牌提供並負責兌換。</p>
         </div>
 
         <div className="space-y-4 p-6">
@@ -154,6 +155,7 @@ export default function BrandCouponDetailPage() {
                     placeholder="簡單寫一句你為什麼想領這張券"
                     maxLength={200}
                   />
+                  <p className="mt-1.5 text-xs text-ink-faint">送出即同意將你的顯示名稱與留言提供給品牌方，僅用於本次申請審核與提供優惠。</p>
                 </div>
               )}
               {isTask && (
