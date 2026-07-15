@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { route, jsonOk } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
-import { brandCouponsVisible } from "@/lib/brand-access";
+import { brandCouponsVisible, brandCouponPubliclyVisible } from "@/lib/brand-access";
 
 export const runtime = "nodejs";
 
@@ -14,6 +14,8 @@ export const POST = route(async (req, ctx) => {
 
   const coupon = await prisma.brandCoupon.findUnique({ where: { id }, select: { id: true } });
   if (!coupon) throw new ApiError("NOT_FOUND");
+  // Brand must be ACTIVE (approved by platform) for non-admins.
+  if (!(await brandCouponPubliclyVisible(id))) throw new ApiError("NOT_FOUND");
 
   await prisma.brandCoupon.update({ where: { id }, data: { clickCount: { increment: 1 } } });
 

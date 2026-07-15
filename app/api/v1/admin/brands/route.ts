@@ -21,6 +21,7 @@ export const GET = route(async () => {
       logo_url: b.logoUrl,
       category: b.category,
       plan: b.plan,
+      status: b.status,
       has_owner: !!b.ownerUserId,
       coupon_count: b._count.coupons,
       created_at: b.createdAt,
@@ -32,6 +33,7 @@ export const GET = route(async () => {
 export const POST = route(async (req) => {
   const admin = await requireAdmin();
   const body = await readBody(req, brandCreateSchema);
+  // Admin-created brands are pre-approved (signed contract precondition).
   const brand = await prisma.brand.create({
     data: {
       name: body.name,
@@ -41,6 +43,7 @@ export const POST = route(async (req) => {
       websiteUrl: body.website_url || null,
       contactName: body.contact_name || null,
       contactEmail: body.contact_email || null,
+      status: "ACTIVE",
     },
     select: { id: true, name: true },
   });

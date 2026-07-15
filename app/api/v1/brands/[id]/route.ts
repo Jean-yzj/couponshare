@@ -1,18 +1,20 @@
 import { prisma } from "@/lib/db";
 import { route, jsonOk } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
-import { brandCouponsVisible } from "@/lib/brand-access";
+import { brandCouponsVisible, brandPubliclyVisible } from "@/lib/brand-access";
 
 export const runtime = "nodejs";
 
 // Public brand page: the brand + its currently-claimable official coupons.
 // Gated — hidden (404) unless the feature flag is on or the viewer is an admin.
+// Second gate: brand must be status=ACTIVE for non-admins.
 export const GET = route(async (req, ctx) => {
   if (!(await brandCouponsVisible())) throw new ApiError("NOT_FOUND");
   const { id } = await ctx.params;
 
   const brand = await prisma.brand.findUnique({ where: { id } });
   if (!brand) throw new ApiError("NOT_FOUND");
+  if (!(await brandPubliclyVisible(id))) throw new ApiError("NOT_FOUND");
 
   const coupons = await prisma.brandCoupon.findMany({
     where: { brandId: id, status: "ACTIVE" },

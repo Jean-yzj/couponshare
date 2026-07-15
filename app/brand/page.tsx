@@ -35,6 +35,7 @@ type Brand = {
   category: string | null;
   description: string | null;
   plan: string;
+  status: string;
 };
 type OwnerData = { brands: BrandBrief[]; brand: Brand | null; coupons: Coupon[] };
 type Application = { id: string; display_name: string; message: string | null; status: string; created_at: string };
@@ -388,6 +389,17 @@ export default function BrandOwnerPage() {
           <Button href={`/brands/${brand.id}`} size="sm" variant="ghost" iconRight="arrowRight">使用者視角</Button>
         </div>
       </Card>
+
+      {brand.status === "PENDING" && (
+        <div className="mt-3 rounded-xl border border-gold/40 bg-gold-tint px-4 py-3 text-sm text-ink">
+          <span className="font-semibold text-gold">品牌審核中：</span>你可以先完成品牌資料與券的建置，通過核准後才會對使用者公開。
+        </div>
+      )}
+      {brand.status === "SUSPENDED" && (
+        <div className="mt-3 rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-ink">
+          <span className="font-semibold text-danger">品牌已停權，</span>內容暫停對外顯示，請聯繫平台。
+        </div>
+      )}
 
       {editingBrand && <BrandEditForm brand={brand} onDone={() => { setEditingBrand(false); refetch(); }} onCancel={() => setEditingBrand(false)} />}
 

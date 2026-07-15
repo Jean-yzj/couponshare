@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/db";
 import { route, jsonOk } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
-import { brandCouponsVisible } from "@/lib/brand-access";
+import { brandCouponsVisible, brandCouponPubliclyVisible } from "@/lib/brand-access";
 import { getCurrentUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 // Brand coupon detail + the viewer's own application state. Bumps view_count —
 // this is the per-coupon 瀏覽次數 promised to brands. Gated.
+// Second gate: brand must be status=ACTIVE for non-admins.
 export const GET = route(async (req, ctx) => {
   if (!(await brandCouponsVisible())) throw new ApiError("NOT_FOUND");
   const { id } = await ctx.params;
@@ -17,6 +18,7 @@ export const GET = route(async (req, ctx) => {
     include: { brand: { select: { id: true, name: true, logoText: true, logoUrl: true, category: true } } },
   });
   if (!coupon) throw new ApiError("NOT_FOUND");
+  if (!(await brandCouponPubliclyVisible(id))) throw new ApiError("NOT_FOUND");
 
   await prisma.brandCoupon.update({ where: { id }, data: { viewCount: { increment: 1 } } });
 

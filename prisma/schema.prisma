@@ -640,6 +640,11 @@ model Brand {
   ownerUserId  String?       @map("owner_user_id")
   // Plan tier set by admin — PRO (base) or MAX. TASK_UNLOCK coupons are MAX-only.
   plan         String        @default("PRO")
+  // Platform approval gate — PENDING (default, not yet public) / ACTIVE / SUSPENDED.
+  // Only ACTIVE brands are visible to regular users. Additive: prod migration is
+  // a trivial ALTER TABLE ADD COLUMN (no new PG enum type; existing rows get the
+  // column default "PENDING" but see admin routes that set ACTIVE on admin creation).
+  status       String        @default("PENDING") @map("status")
   // Optional logo image (data-URI); falls back to logoText badge when absent.
   logoUrl      String?       @map("logo_url")
   createdAt    DateTime      @default(now()) @map("created_at")

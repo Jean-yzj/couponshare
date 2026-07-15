@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { route, readBody, jsonOk } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireActiveUser } from "@/lib/auth";
-import { brandCouponsVisible } from "@/lib/brand-access";
+import { brandCouponsVisible, brandCouponPubliclyVisible } from "@/lib/brand-access";
 import { brandCouponApplySchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -23,6 +23,8 @@ export const POST = route(async (req, ctx) => {
     select: { id: true, status: true, applicationMode: true, maxApplications: true },
   });
   if (!coupon) throw new ApiError("NOT_FOUND");
+  // Brand must be ACTIVE (approved by platform) for non-admins.
+  if (!(await brandCouponPubliclyVisible(id))) throw new ApiError("NOT_FOUND");
   if (coupon.status !== "ACTIVE") {
     throw new ApiError("VALIDATION_ERROR", { message: "這張券目前無法領取" });
   }

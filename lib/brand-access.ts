@@ -25,3 +25,24 @@ export async function brandCouponsVisible(): Promise<boolean> {
   const user = await getCurrentUser();
   return !!user && isAdmin(user);
 }
+
+// Returns whether a brand's status makes it publicly visible (status = ACTIVE).
+// Admins bypass this gate so they can preview any brand regardless of status.
+// Call this after brandCouponsVisible() has already passed.
+export async function brandPubliclyVisible(brandId: string): Promise<boolean> {
+  const user = await getCurrentUser();
+  if (user && isAdmin(user)) return true;
+  const brand = await prisma.brand.findUnique({ where: { id: brandId }, select: { status: true } });
+  return brand?.status === "ACTIVE";
+}
+
+// Same check but for a brand coupon — resolves the brandId first.
+export async function brandCouponPubliclyVisible(couponId: string): Promise<boolean> {
+  const user = await getCurrentUser();
+  if (user && isAdmin(user)) return true;
+  const coupon = await prisma.brandCoupon.findUnique({
+    where: { id: couponId },
+    select: { brand: { select: { status: true } } },
+  });
+  return coupon?.brand?.status === "ACTIVE";
+}

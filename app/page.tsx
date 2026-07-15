@@ -1,5 +1,6 @@
 import { DEFAULT_FEED_FILTERS, HomeClient, type FeedFilters, type OfficialCoupon } from "@/components/HomeClient";
 import { getCurrentUser } from "@/lib/auth";
+import { isAdmin } from "@/lib/admin";
 import { CATEGORY_KEYS, REDEEM_KIND_KEYS } from "@/lib/categories";
 import { prisma } from "@/lib/db";
 import { getCouponFeed } from "@/lib/feed";
@@ -17,10 +18,14 @@ type SearchParams = { [key: string]: string | string[] | undefined };
 
 async function getActiveBrandCoupons(): Promise<OfficialCoupon[]> {
   if (!(await brandCouponsVisible())) return [];
+  const user = await getCurrentUser();
+  const adminViewer = !!user && isAdmin(user);
   const now = new Date();
   const rows = await prisma.brandCoupon.findMany({
     where: {
       status: "ACTIVE",
+      // Non-admin viewers only see coupons from brands that are ACTIVE (approved).
+      brand: adminViewer ? undefined : { status: "ACTIVE" },
       OR: [{ startAt: null }, { startAt: { lte: now } }],
       AND: [{ OR: [{ endAt: null }, { endAt: { gte: now } }] }],
     },

@@ -281,6 +281,11 @@ export const adminAssignBrandSchema = z.object({
 
 export const brandPlanSchema = z.object({ plan: z.enum(["PRO", "MAX"]) });
 
+// Admin changes brand approval status.
+export const brandStatusSchema = z.object({
+  status: z.enum(["PENDING", "ACTIVE", "SUSPENDED"]),
+});
+
 export const brandCouponApplySchema = z.object({
   message: z.string().trim().max(200).optional().nullable(),
 });

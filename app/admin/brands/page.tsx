@@ -14,6 +14,7 @@ type Brand = {
   logo_url: string | null;
   category: string | null;
   plan: string;
+  status: string;
   has_owner: boolean;
   coupon_count: number;
   created_at: string;
@@ -38,6 +39,7 @@ export default function AdminBrandsPage() {
   const [assigning, setAssigning] = useState(false);
   const [assignErr, setAssignErr] = useState<string | null>(null);
   const [assignMsg, setAssignMsg] = useState<string | null>(null);
+  const [statusBusy, setStatusBusy] = useState<string | null>(null); // brandId being updated
 
   if (meLoading) return <div className="flex justify-center py-20"><Skeleton className="h-8 w-8 rounded-full" /></div>;
   if (!me) return <NeedLogin message="登入後即可使用管理功能。" />;
@@ -80,6 +82,21 @@ export default function AdminBrandsPage() {
       setErr(e instanceof ApiErr ? e.message : "建立失敗");
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function setBrandStatus(brandId: string, status: string) {
+    setStatusBusy(brandId);
+    try {
+      await apiFetch(`/api/v1/admin/brands/${brandId}`, {
+        method: "POST",
+        body: JSON.stringify({ status }),
+      });
+      await refetch();
+    } catch (e) {
+      alert(e instanceof ApiErr ? e.message : "操作失敗");
+    } finally {
+      setStatusBusy(null);
     }
   }
 
@@ -194,32 +211,55 @@ export default function AdminBrandsPage() {
           <EmptyState icon="ticket" title="還沒有合作品牌" hint="在上方新增第一個品牌，就能開始建立官方福利券。" />
         ) : (
           brands.map((b) => (
-            <Link key={b.id} href={`/admin/brands/${b.id}`} className="block">
-              <Card className="flex items-center gap-3 p-4 transition-colors hover:border-accent/30">
-                {b.logo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={b.logo_url} alt="" className="h-11 w-11 shrink-0 rounded-xl border border-line object-cover" />
-                ) : (
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-tint text-lg font-extrabold text-accent">
-                    {b.logo_text || b.name.slice(0, 1)}
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="truncate font-semibold text-ink">{b.name}</p>
-                    {b.has_owner && (
-                      <Pill className={b.plan === "MAX" ? "bg-grape-tint text-grape" : "bg-accent-tint text-accent"}>
-                        {b.plan === "MAX" ? "Max" : "Pro"}
+            <Card key={b.id} className="p-4">
+              <div className="flex items-center gap-3">
+                <Link href={`/admin/brands/${b.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                  {b.logo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={b.logo_url} alt="" className="h-11 w-11 shrink-0 rounded-xl border border-line object-cover" />
+                  ) : (
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-tint text-lg font-extrabold text-accent">
+                      {b.logo_text || b.name.slice(0, 1)}
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="truncate font-semibold text-ink">{b.name}</p>
+                      {b.has_owner && (
+                        <Pill className={b.plan === "MAX" ? "bg-grape-tint text-grape" : "bg-accent-tint text-accent"}>
+                          {b.plan === "MAX" ? "Max" : "Pro"}
+                        </Pill>
+                      )}
+                      <Pill className={
+                        b.status === "ACTIVE" ? "bg-pine-tint text-pine"
+                        : b.status === "SUSPENDED" ? "bg-danger/10 text-danger"
+                        : "bg-sand text-ink-faint"
+                      }>
+                        {b.status === "ACTIVE" ? "已核准" : b.status === "SUSPENDED" ? "已停權" : "待審核"}
                       </Pill>
-                    )}
+                    </div>
+                    <p className="text-xs text-ink-faint">
+                      {b.category || "未分類"} · {b.coupon_count} 張券 · {b.has_owner ? "已指派企業主" : "平台代管"}
+                    </p>
                   </div>
-                  <p className="text-xs text-ink-faint">
-                    {b.category || "未分類"} · {b.coupon_count} 張券 · {b.has_owner ? "已指派企業主" : "平台代管"}
-                  </p>
-                </div>
-                <Icon name="chevronRight" size={18} className="text-ink-faint" />
-              </Card>
-            </Link>
+                  <Icon name="chevronRight" size={18} className="text-ink-faint" />
+                </Link>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
+                {b.status !== "ACTIVE" && (
+                  <Button size="sm" loading={statusBusy === b.id} onClick={() => setBrandStatus(b.id, "ACTIVE")}>核准</Button>
+                )}
+                {b.status === "ACTIVE" && (
+                  <Button size="sm" variant="outline" loading={statusBusy === b.id} onClick={() => setBrandStatus(b.id, "SUSPENDED")}>停權</Button>
+                )}
+                {b.status === "SUSPENDED" && (
+                  <Button size="sm" variant="outline" loading={statusBusy === b.id} onClick={() => setBrandStatus(b.id, "PENDING")}>恢復待審</Button>
+                )}
+                <Link href={`/admin/brands/${b.id}`} className="ml-auto text-sm font-medium text-accent hover:text-accent-press">
+                  查看詳情
+                </Link>
+              </div>
+            </Card>
           ))
         )}
       </div>

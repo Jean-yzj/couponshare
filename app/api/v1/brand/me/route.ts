@@ -41,6 +41,7 @@ export const GET = route(async (req) => {
       category: active.category,
       description: active.description,
       plan: active.plan,
+      status: active.status,
     },
     coupons: coupons.map((c) => ({
       id: c.id,
