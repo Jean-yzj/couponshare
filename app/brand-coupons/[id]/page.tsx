@@ -49,6 +49,11 @@ export default function BrandCouponDetailPage() {
   const isMessage = c.application_mode === "MESSAGE_APPLICATION";
   const isTask = c.application_mode === "TASK_UNLOCK";
 
+  // Fire-and-forget: increment click_count without blocking navigation or apply.
+  function fireClick() {
+    apiFetch(`/api/v1/brand-coupons/${params.id}/click`, { method: "POST" }).catch(() => {});
+  }
+
   async function apply() {
     if (!me) return;
     if (isMessage && message.trim().length < 2) {
@@ -118,7 +123,7 @@ export default function BrandCouponDetailPage() {
               </p>
               {c.redeem_info && <p className="mt-2 whitespace-pre-wrap text-sm text-ink-soft">{c.redeem_info}</p>}
               {c.cta_url && (
-                <Button href={c.cta_url} variant="primary" full className="mt-3" iconRight="arrowRight">
+                <Button href={c.cta_url} variant="primary" full className="mt-3" iconRight="arrowRight" onClick={fireClick}>
                   {c.cta_text || "前往使用"}
                 </Button>
               )}

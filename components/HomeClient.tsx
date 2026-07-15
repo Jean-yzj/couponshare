@@ -9,7 +9,14 @@ import { Icon } from "@/components/icons";
 import { cn } from "@/lib/display";
 import { CATEGORIES, REDEEM_KINDS } from "@/lib/categories";
 import { ShareGuideCard } from "@/components/ShareGuideCard";
+import { BrandCouponCard, type BrandCouponCardData } from "@/components/BrandCouponCard";
 import { useMe } from "@/lib/client";
+
+export type OfficialCoupon = BrandCouponCardData & {
+  brand_name: string;
+  brand_logo: string | null;
+  brand_logo_url: string | null;
+};
 
 const TYPES = [
   { value: "ALL", label: "全部" },
@@ -130,12 +137,14 @@ export function HomeClient({
   initialExpiring,
   initialBrands,
   initialFilters = DEFAULT_FEED_FILTERS,
+  officialCoupons = [],
 }: {
   signedIn: boolean;
   initialFeed: InitialFeed;
   initialExpiring: FeedCoupon[];
   initialBrands: string[];
   initialFilters?: FeedFilters;
+  officialCoupons?: OfficialCoupon[];
 }) {
   if (!signedIn) return <Landing />;
   return (
@@ -145,6 +154,7 @@ export function HomeClient({
       initialExpiring={initialExpiring}
       initialBrands={initialBrands}
       initialFilters={initialFilters}
+      officialCoupons={officialCoupons}
     />
   );
 }
@@ -155,12 +165,14 @@ function FeedView({
   initialExpiring,
   initialBrands,
   initialFilters,
+  officialCoupons,
 }: {
   signedIn: boolean;
   initialFeed: InitialFeed;
   initialExpiring: FeedCoupon[];
   initialBrands: string[];
   initialFilters: FeedFilters;
+  officialCoupons: OfficialCoupon[];
 }) {
   const { me } = useMe();
   // Computed once on mount: prefers a stored search over the (possibly stale)
@@ -395,6 +407,23 @@ function FeedView({
 
       {signedIn && me && me.has_shared === false && (
         <ShareGuideCard hasShared={false} />
+      )}
+
+      {noFilters && officialCoupons.length > 0 && (
+        <section className="mb-6">
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-ink-faint">官方福利</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {officialCoupons.map((c) => (
+              <BrandCouponCard
+                key={c.id}
+                coupon={c}
+                brandName={c.brand_name}
+                brandLogo={c.brand_logo}
+                brandLogoUrl={c.brand_logo_url}
+              />
+            ))}
+          </div>
+        </section>
       )}
 
       {noFilters && expData && expData.data.length > 0 && (

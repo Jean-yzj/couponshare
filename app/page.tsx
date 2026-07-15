@@ -1,15 +1,46 @@
-import { DEFAULT_FEED_FILTERS, HomeClient, type FeedFilters } from "@/components/HomeClient";
+import { DEFAULT_FEED_FILTERS, HomeClient, type FeedFilters, type OfficialCoupon } from "@/components/HomeClient";
 import { getCurrentUser } from "@/lib/auth";
 import { CATEGORY_KEYS, REDEEM_KIND_KEYS } from "@/lib/categories";
 import { prisma } from "@/lib/db";
 import { getCouponFeed } from "@/lib/feed";
+import { brandCouponsVisible } from "@/lib/brand-access";
 import type { Metadata } from "next";
 
 // The homepage owns the site-root canonical (the root layout no longer sets one).
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
+// Brand-coupon visibility is flag-gated per request; never let this page be statically cached.
+export const dynamic = "force-dynamic";
+
 const LIMIT = 12;
 type SearchParams = { [key: string]: string | string[] | undefined };
+
+async function getActiveBrandCoupons(): Promise<OfficialCoupon[]> {
+  if (!(await brandCouponsVisible())) return [];
+  const now = new Date();
+  const rows = await prisma.brandCoupon.findMany({
+    where: {
+      status: "ACTIVE",
+      OR: [{ startAt: null }, { startAt: { lte: now } }],
+      AND: [{ OR: [{ endAt: null }, { endAt: { gte: now } }] }],
+    },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+    include: { brand: { select: { name: true, logoText: true, logoUrl: true } } },
+  });
+  return rows.map((c) => ({
+    id: c.id,
+    title: c.title,
+    category: c.category,
+    image_url: c.imageUrl,
+    application_mode: c.applicationMode,
+    remaining: Math.max(0, c.maxApplications - c.applicationCount),
+    max_applications: c.maxApplications,
+    brand_name: c.brand.name,
+    brand_logo: c.brand.logoText,
+    brand_logo_url: c.brand.logoUrl,
+  }));
+}
 
 async function getFollowedBrands(userId: string): Promise<string[]> {
   const follows = await prisma.brandFollow.findMany({
@@ -61,7 +92,7 @@ export default async function HomePage({
     );
   }
 
-  const [initialFeed, expiringFeed, initialBrands] = await Promise.all([
+  const [initialFeed, expiringFeed, initialBrands, officialCoupons] = await Promise.all([
     getCouponFeed({
       viewer,
       brand: filters.brand,
@@ -74,6 +105,7 @@ export default async function HomePage({
     }),
     getCouponFeed({ viewer, sort: "expiry_soon", withinHours: 48, page: 1, limit: 4 }),
     getFollowedBrands(viewer.id),
+    getActiveBrandCoupons(),
   ]);
 
   return (
@@ -83,6 +115,7 @@ export default async function HomePage({
       initialExpiring={expiringFeed.data}
       initialBrands={initialBrands}
       initialFilters={filters}
+      officialCoupons={officialCoupons}
     />
   );
 }

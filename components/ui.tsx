@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ReactNode, MouseEventHandler } from "react";
 import { cn, LEVEL_META, STATUS_META, typeMeta, avatarColor, initials, sizedAvatar } from "@/lib/display";
 import { Icon, type IconName } from "./icons";
 
@@ -111,8 +111,15 @@ export function Button({
     </>
   );
   if (href) {
+    // Pass onClick through so callers can fire side-effects on link clicks
+    // (e.g., analytics, fire-and-forget tracking) without blocking navigation.
+    const { onClick } = rest;
     return (
-      <Link href={href} className={cls}>
+      <Link
+        href={href}
+        className={cls}
+        onClick={onClick as MouseEventHandler<HTMLAnchorElement> | undefined}
+      >
         {inner}
       </Link>
     );
