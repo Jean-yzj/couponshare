@@ -118,7 +118,7 @@ export const GET = route(async (req, ctx) => {
           report_count: c.reportCount,
           view_count: c.viewCount,
           claim_request_count: c.claimRequestCount,
-          has_barcode: !!c.barcodeEncryptedData,
+          has_barcode: !!(c.barcodeEncryptedData || c.barcodeStorageKey),
           has_redeem_code: !!c.redeemCodeEncrypted,
           created_at: c.createdAt,
           owner: c.owner ? { id: c.owner.id, display_name: c.owner.displayName } : null,

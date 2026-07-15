@@ -6,6 +6,7 @@ import { encryptBarcode } from "@/lib/crypto";
 import { issueBarcodeToken } from "@/lib/barcode-token";
 import { writeAudit } from "@/lib/audit";
 import { sniffImageType } from "@/lib/image";
+import { isBarcodeStorageConfigured, putEncryptedBarcode } from "@/lib/barcode-storage";
 
 export const runtime = "nodejs";
 
@@ -44,10 +45,29 @@ export const POST = route(async (req, ctx) => {
   }
   const encrypted = encryptBarcode(bytes);
 
-  await prisma.coupon.update({
+  const updated = await prisma.coupon.update({
     where: { id },
-    data: { barcodeEncryptedData: encrypted, barcodeMime: mime },
+    data: { barcodeEncryptedData: encrypted, barcodeMime: mime, barcodeStorageKey: null },
+    select: { updatedAt: true },
   });
+
+  // The database stays the source of truth during migration. R2 is best-effort:
+  // an outage there must never make an otherwise valid upload fail. The guarded
+  // update also prevents an older upload from winning a concurrent replacement.
+  try {
+    if (isBarcodeStorageConfigured()) {
+      const storageKey = await putEncryptedBarcode(id, encrypted);
+      await prisma.coupon.updateMany({
+        where: { id, updatedAt: updated.updatedAt, barcodeStorageKey: null },
+        data: { barcodeStorageKey: storageKey },
+      });
+    }
+  } catch (error) {
+    console.error("[barcode-storage] R2 upload failed; database copy remains active", {
+      couponId: id,
+      error: error instanceof Error ? error.message : "unknown",
+    });
+  }
 
   const meta = clientMeta(req);
   await writeAudit(prisma, {
@@ -69,7 +89,9 @@ export const GET = route(async (req, ctx) => {
 
   const coupon = await prisma.coupon.findUnique({ where: { id } });
   if (!coupon) throw new ApiError("COUPON_NOT_FOUND");
-  if (!coupon.barcodeEncryptedData) throw new ApiError("BARCODE_NOT_READY");
+  if (!coupon.barcodeEncryptedData && !coupon.barcodeStorageKey) {
+    throw new ApiError("BARCODE_NOT_READY");
+  }
 
   const isOwner = coupon.ownerId === user.id;
   const isClaimant = coupon.claimantId === user.id && coupon.status === "CLAIMED";

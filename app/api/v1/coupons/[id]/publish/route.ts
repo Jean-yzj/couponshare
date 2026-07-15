@@ -24,7 +24,7 @@ export const POST = route(async (req, ctx) => {
     throw new ApiError("VALIDATION_ERROR", { message: "標題與品牌不可為空" });
   }
   if (coupon.expiryDate && coupon.expiryDate <= new Date()) throw new ApiError("COUPON_EXPIRED");
-  if (!coupon.barcodeEncryptedData && !coupon.redeemCodeEncrypted) {
+  if (!coupon.barcodeEncryptedData && !coupon.barcodeStorageKey && !coupon.redeemCodeEncrypted) {
     throw new ApiError("VALIDATION_ERROR", { message: "請先上傳條碼圖片或填寫兌換碼" });
   }
   if (coupon.type === "EXCHANGE" && !coupon.exchangeTarget) {

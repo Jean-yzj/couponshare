@@ -23,7 +23,9 @@ export const POST = route(async (req, ctx) => {
     if (t.status !== "CREATED") throw new ApiError("VALIDATION_ERROR", { message: "此交易已結束" });
 
     // You can only commit once YOUR side's barcode exists.
-    if (isOwner && !t.coupon.barcodeEncryptedData) throw new ApiError("BARCODE_NOT_READY");
+    if (isOwner && !t.coupon.barcodeEncryptedData && !t.coupon.barcodeStorageKey) {
+      throw new ApiError("BARCODE_NOT_READY");
+    }
     if (isClaimant && !t.offerBarcodeEncryptedData) {
       throw new ApiError("VALIDATION_ERROR", { message: "請先上傳你要交換的條碼" });
     }

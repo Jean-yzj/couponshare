@@ -88,7 +88,7 @@ export function couponDetail(
 ) {
   const isOwner = !!viewer && c.ownerId === viewer.id;
   const isClaimant = !!viewer && c.claimantId === viewer.id;
-  const hasBarcode = !!c.barcodeEncryptedData;
+  const hasBarcode = !!(c.barcodeEncryptedData || c.barcodeStorageKey);
   const canViewBarcode = (isOwner || (isClaimant && c.status === "CLAIMED")) && hasBarcode;
   const hasRedeemCode = !!c.redeemCodeEncrypted;
   const canViewRedeemCode = (isOwner || (isClaimant && c.status === "CLAIMED")) && hasRedeemCode;

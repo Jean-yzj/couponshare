@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/errors";
 import { getCurrentUser } from "@/lib/auth";
 import { decryptBarcode } from "@/lib/crypto";
 import { verifyBarcodeToken } from "@/lib/barcode-token";
+import { getEncryptedBarcode } from "@/lib/barcode-storage";
 
 export const runtime = "nodejs";
 
@@ -27,8 +28,21 @@ export const GET = route(async (req, ctx) => {
     uid = user.id;
   }
 
-  const coupon = await prisma.coupon.findUnique({ where: { id } });
-  if (!coupon || !coupon.barcodeEncryptedData) throw new ApiError("BARCODE_NOT_READY");
+  // Do not pull the multi-megabyte database blob when an R2 object is available.
+  // Authority is still revalidated against PostgreSQL for every request.
+  const coupon = await prisma.coupon.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      ownerId: true,
+      claimantId: true,
+      status: true,
+      type: true,
+      barcodeMime: true,
+      barcodeStorageKey: true,
+    },
+  });
+  if (!coupon) throw new ApiError("BARCODE_NOT_READY");
 
   const isOwner = coupon.ownerId === uid;
   const isClaimant = coupon.claimantId === uid && coupon.status === "CLAIMED";
@@ -43,7 +57,28 @@ export const GET = route(async (req, ctx) => {
     if (!txn?.revealedAt) throw new ApiError("BARCODE_ACCESS_DENIED");
   }
 
-  const bytes = decryptBarcode(coupon.barcodeEncryptedData);
+  let encrypted: string | null = null;
+  if (coupon.barcodeStorageKey) {
+    try {
+      encrypted = await getEncryptedBarcode(coupon.barcodeStorageKey);
+    } catch (error) {
+      console.error("[barcode-storage] R2 read failed; using database fallback", {
+        couponId: id,
+        error: error instanceof Error ? error.message : "unknown",
+      });
+    }
+  }
+
+  if (!encrypted) {
+    const fallback = await prisma.coupon.findUnique({
+      where: { id },
+      select: { barcodeEncryptedData: true },
+    });
+    encrypted = fallback?.barcodeEncryptedData ?? null;
+  }
+  if (!encrypted) throw new ApiError("BARCODE_NOT_READY");
+
+  const bytes = decryptBarcode(encrypted);
   return new NextResponse(new Uint8Array(bytes), {
     status: 200,
     headers: {
