@@ -28,7 +28,9 @@ export const TABLES: { model: string; batch: number }[] = [
   { model: "brandCoupon", batch: 20 },
   { model: "brandCouponApplication", batch: 500 },
   { model: "businessLead", batch: 300 },
-  { model: "dailyActive", batch: 1000 },
+  // dailyActive is NOT here: its PK is @@id([day, userId]) — no `id` field, so
+  // the id-cursor loop below throws PrismaClientValidationError on it. It's
+  // emitted whole in the non-id tail section instead.
 ];
 
 // Stop a request after roughly this many uncompressed bytes, then hand the client
@@ -90,11 +92,12 @@ export async function* generate(
     }
   }
 
-  // Small operational tables whose PK isn't `id`, so they don't fit the id-cursor
-  // loop above (AppSetting keyed by `key`, BlockedIp by `ip`). They're tiny — the
-  // kill-switch flags and a short IP blocklist — so emit them whole here on the
-  // final segment (this code is only reached once the paged loop fully completes).
-  for (const model of ["appSetting", "blockedIp"] as const) {
+  // Tables whose PK isn't `id`, so they don't fit the id-cursor loop above
+  // (AppSetting keyed by `key`, BlockedIp by `ip`, DailyActive by [day, userId]).
+  // Emitted whole here on the final segment (only reached once the paged loop
+  // fully completes). appSetting/blockedIp are tiny; dailyActive rows are ~50
+  // bytes so even a year of data stays a few MB — revisit if that changes.
+  for (const model of ["appSetting", "blockedIp", "dailyActive"] as const) {
     const rows: Record<string, unknown>[] = await (
       prisma as unknown as Record<string, { findMany: (a: unknown) => Promise<Record<string, unknown>[]> }>
     )[model].findMany({});
