@@ -1,15 +1,18 @@
 name: Daily DB backup to R2
 
-# Pulls the full DB from the app's streaming backup endpoint and stores it
-# off-site in Cloudflare R2. Runs daily; also runnable on demand to test.
+# Triggers the app's server-side backup endpoint, which streams the full DB
+# directly into R2 (backups/db-YYYY-MM-DD.ndjson.gz). The server stages to a
+# .tmp key and only promotes dumps that end with the _done marker, so an
+# object at the final key is a verified-complete backup.
 #
-# Required repo secrets (Settings → Secrets and variables → Actions):
-#   BACKUP_SECRET         same value as the app's BACKUP_SECRET env var
-#   R2_ACCOUNT_ID         Cloudflare account id (the R2 S3 endpoint subdomain)
-#   R2_BUCKET             R2 bucket name (e.g. couponshare-backups)
-#   R2_ACCESS_KEY_ID      R2 API token access key
-#   R2_SECRET_ACCESS_KEY  R2 API token secret key
-# Set a 30-day lifecycle/expiry rule on the bucket to prune old backups.
+# This replaced the old download-and-reupload pipeline (fetch-backup.mjs →
+# aws s3 cp), which pulled ~500MB through the gateway every night and had been
+# failing. The verify step polls the same endpoint until it answers
+# skipped:true — i.e. today's object exists — so a silent server-side failure
+# still turns this workflow red.
+#
+# Required repo secret: CRON_SECRET — same value as the app's CRON_SECRET env.
+# (BACKUP_SECRET and the R2_* secrets are no longer used by this workflow.)
 
 on:
   schedule:
@@ -20,38 +23,46 @@ concurrency:
   group: db-backup
   cancel-in-progress: false
 
+# Least privilege: no repo access needed at all — this job only calls the app.
+permissions: {}
+
 jobs:
   backup:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
     steps:
-      - name: Checkout (for the resumable backup script)
-        uses: actions/checkout@v4
-
-      - name: Download backup from app (resumable)
+      - name: Trigger server-side backup
         env:
-          BACKUP_URL: https://couponshare.lazybearlife.com
-          BACKUP_SECRET: ${{ secrets.BACKUP_SECRET }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -euo pipefail
-          TS=$(date -u +%Y%m%d-%H%M)
-          echo "TS=$TS" >> "$GITHUB_ENV"
-          # Resumable: loops the endpoint's ~40MB slices until _done, so the full
-          # ~486MB DB survives Zeabur's ~10-min gateway timeout (one curl truncates).
-          OUT="couponshare-$TS.ndjson.gz" node scripts/fetch-backup.mjs
-          gzip -t "couponshare-$TS.ndjson.gz"
-          ls -lh "couponshare-$TS.ndjson.gz"
+          code=$(curl -s -o resp.json -w "%{http_code}" -m 30 \
+            -H "x-cron-secret: $CRON_SECRET" \
+            https://couponshare.lazybearlife.com/api/v1/cron/backup)
+          cat resp.json; echo
+          # 202 = started, 200 = already done today (skipped), 409 = already running
+          case "$code" in
+            200|202|409) ;;
+            *) echo "unexpected status $code"; exit 1 ;;
+          esac
 
-      - name: Upload to Cloudflare R2
+      - name: Verify today's backup exists in R2
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-          AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
-          AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -euo pipefail
-          aws s3 cp "couponshare-${TS}.ndjson.gz" \
-            "s3://${{ secrets.R2_BUCKET }}/couponshare/couponshare-${TS}.ndjson.gz" \
-            --endpoint-url "https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
-          echo "✓ uploaded couponshare-${TS}.ndjson.gz to R2 bucket ${{ secrets.R2_BUCKET }}"
+          # A non-skipped 200/202 here also retries a failed run — the endpoint
+          # is idempotent per day, so re-hitting it is safe.
+          for i in $(seq 1 40); do
+            sleep 60
+            code=$(curl -s -o resp.json -w "%{http_code}" -m 30 \
+              -H "x-cron-secret: $CRON_SECRET" \
+              https://couponshare.lazybearlife.com/api/v1/cron/backup) || continue
+            if [ "$code" = "200" ] && grep -q '"skipped":true' resp.json; then
+              echo "backup verified: $(cat resp.json)"
+              exit 0
+            fi
+            echo "attempt $i: status $code $(cat resp.json)"
+          done
+          echo "backup did not appear within 40 minutes"
+          exit 1
