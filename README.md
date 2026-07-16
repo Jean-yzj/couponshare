@@ -63,3 +63,7 @@ Point a scheduler at these (send `x-cron-secret: $CRON_SECRET`):
 - `POST /api/v1/cron/expire-coupons` — every ~10 min
 - `POST /api/v1/cron/expiring-soon` — hourly
 - `POST /api/v1/cron/pending-timeout` — hourly
+- `GET /api/v1/cron/backup` — daily; streams a full DB dump straight into R2
+  (`backups/db-YYYY-MM-DD.ndjson.gz`, staged + `_done`-verified, keeps 7/30d).
+  Triggered and verified by `.github/workflows/backup.yml`; idempotent per day,
+  so extra hits are safe.
