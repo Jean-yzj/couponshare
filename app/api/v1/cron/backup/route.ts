@@ -10,6 +10,7 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import { route, jsonOk } from "@/lib/api";
 import { assertCron } from "@/lib/cron";
 import { getR2ClientAndBucket } from "@/lib/barcode-storage";
 import { generate, TABLES } from "@/lib/backup-export";
@@ -161,12 +162,12 @@ async function runBackup(key: string): Promise<void> {
   }
 }
 
-export async function GET(req: NextRequest) {
+async function run(req: NextRequest) {
   assertCron(req);
 
   const r2 = getR2ClientAndBucket();
   if (!r2) {
-    return Response.json({ ok: false, error: "r2 not configured" }, { status: 503 });
+    return jsonOk({ ok: false, error: "r2 not configured" }, 503);
   }
   const { client, bucket } = r2;
 
@@ -177,7 +178,7 @@ export async function GET(req: NextRequest) {
   try {
     await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
     // HeadObject succeeded → object exists.
-    return Response.json({ ok: true, skipped: true, key });
+    return jsonOk({ ok: true, skipped: true, key });
   } catch (err: unknown) {
     // R2 throws a NoSuchKey / NotFound error when the object doesn't exist.
     const code =
@@ -185,14 +186,14 @@ export async function GET(req: NextRequest) {
     if (code !== "NotFound" && code !== "NoSuchKey") {
       // Unexpected error checking existence.
       console.error("[backup-cron] HeadObject error:", err);
-      return Response.json({ ok: false, error: "head check failed" }, { status: 500 });
+      return jsonOk({ ok: false, error: "head check failed" }, 500);
     }
     // Object not found — proceed.
   }
 
   // Anti-concurrency lock: if a backup is already running in this process, bail.
   if (running) {
-    return Response.json({ ok: false, running: true }, { status: 409 });
+    return jsonOk({ ok: false, running: true }, 409);
   }
   running = true;
 
@@ -201,5 +202,7 @@ export async function GET(req: NextRequest) {
   // runBackup resets `running = false` in its finally block.
   void runBackup(key);
 
-  return Response.json({ ok: true, started: true, key }, { status: 202 });
+  return jsonOk({ ok: true, started: true, key }, 202);
 }
+
+export const GET = route(run);
