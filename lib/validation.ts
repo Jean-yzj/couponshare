@@ -84,6 +84,9 @@ export const createCouponSchema = z.object({
   exchange_target: z.string().max(200).optional().nullable(),
   // Attestation: the coupon is directly redeemable (no add-friend / task gimmicks).
   directly_redeemable: z.literal(true),
+  // Attestation: sharer declaration — self-obtained, unused, restrictions disclosed
+  // (使用條款第二條). UI copy lives in app/new/Client.tsx.
+  sharer_declaration: z.literal(true),
   unlock_policy: z.enum(["OWNER_APPROVAL", "AUTO_REVEAL_AFTER_MESSAGE"]).optional(),
   visibility_level: z.enum(["PUBLIC", "LEVEL_2_ONLY", "LEVEL_3_ONLY"]).optional(),
 });

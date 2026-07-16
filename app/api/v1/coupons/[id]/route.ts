@@ -8,6 +8,7 @@ import { updateCouponSchema } from "@/lib/validation";
 import { writeAudit } from "@/lib/audit";
 import { encryptBarcode } from "@/lib/crypto";
 import { normalizeBrand } from "@/lib/brands";
+import { findBlockedContent, blockedContentMessage } from "@/lib/contentPolicy";
 
 export const GET = route(async (req, ctx) => {
   const { id } = await ctx.params;
@@ -78,6 +79,11 @@ export const PATCH = route(async (req, ctx) => {
   }
   if (body.expiry_date && body.expiry_date <= new Date()) {
     throw new ApiError("VALIDATION_ERROR", { message: "到期日必須是未來的時間" });
+  }
+  // 關鍵字黑名單 — 只驗這次送來的新內容（既有內容在建立時已驗過）。
+  const blocked = findBlockedContent(`${body.title ?? ""} ${body.description ?? ""}`);
+  if (blocked) {
+    throw new ApiError("VALIDATION_ERROR", { message: blockedContentMessage(blocked) });
   }
 
   const updated = await prisma.coupon.update({

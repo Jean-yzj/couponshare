@@ -176,6 +176,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {me && (
             <nav className="ml-4 hidden items-center gap-1 md:flex">
               <NavLink href="/" label="探索" active={isActive("/") && pathname === "/"} />
+              <NavLink href="/today" label="當日" active={isActive("/today")} />
               <NavLink href="/wallet" label="我的錢包" active={isActive("/wallet")} />
               <NavLink href="/score" label="貢獻值" active={isActive("/score")} />
             </nav>
@@ -222,6 +223,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                           <p className="truncate font-medium text-ink">{me.display_name}</p>
                           <p className="truncate text-xs text-ink-faint">{me.email}</p>
                         </div>
+                        <MenuItem href="/today" icon="clock" label="當日專區" onClick={() => setMenuOpen(false)} />
                         <MenuItem href="/wallet" icon="wallet" label="我的錢包" onClick={() => setMenuOpen(false)} />
                         <MenuItem href="/score" icon="medal" label="貢獻值與等級" onClick={() => setMenuOpen(false)} />
                         <MenuItem href="/settings" icon="cog" label="個人設定" onClick={() => setMenuOpen(false)} />

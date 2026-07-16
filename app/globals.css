@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── Surfaces: cool blue-white canvas, crisp white paper ── */
-  --color-canvas: #f2f7ff;
-  --color-canvas-2: #e6effe;
+  /* ── Surfaces: neutral cool-gray canvas, crisp white paper ── */
+  --color-canvas: #f6f7f9;
+  --color-canvas-2: #eef0f4;
   --color-paper: #ffffff;
-  --color-sand: #eef3fd;
-  --color-sand-2: #dfe8f8;
-  --color-ink: #142140;
-  --color-ink-soft: #566388;
-  --color-ink-faint: #93a0bd;
-  --color-line: #e6ecf8;
+  --color-sand: #f1f2f6;
+  --color-sand-2: #e6e8ee;
+  --color-ink: #101523;
+  --color-ink-soft: #59626f;
+  --color-ink-faint: #98a0ab;
+  --color-line: #e8eaef;
 
-  /* ── Vivid azure primary (token name kept as "accent") ── */
-  --color-accent: #1f7bff;
-  --color-accent-press: #0e60e6;
-  --color-accent-tint: #e7f0ff;
-  --color-sky: #5aa6ff;
-  --color-sky-tint: #eaf3ff;
+  /* ── Confident blue primary (token name kept as "accent") ── */
+  --color-accent: #2867e0;
+  --color-accent-press: #1d4fae;
+  --color-accent-tint: #edf3fe;
+  --color-sky: #6b96ea;
+  --color-sky-tint: #eef3fd;
 
   /* ── Semantic categoricals (brightened) ── */
   --color-navy: #1c4fa0;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { apiFetch } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
 import { Landing } from "@/components/Landing";
@@ -434,6 +435,13 @@ function FeedView({
               快過期了，幫忙領走
             </span>
             <span className="text-xs text-ink-soft">這些券即將過期，別讓它浪費掉</span>
+            <Link
+              href="/today"
+              className="ml-auto flex items-center gap-0.5 text-xs font-semibold text-danger transition-colors hover:text-ink"
+            >
+              當日專區
+              <Icon name="chevronRight" size={14} />
+            </Link>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {expData.data.map((c) => (

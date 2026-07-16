@@ -25,6 +25,7 @@ import { ReportModal } from "@/components/ReportModal";
 import { Icon } from "@/components/icons";
 import { cn, expiryText, formatDate, relativeTime, STATUS_META } from "@/lib/display";
 import { categoryStyle, REDEEM_KIND_LABEL, REDEEM_KIND_STYLE } from "@/lib/categories";
+import { endOfTodayTaipei } from "@/lib/time";
 
 type Owner = {
   id: string;
@@ -615,6 +616,7 @@ export default function CouponDetailPage() {
         onClose={() => setClaimOpen(false)}
         couponId={coupon.id}
         type={coupon.type}
+        expiryDate={coupon.expiry_date}
         onDone={() => {
           setClaimOpen(false);
           refetch();
@@ -721,18 +723,27 @@ function ClaimModal({
   onClose,
   couponId,
   type,
+  expiryDate,
   onDone,
 }: {
   open: boolean;
   onClose: () => void;
   couponId: string;
   type: string;
+  expiryDate: string | null;
   onDone: () => void;
 }) {
   const [message, setMessage] = useState("");
   const [offer, setOffer] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 台灣時間今天內到期（且尚未過期）— 領取前給緊急提示。語意對齊 lib/feed.ts
+  // 的當日專區查詢（now < expiryDate < 台北隔日 00:00）。
+  const expiresToday =
+    !!expiryDate &&
+    new Date(expiryDate).getTime() > Date.now() &&
+    new Date(expiryDate).getTime() < endOfTodayTaipei().getTime();
 
   async function submit() {
     setBusy(true);
@@ -767,6 +778,13 @@ function ClaimModal({
         </Button>
       }
     >
+      {expiresToday && (
+        <div className="mb-4">
+          <Banner tone="warn" icon="clock">
+            這張券今天到期，領取後請儘速使用。平台不保證券可成功兌用，若發現異常請使用檢舉功能。
+          </Banner>
+        </div>
+      )}
       <Field label="給持有者的留言" required hint="真誠的留言更容易被選中">
         <Textarea
           value={message}

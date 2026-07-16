@@ -20,6 +20,7 @@ import { compressForUpload } from "@/lib/client-image";
 import { cn } from "@/lib/display";
 import { CATEGORIES, REDEEM_KINDS } from "@/lib/categories";
 import { brandsForCategory, ALL_BRAND_NAMES, normalizeBrand } from "@/lib/brands";
+import { findBlockedContent, blockedContentMessage } from "@/lib/contentPolicy";
 
 // YYYY-MM-DD in the user's zone, for <input type="date">.
 function defaultExpiry(): string {
@@ -45,6 +46,7 @@ export default function NewCouponPage() {
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState("PUBLIC");
   const [agreed, setAgreed] = useState(false);
+  const [sharerDeclared, setSharerDeclared] = useState(false);
   const [redeemMethod, setRedeemMethod] = useState<"image" | "code">("image");
   const [redeemCode, setRedeemCode] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -72,6 +74,13 @@ export default function NewCouponPage() {
     uploaded.current = false;
   }
 
+  // 黑名單軟性攔截：標題/描述命中就即時顯示原因並擋下送出（伺服器端也會再驗一次）。
+  const titleHit = findBlockedContent(title);
+  const descHit = findBlockedContent(description);
+  const blockedHit = titleHit ?? descHit;
+  // 停車券提醒：綁車牌/發票的折抵券換人常失效，上架前先講清楚。
+  const mentionsParking = title.includes("停車") || description.includes("停車");
+
   function validate(): string | null {
     if (redeemMethod === "image" && !file) return "請上傳條碼或 QR Code 圖片";
     if (redeemMethod === "code" && !redeemCode.trim()) return "請填寫兌換碼";
@@ -79,9 +88,11 @@ export default function NewCouponPage() {
     if (!brand.trim()) return "請填寫品牌";
     if (!category) return "請選擇分類";
     if (!redeemKind) return "請選擇券內容（免費兌換或折價券）";
+    if (blockedHit) return blockedContentMessage(blockedHit);
     if (!noExpiry && (!expiry || new Date(expiry + "T23:59:59").getTime() <= Date.now())) return "到期日必須晚於今天";
     if (type === "EXCHANGE" && !exchangeTarget.trim()) return "交換類型必須填寫想交換的目標";
     if (!agreed) return "請先勾選確認這是可直接兌換的票券";
+    if (!sharerDeclared) return "請先勾選分享者聲明";
     return null;
   }
 
@@ -114,6 +125,7 @@ export default function NewCouponPage() {
                 ? "AUTO_REVEAL_AFTER_MESSAGE"
                 : "OWNER_APPROVAL",
             directly_redeemable: true,
+            sharer_declaration: true,
             visibility_level: visibility,
           }),
         });
@@ -248,7 +260,7 @@ export default function NewCouponPage() {
         </Card>
 
         <Card className="space-y-4 p-5">
-          <Field label="標題" required>
+          <Field label="標題" required error={titleHit ? blockedContentMessage(titleHit) : undefined}>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例如：星巴克買一送一" />
           </Field>
           <Field label="分類" required>
@@ -394,13 +406,19 @@ export default function NewCouponPage() {
             </label>
           )}
 
-          <Field label="使用限制 / 備註">
+          <Field label="使用限制 / 備註" error={descHit ? blockedContentMessage(descHit) : undefined}>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="例如：限本週使用、需內用、限指定門市…"
             />
           </Field>
+
+          {mentionsParking && (
+            <Banner tone="info" icon="info">
+              提醒：綁定車牌或發票的停車折抵券，換人後通常無法使用。請確認這張券持券即可折抵、不限車牌，並在說明中註明使用方式。
+            </Banner>
+          )}
 
           <Field label="可見範圍" hint="可限制較高等級的會員才能看到與申請">
             <Select value={visibility} onChange={(e) => setVisibility(e.target.value)}>
@@ -424,6 +442,33 @@ export default function NewCouponPage() {
             不需要對方加好友或完成任何任務，且內容真實有效。
           </span>
         </label>
+
+        {/* Sharer declaration — 對應使用條款第二條的分享者聲明 */}
+        <div className="rounded-2xl border border-line bg-paper p-4 shadow-soft">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={sharerDeclared}
+              onChange={(e) => setSharerDeclared(e.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--color-accent)]"
+            />
+            <span className="text-sm leading-relaxed text-ink-soft">
+              這張券是我自己取得、還沒用過的。如果有使用限制（像是限本人、綁定車牌或發票），我已經在說明裡寫清楚，讓領到的人可以放心使用。
+            </span>
+          </label>
+          <p className="mt-2 pl-8 text-xs text-ink-faint">
+            發布即表示同意〈
+            <a
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline transition-colors hover:text-ink"
+            >
+              使用條款
+            </a>
+            〉的分享者聲明。
+          </p>
+        </div>
 
         {error && <Banner tone="warn" icon="info">{error}</Banner>}
 

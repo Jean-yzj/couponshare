@@ -1,14 +1,23 @@
 import { prisma } from "@/lib/db";
 import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
+import { ApiError } from "@/lib/errors";
 import { requireActiveUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { createCouponSchema } from "@/lib/validation";
 import { encryptBarcode } from "@/lib/crypto";
 import { normalizeBrand } from "@/lib/brands";
+import { findBlockedContent, blockedContentMessage } from "@/lib/contentPolicy";
 
 export const POST = route(async (req) => {
   const user = await requireActiveUser();
   const body = await readBody(req, createCouponSchema);
+
+  // 關鍵字黑名單（菸酒藥、彩券等）— 與 app/new/Client.tsx 共用 lib/contentPolicy.ts，
+  // 這裡是繞過前端直打 API 的後盾。
+  const blocked = findBlockedContent(`${body.title} ${body.description ?? ""}`);
+  if (blocked) {
+    throw new ApiError("VALIDATION_ERROR", { message: blockedContentMessage(blocked) });
+  }
 
   const coupon = await prisma.coupon.create({
     data: {

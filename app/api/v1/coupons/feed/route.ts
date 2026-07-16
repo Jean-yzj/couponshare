@@ -10,6 +10,7 @@ export const GET = route(async (req) => {
   const redeemKind = url.searchParams.get("redeem_kind");
   const sort = url.searchParams.get("sort") || "latest";
   const withinHours = parseInt(url.searchParams.get("within_hours") || "", 10);
+  const expiringToday = url.searchParams.get("expiring_today") === "true";
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") || "20", 10) || 20));
   const viewer = await getCurrentUser();
@@ -23,6 +24,7 @@ export const GET = route(async (req) => {
       redeemKind,
       sort,
       withinHours: Number.isFinite(withinHours) ? withinHours : 0,
+      expiringToday,
       page,
       limit,
     }),

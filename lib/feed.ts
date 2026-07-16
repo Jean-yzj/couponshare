@@ -12,6 +12,7 @@ import { feedCoupon } from "@/lib/serialize";
 import { couponCardSelect } from "@/lib/selects";
 import { CATEGORY_KEYS, REDEEM_KIND_KEYS } from "@/lib/categories";
 import { blockedUserIds } from "@/lib/blocks";
+import { endOfTodayTaipei } from "@/lib/time";
 
 type FeedViewer = Pick<User, "id" | "userLevel"> | null;
 
@@ -26,6 +27,8 @@ export type CouponFeedParams = {
   redeemKind?: string | null;
   sort?: string | null;
   withinHours?: number;
+  // 當日專區：只留台灣時間今天內到期的券（now < expiryDate < 台北隔日 00:00）。
+  expiringToday?: boolean;
   page?: number;
   limit?: number;
 };
@@ -62,7 +65,9 @@ export async function getCouponFeed(params: CouponFeedParams) {
   };
   if (hiddenOwnerIds.length) where.ownerId = { notIn: hiddenOwnerIds };
 
-  if (within > 0) {
+  if (params.expiringToday) {
+    where.expiryDate = { gt: now, lt: endOfTodayTaipei(now) };
+  } else if (within > 0) {
     where.expiryDate = { gt: now, lt: new Date(now.getTime() + within * 3_600_000) };
   } else {
     where.OR = [{ expiryDate: null }, { expiryDate: { gt: now } }];
