@@ -48,6 +48,15 @@ function r2Client(config: R2Config): S3Client {
   return cachedClient;
 }
 
+// Shared getter for other modules (e.g. backup cron) that need the R2 client
+// and bucket name without importing barcode-specific helpers. Returns null when
+// R2 is not configured so callers can fail gracefully.
+export function getR2ClientAndBucket(): { client: S3Client; bucket: string } | null {
+  const config = r2Config();
+  if (!config) return null;
+  return { client: r2Client(config), bucket: config.bucket };
+}
+
 function encryptedBytes(encrypted: string): Buffer {
   const bytes = Buffer.from(encrypted, "base64");
   if (bytes.length === 0 || bytes.length > MAX_ENCRYPTED_BARCODE_BYTES) {
