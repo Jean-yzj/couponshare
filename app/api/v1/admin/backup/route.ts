@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { prisma } from "@/lib/db";
+import { TABLES, BYTE_BUDGET, generate } from "@/lib/backup-export";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,81 +18,6 @@ export const maxDuration = 800;
 //
 // Memory-safe: id-cursor pagination + backpressure via pull(), and coupons are
 // emitted one row at a time because a barcode blob can be ~6.7MB.
-const TABLES: { model: string; batch: number }[] = [
-  { model: "user", batch: 500 },
-  { model: "coupon", batch: 1 },
-  { model: "claimRequest", batch: 300 },
-  { model: "transaction", batch: 50 },
-  { model: "transactionMessage", batch: 500 },
-  { model: "rating", batch: 500 },
-  { model: "report", batch: 300 },
-  { model: "appeal", batch: 500 },
-  // Evidence data-URIs can be ~0.5MB each, so keep the batch small like coupon.
-  { model: "socialPost", batch: 20 },
-  { model: "scoreLedger", batch: 1000 },
-  { model: "notification", batch: 1000 },
-  { model: "brandFollow", batch: 1000 },
-  { model: "pushToken", batch: 1000 },
-  { model: "block", batch: 1000 },
-  { model: "auditLog", batch: 1000 },
-];
-
-// Stop a request after roughly this many uncompressed bytes, then hand the client
-// a resume cursor. Sized so even a slow SG↔TW link finishes each request in a few
-// minutes — well under the gateway timeout — regardless of total DB size.
-const BYTE_BUDGET = 40 * 1024 * 1024;
-
-async function* generate(startIdx: number, startId: string | undefined): AsyncGenerator<string> {
-  if (startIdx === 0 && !startId) {
-    yield JSON.stringify({ _t: "_meta", exportedAt: new Date().toISOString(), version: 1 }) + "\n";
-  }
-  let bytes = 0;
-  for (let ti = startIdx; ti < TABLES.length; ti++) {
-    const t = TABLES[ti];
-    let cursor = ti === startIdx ? startId : undefined;
-    for (;;) {
-      const rows: { id: string }[] = await (
-        prisma as unknown as Record<string, { findMany: (a: unknown) => Promise<{ id: string }[]> }>
-      )[t.model].findMany({
-        take: t.batch,
-        orderBy: { id: "asc" },
-        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-      });
-      if (rows.length === 0) break;
-      let chunk = "";
-      for (const r of rows) chunk += JSON.stringify({ _t: t.model, r }) + "\n";
-      yield chunk;
-      bytes += chunk.length;
-      cursor = rows[rows.length - 1].id;
-      if (rows.length < t.batch) break; // table exhausted
-      if (bytes >= BYTE_BUDGET) {
-        // Pause mid-table; resume this same table after `cursor` next request.
-        yield JSON.stringify({ _t: "_next", after: `${ti}:${cursor}` }) + "\n";
-        return;
-      }
-    }
-    // Table finished. If we're over budget and more tables remain, pause here.
-    if (bytes >= BYTE_BUDGET && ti < TABLES.length - 1) {
-      yield JSON.stringify({ _t: "_next", after: `${ti + 1}:` }) + "\n";
-      return;
-    }
-  }
-
-  // Small operational tables whose PK isn't `id`, so they don't fit the id-cursor
-  // loop above (AppSetting keyed by `key`, BlockedIp by `ip`). They're tiny — the
-  // kill-switch flags and a short IP blocklist — so emit them whole here on the
-  // final segment (this code is only reached once the paged loop fully completes).
-  for (const model of ["appSetting", "blockedIp"] as const) {
-    const rows: Record<string, unknown>[] = await (
-      prisma as unknown as Record<string, { findMany: (a: unknown) => Promise<Record<string, unknown>[]> }>
-    )[model].findMany({});
-    let chunk = "";
-    for (const r of rows) chunk += JSON.stringify({ _t: model, r }) + "\n";
-    if (chunk) yield chunk;
-  }
-
-  yield JSON.stringify({ _t: "_done" }) + "\n";
-}
 
 export async function GET(req: NextRequest) {
   // A full-DB export is gated on its OWN dedicated high-entropy secret only — never
@@ -142,3 +67,6 @@ export async function GET(req: NextRequest) {
     },
   });
 }
+
+// Re-export BYTE_BUDGET so any tooling that imports this route still compiles.
+export { BYTE_BUDGET };
