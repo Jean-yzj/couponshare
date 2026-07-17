@@ -8,16 +8,12 @@ import { useMe, useApi, apiFetch } from "@/lib/client";
 import { Icon, type IconName } from "./icons";
 import { Avatar, Button } from "./ui";
 import { UtmCapture } from "./UtmCapture";
+import { BrandLogo } from "./BrandLogo";
 
 function Logo() {
   return (
-    <Link href="/" prefetch={true} className="flex items-center gap-2">
-      <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-grad-brand text-white shadow-glow">
-        <Icon name="ticket" size={20} />
-      </span>
-      <span className="font-display text-[22px] font-extrabold tracking-tight text-ink">
-        CouponShare
-      </span>
+    <Link href="/" prefetch={true} aria-label="CouponShare 首頁" className="flex items-center">
+      <BrandLogo />
     </Link>
   );
 }
@@ -120,14 +116,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="relative z-10 flex min-h-dvh flex-col">
         <header className="border-b border-line/80 bg-canvas">
           <div className="mx-auto flex h-16 w-full max-w-3xl items-center justify-between px-4 sm:px-6">
-            <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-grad-brand text-white shadow-glow">
-                <Icon name="ticket" size={20} />
-              </span>
-              <span className="font-display text-[22px] font-extrabold tracking-tight text-ink">
-                CouponShare
-              </span>
-            </div>
+            <BrandLogo />
             <button
               onClick={logout}
               className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-ink-soft transition-colors hover:bg-sand/70"
@@ -338,6 +327,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
 
         <footer className="mt-12 border-t border-line/70 pt-6 text-center text-xs text-ink-faint">
+          <div className="mb-4 flex justify-center">
+            <BrandLogo markClassName="h-7" wordmarkClassName="text-base" />
+          </div>
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
             <Link href="/terms" className="transition-colors hover:text-ink">
               使用條款

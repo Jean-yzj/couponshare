@@ -20,6 +20,13 @@ export default function GlobalError({ error }: { error: Error }) {
     <html lang="zh-Hant">
       <body style={{ fontFamily: "system-ui, sans-serif", background: "#f2f7ff", color: "#142140" }}>
         <div style={{ maxWidth: 420, margin: "0 auto", padding: "96px 24px", textAlign: "center" }}>
+          <img
+            src="/couponshare-mark.svg"
+            alt="CouponShare"
+            width="96"
+            height="60"
+            style={{ display: "block", margin: "0 auto 20px" }}
+          />
           <h1 style={{ fontSize: 20, fontWeight: 800 }}>頁面載入出了點問題</h1>
           <p style={{ marginTop: 8, fontSize: 14, color: "#566388", lineHeight: 1.6 }}>
             可能是網站剛更新完成，重新整理一下通常就會恢復。

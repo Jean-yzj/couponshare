@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiFetch, ApiErr } from "@/lib/client";
 import { Button, Card, Field, Input, Banner } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { BrandMark } from "@/components/BrandLogo";
 import { cn } from "@/lib/display";
 import { UTM_STORAGE_KEY, type UtmPayload, utmFromSearchParams, utmToQuery } from "@/lib/utm";
 
@@ -109,9 +110,7 @@ export default function LoginPage() {
   return (
     <div className="mx-auto max-w-md py-4">
       <div className="mb-6 text-center">
-        <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-grad-brand text-white shadow-glow">
-          <Icon name="ticket" size={26} />
-        </span>
+        <BrandMark className="mx-auto mb-3 h-12 w-auto" title="CouponShare" />
         <h1 className="text-2xl font-bold tracking-tight text-ink">歡迎來到 CouponShare</h1>
         <p className="mt-1.5 text-sm text-ink-soft">
           登入即可分享票券、申請領取，並累積你的貢獻值。

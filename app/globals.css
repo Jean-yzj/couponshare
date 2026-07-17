@@ -16,6 +16,8 @@
   --color-accent: #2867e0;
   --color-accent-press: #1d4fae;
   --color-accent-tint: #edf3fe;
+  --color-brand-slate: #7b8492;
+  --color-brand-slate-tint: #eef0f3;
   --color-sky: #6b96ea;
   --color-sky-tint: #eef3fd;
 
@@ -68,7 +70,7 @@
   body {
     background-color: var(--color-canvas);
     background-image: radial-gradient(120% 80% at 100% 0%, rgba(90, 166, 255, 0.1) 0%, transparent 55%),
-      radial-gradient(90% 60% at 0% 0%, rgba(122, 92, 240, 0.06) 0%, transparent 50%);
+      radial-gradient(90% 60% at 0% 0%, rgba(123, 132, 146, 0.07) 0%, transparent 50%);
     background-attachment: fixed;
     color: var(--color-ink);
     font-family: var(--font-sans);
