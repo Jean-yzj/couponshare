@@ -7,6 +7,7 @@ import { Button, Card, Skeleton, EmptyState, NeedLogin, Pill } from "@/component
 import { Icon } from "@/components/icons";
 import { ReasonModal } from "@/components/ReasonModal";
 import { cn, relativeTime } from "@/lib/display";
+import { REDEEM_KIND_LABEL } from "@/lib/categories";
 
 type ReportAction = "dismiss" | "dismiss_malicious" | "strike_user" | "remove_coupon" | "suspend_user";
 const ACTION_META: Record<
@@ -392,7 +393,7 @@ function ReportDetailPanel({ detail, loading }: { detail: ReportDetail | null; l
           {c.description && <p className="mt-1 whitespace-pre-wrap text-ink-soft">{c.description}</p>}
           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-ink-faint">
             <span>分類 {c.category ?? "—"}</span>
-            <span>內容 {c.redeem_kind === "FREE_ITEM" ? "免費兌換" : c.redeem_kind === "DISCOUNT" ? "折價券" : "—"}</span>
+            <span>內容 {(c.redeem_kind && REDEEM_KIND_LABEL[c.redeem_kind]) || "—"}</span>
             <span>{c.type === "GIFT" ? "贈送" : "交換"}</span>
             {c.exchange_target && <span>換：{c.exchange_target}</span>}
             <span>狀態 {c.status}</span>

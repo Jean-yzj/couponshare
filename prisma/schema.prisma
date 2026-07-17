@@ -50,10 +50,12 @@ enum CouponCategory {
   OTHER
 }
 
-// What the coupon actually gives: a free item to redeem, or money off.
+// What the coupon actually gives: a free item to redeem, money off, or
+// buy-one-get-one (needs a purchase, but yields an extra item).
 enum CouponRedeemKind {
   FREE_ITEM
   DISCOUNT
+  BOGO
 }
 
 enum CouponStatus {

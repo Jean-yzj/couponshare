@@ -74,8 +74,8 @@ export const createCouponSchema = z.object({
     "ENTERTAINMENT",
     "OTHER",
   ]),
-  // 券內容：免費兌換實體 vs 折價券。與品牌分類正交，上架時必選。
-  redeem_kind: z.enum(["FREE_ITEM", "DISCOUNT"]),
+  // 券內容：免費兌換／折價券／買一送一。與品牌分類正交，上架時必選。
+  redeem_kind: z.enum(["FREE_ITEM", "DISCOUNT", "BOGO"]),
   // 文字兌換碼（條碼圖片的替代；加密保存、只有領取者看得到）。
   redeem_code: z.string().trim().min(1).max(200).optional().nullable(),
   description: z.string().max(1000).optional().nullable(),

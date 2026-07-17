@@ -45,6 +45,7 @@ export function categoryStyle(cat?: string | null) {
 export const REDEEM_KINDS: { key: CouponRedeemKind; label: string; hint: string }[] = [
   { key: "FREE_ITEM", label: "免費兌換", hint: "憑券免費換一份商品，不用再消費" },
   { key: "DISCOUNT", label: "折價券", hint: "消費時折抵金額或比例" },
+  { key: "BOGO", label: "買一送一", hint: "買一送一、第二件優惠，需要消費" },
 ];
 
 export const REDEEM_KIND_LABEL: Record<string, string> = Object.fromEntries(
@@ -56,8 +57,9 @@ export const REDEEM_KIND_KEYS = REDEEM_KINDS.map((r) => r.key) as [
   ...CouponRedeemKind[],
 ];
 
-// Small pill on cards / detail. 免費兌換=綠、折價券=橘，和 category 色系不搶。
+// Small pill on cards / detail. 免費兌換=綠、折價券=橘、買一送一=紫，和 category 色系不搶。
 export const REDEEM_KIND_STYLE: Record<string, { tint: string; text: string }> = {
   FREE_ITEM: { tint: "#e4f7ed", text: "#0b7a46" },
   DISCOUNT: { tint: "#fdefdf", text: "#c26410" },
+  BOGO: { tint: "#ece7fe", text: "#5a3fd0" },
 };

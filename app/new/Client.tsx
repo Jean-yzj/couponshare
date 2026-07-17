@@ -87,7 +87,7 @@ export default function NewCouponPage() {
     if (!title.trim()) return "請填寫標題";
     if (!brand.trim()) return "請填寫品牌";
     if (!category) return "請選擇分類";
-    if (!redeemKind) return "請選擇券內容（免費兌換或折價券）";
+    if (!redeemKind) return "請選擇券內容";
     if (blockedHit) return blockedContentMessage(blockedHit);
     if (!noExpiry && (!expiry || new Date(expiry + "T23:59:59").getTime() <= Date.now())) return "到期日必須晚於今天";
     if (type === "EXCHANGE" && !exchangeTarget.trim()) return "交換類型必須填寫想交換的目標";
@@ -315,20 +315,23 @@ export default function NewCouponPage() {
             <p className="mb-1.5 text-sm font-medium text-ink">
               券內容<span className="text-accent">*</span>
             </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {REDEEM_KINDS.map((r) => (
                 <button
                   key={r.key}
                   type="button"
                   onClick={() => setRedeemKind(r.key)}
                   className={cn(
-                    "flex items-center justify-center gap-2 rounded-xl border py-3 text-sm font-semibold transition-all",
+                    "flex items-center justify-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition-all",
                     redeemKind === r.key
                       ? "border-transparent bg-grad-brand text-white shadow-glow"
                       : "border-line bg-paper text-ink-soft hover:bg-canvas-2",
                   )}
                 >
-                  <Icon name={r.key === "FREE_ITEM" ? "gift" : "coin"} size={17} />
+                  <Icon
+                    name={r.key === "FREE_ITEM" ? "gift" : r.key === "DISCOUNT" ? "coin" : "plus"}
+                    size={17}
+                  />
                   {r.label}
                 </button>
               ))}
