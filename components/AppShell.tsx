@@ -328,7 +328,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <footer className="mt-12 border-t border-line/70 pt-6 text-center text-xs text-ink-faint">
           <div className="mb-4 flex justify-center">
-            <BrandLogo markClassName="h-7" wordmarkClassName="text-base" />
+            <BrandLogo markClassName="h-5" wordmarkClassName="text-sm" />
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
             <Link href="/terms" className="transition-colors hover:text-ink">

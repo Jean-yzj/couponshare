@@ -47,13 +47,15 @@ export function BrandLogo({
   showWordmark = true,
 }: BrandLogoProps) {
   return (
-    <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <BrandMark className={cn("h-8 w-auto", markClassName)} />
+    <span className={cn("inline-flex items-center gap-2", className)}>
+      {/* cn 是純拼接（無 tailwind-merge），預設與覆寫並存時由樣式表順序決定，
+          所以尺寸類別採「有覆寫就不帶預設」而不是疊加。 */}
+      <BrandMark className={cn("w-auto", markClassName ?? "h-6")} />
       {showWordmark && (
         <span
           className={cn(
-            "font-display text-[22px] font-extrabold tracking-tight text-ink",
-            wordmarkClassName,
+            "font-display font-extrabold tracking-tight text-ink",
+            wordmarkClassName ?? "text-[19px]",
           )}
         >
           CouponShare
