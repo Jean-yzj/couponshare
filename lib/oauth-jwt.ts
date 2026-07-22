@@ -84,8 +84,15 @@ async function verifyJwtWithJwks(token: string, jwksUrl: string, issuer: string,
 }
 
 export async function verifyGoogleIdToken(idToken: string) {
-  const audience = process.env.GOOGLE_IOS_CLIENT_ID;
-  if (!audience) throw new Error("GOOGLE_IOS_CLIENT_ID is not set");
+  // GoogleSignin issues the native ID token for the configured *web* client,
+  // while the iOS client identifies the app bundle and handles the callback.
+  // Reuse the website's existing OAuth client in production; keep the legacy
+  // variable as a final fallback for installations that configured it earlier.
+  const audience =
+    process.env.GOOGLE_WEB_CLIENT_ID ||
+    process.env.GOOGLE_CLIENT_ID ||
+    process.env.GOOGLE_IOS_CLIENT_ID;
+  if (!audience) throw new Error("Google ID-token audience is not set");
   const payload = await verifyJwtWithJwks(idToken, GOOGLE_JWKS_URL, "https://accounts.google.com", audience);
   if (!payload.sub || !payload.email) throw new Error("google token missing identity");
   return {
