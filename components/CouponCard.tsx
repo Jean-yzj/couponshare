@@ -109,6 +109,11 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
               <span className="truncate text-[11px] font-medium text-ink-soft">
                 {c.owner?.display_name ?? "—"}
               </span>
+              {c.created_at && (
+                <span className="shrink-0 text-[10px] text-ink-faint">
+                  · 上架 {new Date(c.created_at).toLocaleDateString("zh-TW", { month: "2-digit", day: "2-digit" })}
+                </span>
+              )}
             </div>
             <div className="flex shrink-0 flex-col items-end gap-0.5">
               <span
