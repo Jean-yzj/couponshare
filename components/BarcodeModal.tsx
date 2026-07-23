@@ -39,12 +39,6 @@ export function BarcodeModal({
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Self-heal transient image load failures (a flaky hop, a heavy screenshot that
-  // got interrupted) by silently re-fetching a couple of times before showing the
-  // manual retry. The endpoint + data are sound; the failure is almost always the
-  // network, so an automatic retry usually recovers without the user noticing.
-  const autoRetries = useRef(0);
-  const MAX_AUTO_RETRIES = 2;
 
   // Exchange offer-barcode path (transactions) still resolves a signed URL first,
   // and silently re-issues it ~20s before expiry so it never blanks at the till.
@@ -67,10 +61,39 @@ export function BarcodeModal({
     if (!open) return;
     setError(null);
     setLoading(true);
-    autoRetries.current = 0;
+
     if (directSrc) {
-      setUrl(nonce ? `${directSrc}?r=${nonce}` : directSrc);
-    } else if (endpoint) {
+      // Fetch the barcode image exactly once per open and render it from an
+      // in-memory blob URL. The endpoint sends `no-store` and decrypts on every
+      // read, so letting <img> re-request it on each re-render or auto-retry is
+      // what made received tickets spin. One hop, then it stays local.
+      setUrl(null);
+      let cancelled = false;
+      let objectUrl: string | null = null;
+      fetch(directSrc, { credentials: "include" })
+        .then((r) => {
+          if (!r.ok) throw new Error(String(r.status));
+          return r.blob();
+        })
+        .then((blob) => {
+          if (cancelled) return;
+          objectUrl = URL.createObjectURL(blob);
+          setUrl(objectUrl);
+          setLoading(false);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setLoading(false);
+            setError("無法載入票券圖片");
+          }
+        });
+      return () => {
+        cancelled = true;
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+      };
+    }
+
+    if (endpoint) {
       setUrl(null);
       void loadViaToken();
     }
@@ -109,15 +132,6 @@ export function BarcodeModal({
             className={cn("max-h-72 w-auto rounded-lg transition-opacity duration-200", loading && "opacity-0")}
             onLoad={() => setLoading(false)}
             onError={() => {
-              // Retry a couple of times automatically (cache-busting each time)
-              // before surfacing the manual retry — most failures are a transient
-              // network blip on the heavy image and recover on the next attempt.
-              if (directSrc && autoRetries.current < MAX_AUTO_RETRIES) {
-                autoRetries.current += 1;
-                if (timer.current) clearTimeout(timer.current);
-                timer.current = setTimeout(() => setNonce((n) => n + 1), 600);
-                return;
-              }
               setLoading(false);
               setError("無法載入票券圖片");
             }}
