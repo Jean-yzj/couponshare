@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cn, expiryText } from "@/lib/display";
+import { cn, expiryTextShort } from "@/lib/display";
 import { Avatar } from "./ui";
 import { Icon, type IconName } from "./icons";
 import { CategoryIcon } from "./CategoryIcon";
@@ -37,7 +37,7 @@ const APPLIED_META: Record<string, { label: string; cls: string; icon: IconName 
 // Compact branded-coupon card. Colour theme follows the CATEGORY
 // (速食紅 / 咖啡棕 / 飲料黃 / 超商綠 …) so cards are scannable at a glance.
 export function CouponCard({ c }: { c: FeedCoupon }) {
-  const exp = expiryText(c.expiry_date);
+  const exp = expiryTextShort(c.expiry_date);
   const isGift = c.type === "GIFT";
   const cs = categoryStyle(c.category);
   const category = c.category ? CATEGORY_LABEL[c.category] : undefined;
@@ -104,14 +104,17 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
           <div className="my-2 border-t border-dashed border-line" />
 
           <div className="mt-auto flex items-end justify-between gap-1.5">
-            <div className="flex min-w-0 items-center gap-1.5">
-              {c.owner && <Avatar name={c.owner.display_name} url={c.owner.avatar_url} size={18} />}
-              <span className="truncate text-[11px] font-medium text-ink-soft">
-                {c.owner?.display_name ?? "—"}
-              </span>
+            {/* 左欄兩行堆疊：名字自己一行可截斷、上架日期自己一行，與右欄永不橫向相撞 */}
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <div className="flex min-w-0 items-center gap-1.5">
+                {c.owner && <Avatar name={c.owner.display_name} url={c.owner.avatar_url} size={18} />}
+                <span className="truncate text-[11px] font-medium text-ink-soft">
+                  {c.owner?.display_name ?? "—"}
+                </span>
+              </div>
               {c.created_at && (
-                <span className="shrink-0 text-[10px] text-ink-faint">
-                  · 上架 {new Date(c.created_at).toLocaleDateString("zh-TW", { month: "2-digit", day: "2-digit" })}
+                <span className="truncate text-[10px] text-ink-faint">
+                  上架 {new Date(c.created_at).toLocaleDateString("zh-TW", { month: "2-digit", day: "2-digit" })}
                 </span>
               )}
             </div>

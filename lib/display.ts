@@ -47,6 +47,17 @@ export function expiryText(d: string | Date | null | undefined): { text: string;
   return { text: `${formatDate(date)} 到期`, urgent: false };
 }
 
+// 卡片等窄版面用：遠期日期印成 MM/DD（跨年才帶年份），避免「2026年8月31日 到期」擠爆一行
+export function expiryTextShort(d: string | Date | null | undefined): { text: string; urgent: boolean } {
+  const full = expiryText(d);
+  if (!d || !full.text.includes("年")) return full;
+  const date = typeof d === "string" ? new Date(d) : d;
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return { text: `${sameYear ? "" : `${date.getFullYear()}/`}${mm}/${dd} 到期`, urgent: full.urgent };
+}
+
 export function relativeTime(d: string | Date): string {
   const date = typeof d === "string" ? new Date(d) : d;
   const ms = Date.now() - date.getTime();
