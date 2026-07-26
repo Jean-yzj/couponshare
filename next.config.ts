@@ -22,6 +22,11 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+  // Force HTTPS for a year, including subdomains. The site is HTTPS-only behind
+  // Cloudflare, so no plain-HTTP client can be locked out. `preload` is omitted
+  // deliberately: submitting to the browser preload list is effectively
+  // irreversible for the whole apex domain, which also serves other projects.
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
 ];
 
 const nextConfig: NextConfig = {

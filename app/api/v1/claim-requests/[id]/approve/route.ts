@@ -6,11 +6,13 @@ import { assertTransition } from "@/lib/coupon-state";
 import { applyScore, SCORE_RULES } from "@/lib/score";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
+import { throttle } from "@/lib/throttle";
 
 // Owner approves one applicant. Atomic: DB transaction + row-level lock on the
 // coupon, re-check status under lock, claim, reject the rest, score, notify,
 // audit — all or nothing. PRD §7.2 + §9.2.
 export const POST = route(async (req, ctx) => {
+  throttle(req, "claim-approve", 60, 10 * 60_000);
   const { id: claimRequestId } = await ctx.params;
   const user = await requireActiveUser();
   const meta = clientMeta(req);

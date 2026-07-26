@@ -7,8 +7,15 @@ import { createCouponSchema } from "@/lib/validation";
 import { encryptBarcode } from "@/lib/crypto";
 import { normalizeBrand } from "@/lib/brands";
 import { findBlockedContent, blockedContentMessage } from "@/lib/contentPolicy";
+import { throttle } from "@/lib/throttle";
 
 export const POST = route(async (req) => {
+  // Deliberately generous: Taiwanese mobile carriers put many real users behind
+  // one NAT address, so a tight per-IP cap locks out legitimate people (we
+  // shipped exactly that bug on register once). This is a brake on runaway
+  // scripts and client retry storms — per-user fairness is already enforced by
+  // the share/claim quota in lib/share-gate.ts.
+  throttle(req, "coupon-create", 40, 10 * 60_000);
   const user = await requireActiveUser();
   const body = await readBody(req, createCouponSchema);
 

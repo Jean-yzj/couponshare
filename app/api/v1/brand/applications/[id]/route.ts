@@ -5,12 +5,14 @@ import { requireActiveUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { notify } from "@/lib/notify";
 import { brandApplicationDecisionSchema } from "@/lib/validation";
+import { throttle } from "@/lib/throttle";
 
 export const runtime = "nodejs";
 
 // Brand owner approves / rejects a MESSAGE_APPLICATION for one of their coupons.
 // Approve → CLAIMED + consumes a quota slot; the applicant is notified either way.
 export const POST = route(async (req, ctx) => {
+  throttle(req, "brand-application", 40, 10 * 60_000);
   const user = await requireActiveUser();
   const { id } = await ctx.params;
   const { decision } = await readBody(req, brandApplicationDecisionSchema);

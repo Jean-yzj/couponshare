@@ -4,10 +4,12 @@ import { ApiError } from "@/lib/errors";
 import { requireActiveUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
+import { throttle } from "@/lib/throttle";
 
 // Exchange escrow commit. Each side presses this once their own barcode is in
 // place; when BOTH have committed, the barcodes are revealed simultaneously.
 export const POST = route(async (req, ctx) => {
+  throttle(req, "txn-ready", 60, 10 * 60_000);
   const { id } = await ctx.params;
   const user = await requireActiveUser();
 

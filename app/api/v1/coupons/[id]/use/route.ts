@@ -3,12 +3,14 @@ import { route, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireActiveUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
+import { throttle } from "@/lib/throttle";
 
 // Claimant marks their received coupon as used — or un-marks it. This moves the
 // coupon between the wallet's "我領取的" and "已使用" tabs. The coupon stays CLAIMED;
 // usedAt is the only field touched. Only the claimant of a CLAIMED coupon may call it.
 // Body: { used?: boolean } — omitted defaults to marking used (true).
 export const POST = route(async (req, ctx) => {
+  throttle(req, "coupon-use", 30, 10 * 60_000);
   const { id } = await ctx.params;
   const user = await requireActiveUser();
 

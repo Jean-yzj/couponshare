@@ -7,8 +7,10 @@ import { writeAudit } from "@/lib/audit";
 import { notifyMany } from "@/lib/notify";
 import { applyScore, FIRST_SHARE_DELTA, FIRST_SHARE_DESCRIPTION } from "@/lib/score";
 import { canExchange } from "@/lib/trust";
+import { throttle } from "@/lib/throttle";
 
 export const POST = route(async (req, ctx) => {
+  throttle(req, "coupon-publish", 40, 10 * 60_000);
   const { id } = await ctx.params;
   const user = await requireActiveUser();
 

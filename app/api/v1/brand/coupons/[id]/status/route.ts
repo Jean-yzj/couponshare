@@ -5,11 +5,13 @@ import { requireActiveUser } from "@/lib/auth";
 import { ownsCoupon } from "@/lib/brand-access";
 import { writeAudit } from "@/lib/audit";
 import { brandCouponStatusSchema } from "@/lib/validation";
+import { throttle } from "@/lib/throttle";
 
 export const runtime = "nodejs";
 
 // Brand owner flips one of their coupons ACTIVE / PAUSED / ENDED / DRAFT.
 export const POST = route(async (req, ctx) => {
+  throttle(req, "brand-coupon-status", 60, 10 * 60_000);
   const user = await requireActiveUser();
   const { id } = await ctx.params;
   if (!(await ownsCoupon(user.id, id))) throw new ApiError("FORBIDDEN");

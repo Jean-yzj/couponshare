@@ -3,11 +3,13 @@ import { route, jsonOk, clientMeta } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { requireUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
+import { throttle } from "@/lib/throttle";
 
 // Requester withdraws their own still-pending application. Removing the row frees
 // the coupon's request count and lets them apply again later if they change their
 // mind. Only PENDING requests can be cancelled (approved = already received). PRD §7.2.
 export const POST = route(async (req, ctx) => {
+  throttle(req, "claim-cancel", 60, 10 * 60_000);
   const { id } = await ctx.params;
   const user = await requireUser();
   const meta = clientMeta(req);

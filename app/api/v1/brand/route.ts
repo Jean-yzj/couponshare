@@ -3,12 +3,14 @@ import { route, readBody, jsonOk, clientMeta } from "@/lib/api";
 import { requireActiveUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { brandCreateSchema } from "@/lib/validation";
+import { throttle } from "@/lib/throttle";
 
 export const runtime = "nodejs";
 
 // A user creates a brand they own (self-serve onboarding). Capped so a single
 // account can't spin up unlimited brands.
 export const POST = route(async (req) => {
+  throttle(req, "brand-self-update", 40, 10 * 60_000);
   const user = await requireActiveUser();
   const existing = await prisma.brand.count({ where: { ownerUserId: user.id } });
   if (existing >= 5) {

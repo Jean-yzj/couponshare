@@ -7,6 +7,7 @@ import { issueBarcodeToken } from "@/lib/barcode-token";
 import { writeAudit } from "@/lib/audit";
 import { sniffImageType } from "@/lib/image";
 import { isBarcodeStorageConfigured, putEncryptedBarcode } from "@/lib/barcode-storage";
+import { throttle } from "@/lib/throttle";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,7 @@ const MAX_BYTES = 5 * 1024 * 1024;
 
 // Upload (and encrypt) the barcode / QR image. PRD §7.1 + §16.1.
 export const POST = route(async (req, ctx) => {
+  throttle(req, "barcode-upload", 30, 10 * 60_000);
   const { id } = await ctx.params;
   const user = await requireActiveUser();
 

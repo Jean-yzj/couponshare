@@ -6,6 +6,7 @@ import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
 import { disputeSchema } from "@/lib/validation";
 import { validateDataUriImage } from "@/lib/image";
+import { throttle } from "@/lib/throttle";
 
 // A party reports that the code they received is fake / used / invalid. The swap
 // already happened (codes revealed), so this can't be used to "dispute and steal".
@@ -13,6 +14,7 @@ import { validateDataUriImage } from "@/lib/image";
 // ADMIN review — NOT an auto-penalty (so false accusations aren't a free weapon),
 // but it does feed the Sybil-resistant 3-reporter auto-suspend.
 export const POST = route(async (req, ctx) => {
+  throttle(req, "txn-dispute", 20, 60 * 60_000);
   const { id } = await ctx.params;
   const user = await requireActiveUser();
   const body = await readBody(req, disputeSchema);

@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/errors";
 import { requireActiveUser } from "@/lib/auth";
 import { brandCouponsVisible, brandCouponPubliclyVisible } from "@/lib/brand-access";
 import { brandCouponApplySchema } from "@/lib/validation";
+import { throttle } from "@/lib/throttle";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,7 @@ export const runtime = "nodejs";
 // review (quota consumed only on approval). One per user, enforced by the unique
 // (coupon, user) index. Gated.
 export const POST = route(async (req, ctx) => {
+  throttle(req, "brand-coupon-apply", 30, 10 * 60_000);
   if (!(await brandCouponsVisible())) throw new ApiError("NOT_FOUND");
   const user = await requireActiveUser();
   const { id } = await ctx.params;

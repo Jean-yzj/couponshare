@@ -3,8 +3,10 @@ import { route, jsonOk, clientMeta } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { destroySession } from "@/lib/session";
 import { writeAudit } from "@/lib/audit";
+import { throttle } from "@/lib/throttle";
 
 export const DELETE = route(async (req) => {
+  throttle(req, "account-delete", 10, 60 * 60_000);
   const user = await requireUser();
   const meta = clientMeta(req);
   const now = new Date();

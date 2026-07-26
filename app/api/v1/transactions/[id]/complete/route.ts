@@ -5,11 +5,13 @@ import { requireActiveUser } from "@/lib/auth";
 import { applyScore, SCORE_RULES } from "@/lib/score";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
+import { throttle } from "@/lib/throttle";
 
 // GIFT: either party confirming completes it. EXCHANGE: codes must have been
 // revealed (both committed) first, then BOTH must confirm. A clean exchange
 // completion credits BOTH sides +5; a disputed one credits nobody. PRD §7.3.
 export const POST = route(async (req, ctx) => {
+  throttle(req, "txn-complete", 60, 10 * 60_000);
   const { id } = await ctx.params;
   const user = await requireActiveUser();
 

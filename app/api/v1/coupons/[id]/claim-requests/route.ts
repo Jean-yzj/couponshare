@@ -14,9 +14,11 @@ import { hasBlockBetween } from "@/lib/blocks";
 import { assertTransition } from "@/lib/coupon-state";
 import { applyScore, SCORE_RULES } from "@/lib/score";
 import { getFlag, FLAG_CLAIMS_PAUSED } from "@/lib/settings";
+import { throttle } from "@/lib/throttle";
 
 // Apply to claim / exchange a coupon. PRD §7.2.
 export const POST = route(async (req, ctx) => {
+  throttle(req, "claim-create", 40, 10 * 60_000);
   const { id: couponId } = await ctx.params;
   const user = await requireActiveUser();
   // Emergency kill-switch: an admin can pause all claiming during an abuse incident.

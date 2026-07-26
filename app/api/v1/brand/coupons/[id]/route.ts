@@ -6,11 +6,13 @@ import { ownsCoupon } from "@/lib/brand-access";
 import { writeAudit } from "@/lib/audit";
 import { validateDataUriImage } from "@/lib/image";
 import { brandCouponCreateSchema } from "@/lib/validation";
+import { throttle } from "@/lib/throttle";
 
 export const runtime = "nodejs";
 
 // Brand owner edits an existing coupon (title, mode, redeem, image, task, CTA).
 export const POST = route(async (req, ctx) => {
+  throttle(req, "brand-coupon-update", 40, 10 * 60_000);
   const user = await requireActiveUser();
   const { id } = await ctx.params;
   const brandId = await ownsCoupon(user.id, id);

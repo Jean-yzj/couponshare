@@ -6,8 +6,10 @@ import { requireActiveUser } from "@/lib/auth";
 import { applyScore, SCORE_RULES } from "@/lib/score";
 import { notify } from "@/lib/notify";
 import { ratingSchema } from "@/lib/validation";
+import { throttle } from "@/lib/throttle";
 
 export const POST = route(async (req, ctx) => {
+  throttle(req, "txn-rating", 60, 10 * 60_000);
   const { id } = await ctx.params;
   const user = await requireActiveUser();
   const body = await readBody(req, ratingSchema);

@@ -6,11 +6,13 @@ import { ownsBrand } from "@/lib/brand-access";
 import { writeAudit } from "@/lib/audit";
 import { validateDataUriImage } from "@/lib/image";
 import { brandEditSchema } from "@/lib/validation";
+import { throttle } from "@/lib/throttle";
 
 export const runtime = "nodejs";
 
 // Brand owner edits their brand's public identity (name, category, logo image).
 export const POST = route(async (req, ctx) => {
+  throttle(req, "brand-update", 40, 10 * 60_000);
   const user = await requireActiveUser();
   const { brandId } = await ctx.params;
   if (!(await ownsBrand(user.id, brandId))) throw new ApiError("FORBIDDEN");

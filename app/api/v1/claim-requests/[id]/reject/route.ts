@@ -5,8 +5,10 @@ import { requireUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
 import { writeAudit } from "@/lib/audit";
 import { rejectSchema } from "@/lib/validation";
+import { throttle } from "@/lib/throttle";
 
 export const POST = route(async (req, ctx) => {
+  throttle(req, "claim-reject", 60, 10 * 60_000);
   const { id } = await ctx.params;
   const user = await requireUser();
   const body = await readBody(req, rejectSchema);

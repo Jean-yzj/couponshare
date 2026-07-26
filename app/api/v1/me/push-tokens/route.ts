@@ -3,8 +3,10 @@ import { prisma } from "@/lib/db";
 import { route, readBody, jsonOk } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { pushTokenSchema, deletePushTokenSchema } from "@/lib/validation";
+import { throttle } from "@/lib/throttle";
 
 export const POST = route(async (req) => {
+  throttle(req, "push-token", 60, 10 * 60_000);
   const user = await requireUser();
   const body = await readBody(req, pushTokenSchema);
 
@@ -27,6 +29,7 @@ export const POST = route(async (req) => {
 });
 
 export const DELETE = route(async (req) => {
+  throttle(req, "push-token", 60, 10 * 60_000);
   const user = await requireUser();
   const body = await readBody(req, deletePushTokenSchema);
 

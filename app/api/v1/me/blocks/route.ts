@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { publicUser } from "@/lib/serialize";
 import { blockUserSchema } from "@/lib/validation";
+import { throttle } from "@/lib/throttle";
 
 export const GET = route(async () => {
   const user = await requireUser();
@@ -25,6 +26,7 @@ export const GET = route(async () => {
 });
 
 export const POST = route(async (req) => {
+  throttle(req, "block-create", 60, 10 * 60_000);
   const user = await requireUser();
   const body = await readBody(req, blockUserSchema);
   if (body.user_id === user.id) throw new ApiError("VALIDATION_ERROR", { message: "不能封鎖自己" });

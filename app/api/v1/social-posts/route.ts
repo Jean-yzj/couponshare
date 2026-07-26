@@ -6,6 +6,7 @@ import { writeAudit } from "@/lib/audit";
 import { socialPostSchema } from "@/lib/validation";
 import { validateDataUriImage } from "@/lib/image";
 import { startOfMonthTaipei, monthKeyTaipei } from "@/lib/time";
+import { throttle } from "@/lib/throttle";
 
 // 社群發文換申請次數 — submit proof of a CouponShare post for review.
 // One submission per user per Taipei calendar month, capped at MONTH_CAP
@@ -14,6 +15,7 @@ import { startOfMonthTaipei, monthKeyTaipei } from "@/lib/time";
 const MONTH_CAP = 500;
 
 export const POST = route(async (req) => {
+  throttle(req, "social-post", 20, 60 * 60_000);
   const user = await requireActiveUser();
   const body = await readBody(req, socialPostSchema);
 

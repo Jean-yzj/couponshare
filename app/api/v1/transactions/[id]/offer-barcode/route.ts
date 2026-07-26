@@ -6,6 +6,7 @@ import { encryptBarcode } from "@/lib/crypto";
 import { issueBarcodeToken } from "@/lib/barcode-token";
 import { writeAudit } from "@/lib/audit";
 import { sniffImageType } from "@/lib/image";
+import { throttle } from "@/lib/throttle";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,7 @@ const MAX_BYTES = 5 * 1024 * 1024;
 // The claimant uploads the barcode they're offering in an exchange. Stored
 // encrypted; hidden from the owner until the simultaneous reveal.
 export const POST = route(async (req, ctx) => {
+  throttle(req, "offer-barcode", 30, 10 * 60_000);
   const { id } = await ctx.params;
   const user = await requireActiveUser();
 

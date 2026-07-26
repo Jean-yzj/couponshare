@@ -4,10 +4,12 @@ import { ApiError } from "@/lib/errors";
 import { requireUser } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
 import { appealSchema } from "@/lib/validation";
+import { throttle } from "@/lib/throttle";
 
 // Suspended accounts get ONE appeal, ever. A rejected appeal is final — this closes
 // the "reject → immediately re-appeal → spam the queue" loop.
 export const POST = route(async (req) => {
+  throttle(req, "appeal-create", 20, 60 * 60_000);
   const user = await requireUser();
   if (user.status !== "SUSPENDED") {
     throw new ApiError("FORBIDDEN", { message: "只有被停權的帳號可以提出申訴" });

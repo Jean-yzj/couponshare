@@ -9,6 +9,7 @@ import { writeAudit } from "@/lib/audit";
 import { encryptBarcode } from "@/lib/crypto";
 import { normalizeBrand } from "@/lib/brands";
 import { findBlockedContent, blockedContentMessage } from "@/lib/contentPolicy";
+import { throttle } from "@/lib/throttle";
 
 export const GET = route(async (req, ctx) => {
   const { id } = await ctx.params;
@@ -65,6 +66,7 @@ export const GET = route(async (req, ctx) => {
 // frozen as the record of what the claimant accepted. Type/barcode not here:
 // type would change application semantics, barcode has its own guarded route.
 export const PATCH = route(async (req, ctx) => {
+  throttle(req, "coupon-update", 40, 10 * 60_000);
   const { id } = await ctx.params;
   const user = await requireActiveUser();
   const body = await readBody(req, updateCouponSchema);

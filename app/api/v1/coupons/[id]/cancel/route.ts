@@ -5,8 +5,10 @@ import { requireUser } from "@/lib/auth";
 import { assertTransition } from "@/lib/coupon-state";
 import { applyScore, SCORE_RULES } from "@/lib/score";
 import { writeAudit } from "@/lib/audit";
+import { throttle } from "@/lib/throttle";
 
 export const POST = route(async (req, ctx) => {
+  throttle(req, "coupon-cancel", 30, 10 * 60_000);
   const { id } = await ctx.params;
   const user = await requireUser();
 

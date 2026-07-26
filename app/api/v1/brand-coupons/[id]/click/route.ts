@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { route, jsonOk } from "@/lib/api";
 import { ApiError } from "@/lib/errors";
 import { brandCouponsVisible, brandCouponPubliclyVisible } from "@/lib/brand-access";
+import { throttle } from "@/lib/throttle";
 
 export const runtime = "nodejs";
 
@@ -9,6 +10,7 @@ export const runtime = "nodejs";
 // Fire-and-forget from the client — responds with 200 immediately.
 // Gated: flag OFF → 404 for regular users (same gate as the detail API).
 export const POST = route(async (req, ctx) => {
+  throttle(req, "brand-coupon-click", 120, 10 * 60_000);
   if (!(await brandCouponsVisible())) throw new ApiError("NOT_FOUND");
   const { id } = await ctx.params;
 
