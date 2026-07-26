@@ -1,6 +1,5 @@
 import { createReadStream } from "node:fs";
 import { createGunzip } from "node:zlib";
-import { createInterface } from "node:readline";
 import { PrismaClient } from "@prisma/client";
 
 // Restore a backup produced by GET /api/v1/admin/backup (gzipped NDJSON, one
@@ -22,12 +21,37 @@ const p = new PrismaClient();
 const MAX_ROWS = 500;
 const MAX_BYTES = 16_000_000;
 
+// Yield NDJSON lines, splitting on "\n" ONLY.
+//
+// Do NOT use node:readline here. The export writes JSON.stringify(row) + "\n", and
+// JSON.stringify does not escape U+2028 / U+2029 (both are legal inside a JSON string).
+// readline treats those two characters as line terminators, so any row whose text
+// contains one — users pick them up pasting from Word/Pages/some iOS keyboards — gets
+// split mid-string, and the JSON.parse below throws "Unterminated string in JSON",
+// aborting the entire restore. LF/CRLF inside values are safe (they are escaped).
+// Verified against the 2026-07-26 production backup.
+async function* ndjsonLines(path: string) {
+  const stream = createReadStream(path).pipe(createGunzip());
+  stream.setEncoding("utf8"); // StringDecoder keeps multi-byte chars intact across chunks
+  let buf = "";
+  for await (const chunk of stream as AsyncIterable<string>) {
+    buf += chunk;
+    let start = 0;
+    let i: number;
+    while ((i = buf.indexOf("\n", start)) >= 0) {
+      yield buf.slice(start, i);
+      start = i + 1;
+    }
+    buf = buf.slice(start);
+  }
+  if (buf) yield buf;
+}
+
 async function main() {
   if (!file) {
     console.log("usage: tsx prisma/import-backup.ts [--dry-run] <backup.ndjson.gz>");
     return;
   }
-  const rl = createInterface({ input: createReadStream(file).pipe(createGunzip()), crlfDelay: Infinity });
 
   let curModel = "";
   let buf: unknown[] = [];
@@ -49,7 +73,7 @@ async function main() {
     bytes = 0;
   };
 
-  for await (const line of rl) {
+  for await (const line of ndjsonLines(file)) {
     if (!line.trim()) continue;
     const o = JSON.parse(line) as { _t: string; r?: unknown; exportedAt?: string };
     if (o._t === "_meta") {
