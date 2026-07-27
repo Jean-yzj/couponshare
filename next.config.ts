@@ -34,6 +34,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  async rewrites() {
+    // Android App Links 要求驗證檔放在固定路徑 /.well-known/assetlinks.json。
+    // App Router 會忽略以點號開頭的資料夾，所以改由 route handler 提供再轉寫。
+    return [
+      { source: "/.well-known/assetlinks.json", destination: "/api/assetlinks" },
+    ];
+  },
 };
 
 export default nextConfig;
