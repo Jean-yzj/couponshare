@@ -714,3 +714,36 @@ model BrandCouponApplication {
   @@index([userId])
   @@map("brand_coupon_applications")
 }
+
+// 行為埋點 — client-side behavioural events from the app and web, batched to
+// POST /api/v1/events. Answers the funnel questions the other tables can't:
+// they only record actions that *succeeded* (a claim_request row, a transaction
+// row), so "viewed but never tapped" leaves no trace anywhere else.
+//
+// userId is nullable on purpose: coupon detail is browsable logged-out, and the
+// view→apply conversion rate is meaningless if logged-out views are dropped.
+// anonId (device-scoped, from SecureStore) stitches pre-/post-login activity.
+// Plain scalar (no User relation) to keep this model self-contained and to
+// survive user deletion — the same choice AuditLog.actorId makes.
+//
+// Privacy: props carries behaviour only — never email, barcode, or message text.
+// Retention: nothing prunes this table yet; it grows monotonically. Revisit with
+// a cron purge (e.g. drop rows older than 180 days) once volume is known.
+model ClientEvent {
+  id        String   @id @default(uuid())
+  name      String
+  props     Json?
+  anonId    String?  @map("anon_id")
+  userId    String?  @map("user_id")
+  // ios | android | web
+  platform  String
+  appBuild  Int?     @map("app_build")
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Hot path: every funnel query filters by name over a time window.
+  @@index([name, createdAt])
+  @@index([userId, createdAt])
+  @@index([anonId, createdAt])
+  @@map("client_events")
+}
