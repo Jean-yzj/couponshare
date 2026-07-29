@@ -49,7 +49,10 @@ export const appleLoginSchema = z.object({
 
 export const pushTokenSchema = z.object({
   token: z.string().min(10).max(300),
-  platform: z.literal("ios"),
+  // App 端送的是 Platform.OS。曾經寫死 z.literal("ios")，Android 版一送
+  // "android" 就 400，而 App 端 registerPushToken 外層有 catch 吞掉錯誤，
+  // 結果是「Android 使用者永遠沒有 push token，而且完全沒有聲音」。
+  platform: z.enum(["ios", "android"]),
 });
 
 export const deletePushTokenSchema = z.object({

@@ -43,3 +43,7 @@ next-env.d.ts
 # local preview config
 .claude/
 .gstack/
+
+# 指向 couponshare-ios/playstore 的本機捷徑（方便在編輯器瀏覽 Android 上架包，不入版控）
+/android-playstore
+/android-docs

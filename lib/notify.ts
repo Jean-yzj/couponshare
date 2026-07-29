@@ -82,7 +82,10 @@ export async function notifyMany(
   });
   try {
     const tokens = await db.pushToken.findMany({
-      where: { userId: { in: args.userIds }, platform: "ios" },
+      // 不依 platform 篩選：Expo push token 本身就綁定裝置，Expo 服務自己
+      // 知道要轉給 APNs 還是 FCM。這裡曾寫死 platform: "ios"，Android 上架後
+      // 會讓所有 Android 使用者收不到任何通知。
+      where: { userId: { in: args.userIds } },
       select: { token: true },
     });
     if (tokens.length) await sendExpoPush(tokens, { ...args, userId: "" });
@@ -108,7 +111,8 @@ export async function notify(
 
   try {
     const tokens = await db.pushToken.findMany({
-      where: { userId: args.userId, platform: "ios" },
+      // 同上：不依 platform 篩選，Expo 自己路由到 APNs／FCM
+      where: { userId: args.userId },
       select: { token: true },
     });
     if (tokens.length) await sendExpoPush(tokens, args);
