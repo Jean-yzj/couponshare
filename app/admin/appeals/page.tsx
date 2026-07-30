@@ -141,6 +141,8 @@ export default function AdminAppealsPage() {
                 <p className="mt-2 text-xs text-ink-faint">複核備註：{a.admin_note}</p>
               )}
 
+              <SuspensionContext userId={a.user.id} />
+
               {a.status === "PENDING" && (
                 <div className="mt-3 flex gap-2">
                   <Button size="sm" icon="check" loading={acting === a.id} onClick={() => accept(a.id)}>
@@ -169,6 +171,187 @@ export default function AdminAppealsPage() {
           pendingReject && submit(pendingReject, "REJECT", reason || undefined)
         }
       />
+    </div>
+  );
+}
+
+type SuspensionCtx = {
+  suspension: {
+    kind: string;
+    label: string;
+    at: string;
+    actor: { id: string; display_name: string } | null;
+    reason: string | null;
+    detail: Record<string, unknown> | null;
+  } | null;
+  reports_against: {
+    id: string;
+    reason_label: string;
+    description: string | null;
+    evidence_image_url: string | null;
+    status: string;
+    admin_note: string | null;
+    created_at: string;
+    coupon: { id: string; title: string; brand: string | null; status: string } | null;
+    reporter: {
+      id: string;
+      display_name: string;
+      account_age_days: number;
+      contribution_score: number;
+      status: string;
+    } | null;
+  }[];
+  stats: {
+    distinct_reporters: number;
+    reports_against_count: number;
+    reports_filed_count: number;
+    transactions_completed: number;
+    transactions_disputed: number;
+    rating_avg: number | null;
+    rating_count: number;
+    appeals_count: number;
+    coupons_by_status: Record<string, number>;
+  };
+  user: { account_age_days: number; contribution_score: number };
+};
+
+// The reviewer's core question is "why is this person suspended?" — the answer
+// lives in audit_logs + reports, which the appeal row never carried. Collapsed
+// by default so the queue stays scannable; fetched only when opened.
+function SuspensionContext({ userId }: { userId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data, loading } = useApi<SuspensionCtx>(
+    open ? `/api/v1/admin/users/${userId}/suspension-context` : null,
+  );
+
+  return (
+    <div className="mt-3 border-t border-line pt-3">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-press"
+      >
+        <Icon name="chevronDown" className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+        {open ? "收合停權原因" : "查看停權原因"}
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          {loading || !data ? (
+            <Skeleton className="h-24 rounded-xl" />
+          ) : (
+            <>
+              {data.suspension ? (
+                <div className="rounded-xl bg-danger-tint/50 p-3">
+                  <p className="text-sm font-bold text-danger">{data.suspension.label}</p>
+                  <p className="mt-1 text-xs text-ink-soft">
+                    {relativeTime(data.suspension.at)}
+                    {data.suspension.actor && ` · 執行者 ${data.suspension.actor.display_name}`}
+                  </p>
+                  {data.suspension.reason && (
+                    <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink">
+                      理由：{data.suspension.reason}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-xl bg-sand p-3 text-sm text-ink-soft">
+                  查無停權紀錄。可能是舊資料（稽核日誌上線前），或帳號其實未被停權。
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                <Stat
+                  label="不同檢舉人"
+                  value={String(data.stats.distinct_reporters)}
+                  warn={data.stats.distinct_reporters >= 3}
+                  hint="滿 3 人即自動停權"
+                />
+                <Stat label="完成交易" value={String(data.stats.transactions_completed)} />
+                <Stat
+                  label="評價"
+                  value={
+                    data.stats.rating_count
+                      ? `${data.stats.rating_avg?.toFixed(1)} / ${data.stats.rating_count}`
+                      : "無"
+                  }
+                />
+                <Stat
+                  label="他檢舉別人"
+                  value={String(data.stats.reports_filed_count)}
+                  warn={data.stats.reports_filed_count >= 3}
+                  hint="偏高可能是互相檢舉"
+                />
+              </div>
+
+              {data.reports_against.length > 0 && (
+                <div>
+                  <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-ink-faint">
+                    被檢舉明細（{data.reports_against.length}）
+                  </p>
+                  <div className="space-y-2">
+                    {data.reports_against.map((r) => (
+                      <div key={r.id} className="rounded-xl bg-canvas/60 p-2.5 text-xs">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Pill className="bg-danger-tint text-danger">{r.reason_label}</Pill>
+                          {r.coupon && (
+                            <Link
+                              href={`/coupons/${r.coupon.id}`}
+                              className="truncate text-ink-soft hover:text-accent"
+                            >
+                              {r.coupon.title}
+                            </Link>
+                          )}
+                          <span className="ml-auto text-ink-faint">{relativeTime(r.created_at)}</span>
+                        </div>
+                        {r.description && (
+                          <p className="mt-1.5 whitespace-pre-wrap text-ink-soft">{r.description}</p>
+                        )}
+                        {r.reporter && (
+                          <p className="mt-1.5 text-ink-faint">
+                            檢舉人 {r.reporter.display_name} · 帳齡{" "}
+                            <span className={cn(r.reporter.account_age_days < 2 && "font-bold text-danger")}>
+                              {r.reporter.account_age_days} 天
+                            </span>{" "}
+                            · {r.reporter.contribution_score} 貢獻分
+                          </p>
+                        )}
+                        {r.evidence_image_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={r.evidence_image_url}
+                            alt="檢舉證據"
+                            className="mt-2 max-h-48 rounded-lg border border-line object-contain"
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  warn,
+  hint,
+}: {
+  label: string;
+  value: string;
+  warn?: boolean;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-lg bg-canvas/60 p-2">
+      <p className="text-ink-faint">{label}</p>
+      <p className={cn("mt-0.5 text-sm font-bold", warn ? "text-danger" : "text-ink")}>{value}</p>
+      {hint && <p className="mt-0.5 text-[10px] leading-tight text-ink-faint">{hint}</p>}
     </div>
   );
 }
