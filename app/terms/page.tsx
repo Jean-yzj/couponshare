@@ -31,7 +31,7 @@ export default function TermsPage() {
       </Link>
 
       <h1 className="text-3xl font-extrabold tracking-tight text-ink">使用條款</h1>
-      <p className="mt-1.5 text-sm text-ink-faint">生效日期：2026 年 7 月 16 日</p>
+      <p className="mt-1.5 text-sm text-ink-faint">生效日期：2026 年 7 月 30 日</p>
 
       <p className="mt-6 text-[15px] leading-relaxed text-ink-soft">
         本使用條款（下稱「本條款」）係您（下稱「使用者」）與 CouponShare（下稱「本平台」）就使用本平台所提供之服務
@@ -145,6 +145,28 @@ export default function TermsPage() {
             6.3 票券發行人、品牌或其他權利人如認為本平台上之內容侵害其權利或違反其發行條款，得檢具品牌或商家名稱、
             具體內容連結及聯絡方式來信通知本平台。本平台接獲通知後，將於合理期間內儘速下架相關內容，
             並得將該品牌列入上架管制，處理結果將回覆通知人。
+          </p>
+          <p>
+            6.4 使用者有下列行為之一者，本平台得依情節暫停其帳號，並一併下架其全部票券：
+          </p>
+          <p className="pl-4">
+            (a) 標價出售票券，或要求現金、轉帳及其他對價（違反第 3.1 條之無償分享原則）；
+          </p>
+          <p className="pl-4">
+            (b) 上架已逾使用期限、業經使用或無法兌換之票券，致與其記載不符；
+          </p>
+          <p className="pl-4">
+            (c) 上架須加好友、追蹤帳號或完成任務始得兌換之票券（第 6.2(c) 條）；
+          </p>
+          <p className="pl-4">
+            (d) 上架推薦碼、邀請連結、集點活動或其他非可直接兌換之內容；
+          </p>
+          <p className="pl-4">(e) 對他人或其票券提出不實檢舉，或濫用檢舉功能；</p>
+          <p className="pl-4">(f) 於他人申請成立後未依約完成兌換，或無故失去聯繫；</p>
+          <p className="pl-4">(g) 於交易對話中辱罵、騷擾他人或為其他不當言論。</p>
+          <p>
+            6.5 本平台暫停帳號時，將以站內通知告知具體事由。使用者如認處置有誤，得依該通知所示提出申訴，
+            由本平台複核；複核認定申訴有理由者，帳號及其票券均予回復。
           </p>
         </Clause>
 
