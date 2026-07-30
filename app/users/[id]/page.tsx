@@ -7,6 +7,8 @@ import { useApi, useMe, apiFetch, ApiErr } from "@/lib/client";
 import { CouponCard, type FeedCoupon } from "@/components/CouponCard";
 import { Card, Avatar, LevelBadge, Skeleton, EmptyState, Button, Banner } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { ReasonModal } from "@/components/ReasonModal";
+import { SUSPENSION_REASON_PRESETS } from "@/lib/suspension-reasons";
 import { cn, formatDate, relativeTime } from "@/lib/display";
 
 type RatingItem = {
@@ -53,18 +55,18 @@ export default function ProfilePage() {
   const { me } = useMe();
   const { data, loading, refetch } = useApi<Profile>(`/api/v1/users/${id}`);
   const [acting, setActing] = useState(false);
+  const [suspendOpen, setSuspendOpen] = useState(false);
 
   // Admin: suspend / restore this account directly, independent of any report —
   // so you can act on someone whose report review already closed.
-  async function suspend() {
-    const reason = window.prompt("停權這個帳號並下架其所有票券？可填原因（會通知對方，可留空）。");
-    if (reason === null) return; // cancelled
+  async function suspend(reason: string) {
     setActing(true);
     try {
       await apiFetch(`/api/v1/admin/users/${id}/suspend`, {
         method: "POST",
         body: JSON.stringify({ reason: reason.trim() || undefined }),
       });
+      setSuspendOpen(false);
       await refetch();
     } catch (e) {
       alert(e instanceof ApiErr ? e.message : "操作失敗");
@@ -147,7 +149,7 @@ export default function ProfilePage() {
                 解除停權
               </Button>
             ) : (
-              <Button size="sm" variant="danger" icon="ban" loading={acting} onClick={suspend}>
+              <Button size="sm" variant="danger" icon="ban" loading={acting} onClick={() => setSuspendOpen(true)}>
                 停權此帳號
               </Button>
             )}
@@ -202,6 +204,19 @@ export default function ProfilePage() {
           ))}
         </div>
       )}
+
+      <ReasonModal
+        open={suspendOpen}
+        title="停權此帳號並下架其票券"
+        hint="理由會原封不動發給對方，也會留在稽核紀錄供日後複核申訴時參考——請寫成對方看得懂的說明。"
+        presets={SUSPENSION_REASON_PRESETS}
+        confirmLabel="停權"
+        confirmVariant="danger"
+        requireReason
+        busy={acting}
+        onCancel={() => setSuspendOpen(false)}
+        onConfirm={suspend}
+      />
     </div>
   );
 }

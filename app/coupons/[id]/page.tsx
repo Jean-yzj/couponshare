@@ -22,6 +22,8 @@ import { CategoryIcon } from "@/components/CategoryIcon";
 import { BarcodeModal } from "@/components/BarcodeModal";
 import { RedeemCodeModal } from "@/components/RedeemCodeModal";
 import { ReportModal } from "@/components/ReportModal";
+import { ReasonModal } from "@/components/ReasonModal";
+import { SUSPENSION_REASON_PRESETS } from "@/lib/suspension-reasons";
 import { Icon } from "@/components/icons";
 import { cn, expiryText, formatDate, relativeTime, STATUS_META } from "@/lib/display";
 import { categoryStyle, REDEEM_KIND_LABEL, REDEEM_KIND_STYLE } from "@/lib/categories";
@@ -106,6 +108,7 @@ export default function CouponDetailPage() {
   const [markingUsed, setMarkingUsed] = useState(false);
   const [adminRemoving, setAdminRemoving] = useState(false);
   const [adminSuspending, setAdminSuspending] = useState(false);
+  const [suspendOwnerOpen, setSuspendOwnerOpen] = useState(false);
   const brandsApi = useApi<{ brands: string[] }>(me ? "/api/v1/me/brands" : null);
 
   // Warm the barcode image cache the moment the page loads so "出示我的票券"
@@ -220,18 +223,15 @@ export default function CouponDetailPage() {
     }
   }
 
-  async function adminSuspendOwner() {
+  async function adminSuspendOwner(reason: string) {
     if (!coupon?.owner) return;
-    const reason = window.prompt(
-      `停權「${coupon.owner.display_name}」並下架其所有票券？可填原因（會通知對方）。`,
-    );
-    if (reason === null) return;
     setAdminSuspending(true);
     try {
       await apiFetch(`/api/v1/admin/users/${coupon.owner.id}/suspend`, {
         method: "POST",
         body: JSON.stringify({ reason: reason.trim() || undefined }),
       });
+      setSuspendOwnerOpen(false);
       // Optimistic: suspending the owner delists this coupon too — reflect it
       // locally instead of paying another mobile round-trip to re-fetch.
       setCoupon((prev) => (prev ? { ...prev, status: "SUSPENDED" } : prev));
@@ -602,7 +602,7 @@ export default function CouponDetailPage() {
                 icon="shield"
                 loading={adminSuspending}
                 className="mt-2"
-                onClick={adminSuspendOwner}
+                onClick={() => setSuspendOwnerOpen(true)}
               >
                 停權持有者（{coupon.owner.display_name}）
               </Button>
@@ -628,6 +628,18 @@ export default function CouponDetailPage() {
         onClose={() => setReportOpen(false)}
         couponId={coupon.id}
         onDone={() => setReportOpen(false)}
+      />
+      <ReasonModal
+        open={suspendOwnerOpen}
+        title={`停權「${coupon.owner?.display_name ?? "持有者"}」並下架其票券`}
+        hint="理由會原封不動發給對方，也會留在稽核紀錄供日後複核申訴時參考——請寫成對方看得懂的說明。"
+        presets={SUSPENSION_REASON_PRESETS}
+        confirmLabel="停權"
+        confirmVariant="danger"
+        requireReason
+        busy={adminSuspending}
+        onCancel={() => setSuspendOwnerOpen(false)}
+        onConfirm={adminSuspendOwner}
       />
       <BarcodeModal
         couponId={coupon.id}

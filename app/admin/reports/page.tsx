@@ -5,14 +5,15 @@ import { useState } from "react";
 import { apiFetch, useApi, useMe, ApiErr } from "@/lib/client";
 import { Button, Card, Skeleton, EmptyState, NeedLogin, Pill } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { ReasonModal } from "@/components/ReasonModal";
+import { ReasonModal, type ReasonPreset } from "@/components/ReasonModal";
+import { SUSPENSION_REASON_PRESETS } from "@/lib/suspension-reasons";
 import { cn, relativeTime } from "@/lib/display";
 import { REDEEM_KIND_LABEL } from "@/lib/categories";
 
 type ReportAction = "dismiss" | "dismiss_malicious" | "strike_user" | "remove_coupon" | "suspend_user";
 const ACTION_META: Record<
   ReportAction,
-  { title: string; hint: string; variant: "primary" | "danger" | "outline"; presets: string[] }
+  { title: string; hint: string; variant: "primary" | "danger" | "outline"; presets: ReasonPreset[] }
 > = {
   dismiss: {
     title: "駁回檢舉（判定無違規）",
@@ -50,9 +51,11 @@ const ACTION_META: Record<
   },
   suspend_user: {
     title: "停權此帳號並下架其票券",
-    hint: "會通知對方，可提出申訴。",
+    // The reason is forwarded verbatim to the person being suspended, so it has
+    // to explain the violation to them — see lib/suspension-reasons.ts.
+    hint: "理由會原封不動發給對方，也會留在稽核紀錄供日後複核申訴時參考——請寫成對方看得懂的說明。",
     variant: "danger",
-    presets: ["多次提供無效券、經查證屬實", "多次放鳥、惡意不履行交換", "不當言論、騷擾或詐騙行為"],
+    presets: SUSPENSION_REASON_PRESETS,
   },
 };
 

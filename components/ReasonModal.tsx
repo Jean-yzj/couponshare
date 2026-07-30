@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
 import { Button, Textarea } from "./ui";
 
+// A preset is either the literal text (chip label == inserted text) or a short
+// chip label paired with longer text. The pair exists because a reason the *user*
+// receives should spell out what went wrong and what the rule is, which is far too
+// long to read as a chip.
+export type ReasonPreset = string | { label: string; text: string };
+
+const presetLabel = (p: ReasonPreset) => (typeof p === "string" ? p : p.label);
+const presetText = (p: ReasonPreset) => (typeof p === "string" ? p : p.text);
+
 // Reusable admin reason picker: quick-pick preset chips fill an editable textarea, so
 // common dismiss / reject reasons are one tap but still customisable. Used by every
 // admin action that attaches a reason (reports, social posts, appeals).
@@ -22,7 +31,7 @@ export function ReasonModal({
   open: boolean;
   title: string;
   hint?: string;
-  presets: string[];
+  presets: ReasonPreset[];
   confirmLabel?: string;
   confirmVariant?: "primary" | "danger" | "outline";
   busy?: boolean;
@@ -64,12 +73,12 @@ export function ReasonModal({
           <div className="flex flex-wrap gap-1.5">
             {presets.map((p) => (
               <button
-                key={p}
+                key={presetLabel(p)}
                 type="button"
-                onClick={() => setText(p)}
+                onClick={() => setText(presetText(p))}
                 className="rounded-full border border-line bg-paper px-2.5 py-1 text-xs text-ink-soft transition-colors hover:border-accent hover:text-accent"
               >
-                {p}
+                {presetLabel(p)}
               </button>
             ))}
           </div>
