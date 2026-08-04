@@ -24,12 +24,15 @@ export const POST = route(async (req, ctx) => {
     }
     if (t.status !== "CREATED") throw new ApiError("VALIDATION_ERROR", { message: "此交易已結束" });
 
-    // You can only commit once YOUR side's barcode exists.
-    if (isOwner && !t.coupon.barcodeEncryptedData && !t.coupon.barcodeStorageKey) {
+    // You can only commit once YOUR side's coupon content exists — in either
+    // form. Checking only the image form used to deadlock every redeem-code
+    // exchange: the code holder had nothing to "upload", so they could never
+    // press ready and the barcodes were never revealed to either party.
+    if (isOwner && !t.coupon.barcodeEncryptedData && !t.coupon.barcodeStorageKey && !t.coupon.redeemCodeEncrypted) {
       throw new ApiError("BARCODE_NOT_READY");
     }
-    if (isClaimant && !t.offerBarcodeEncryptedData) {
-      throw new ApiError("VALIDATION_ERROR", { message: "請先上傳你要交換的條碼" });
+    if (isClaimant && !t.offerBarcodeEncryptedData && !t.offerRedeemCodeEncrypted) {
+      throw new ApiError("VALIDATION_ERROR", { message: "請先提供你要交換的條碼或兌換碼" });
     }
 
     const updated = await tx.transaction.update({

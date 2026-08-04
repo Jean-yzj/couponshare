@@ -11,12 +11,20 @@ import { Icon } from "./icons";
 // chosen claimant). Fetches on open; the code is never in the feed payload.
 export function RedeemCodeModal({
   couponId,
+  endpoint,
+  title = "兌換碼",
   owned = false,
   expiry,
   open,
   onClose,
 }: {
-  couponId: string;
+  // Ignored when `endpoint` is given. One of the two must be present.
+  couponId?: string;
+  // Override the source, mirroring BarcodeModal's `endpoint` prop. Used for the
+  // exchange escrow, where the code lives on the transaction (the claimant's
+  // offered code) rather than on a coupon.
+  endpoint?: string;
+  title?: string;
   // The viewer owns this code outright (their own coupon, or a received gift).
   owned?: boolean;
   // The giver's expiry date (raw ISO). null = no expiry; undefined = don't show.
@@ -35,11 +43,11 @@ export function RedeemCodeModal({
     setCode(null);
     setCopied(false);
     setLoading(true);
-    apiFetch<{ code: string }>(`/api/v1/coupons/${couponId}/redeem-code`)
+    apiFetch<{ code: string }>(endpoint ?? `/api/v1/coupons/${couponId}/redeem-code`)
       .then((r) => setCode(r.code))
       .catch((e) => setError(e instanceof ApiErr ? e.message : "無法取得兌換碼"))
       .finally(() => setLoading(false));
-  }, [open, couponId]);
+  }, [open, couponId, endpoint]);
 
   async function copy() {
     if (!code) return;
@@ -53,7 +61,7 @@ export function RedeemCodeModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="兌換碼" size="sm">
+    <Modal open={open} onClose={onClose} title={title} size="sm">
       {owned ? (
         <Banner tone="success" icon="checkCircle">
           這組兌換碼已經是你的了，結帳時輸入或出示給店員即可。

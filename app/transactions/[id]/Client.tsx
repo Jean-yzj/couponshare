@@ -18,6 +18,7 @@ import {
   Spinner,
 } from "@/components/ui";
 import { BarcodeModal } from "@/components/BarcodeModal";
+import { RedeemCodeModal } from "@/components/RedeemCodeModal";
 import { ReportModal } from "@/components/ReportModal";
 import { Modal } from "@/components/Modal";
 import { Icon } from "@/components/icons";
@@ -48,7 +49,14 @@ type UserTrust = {
 type Txn = {
   id: string;
   coupon_id: string;
-  coupon: { id: string; title: string; brand: string } | null;
+  coupon: {
+    id: string;
+    title: string;
+    brand: string;
+    // 券主的券是圖片條碼還是文字兌換碼——決定要開哪一種檢視視窗。
+    has_barcode: boolean;
+    has_redeem_code: boolean;
+  } | null;
   owner: Party | null;
   claimant: Party | null;
   transaction_type: string;
@@ -59,6 +67,7 @@ type Txn = {
   claimant_ready: boolean;
   revealed: boolean;
   has_offer_barcode: boolean;
+  has_offer_redeem_code: boolean;
   disputed_at: string | null;
   role?: string;
   rated_by_viewer?: boolean;
@@ -127,6 +136,12 @@ export default function TransactionPage() {
   const [completing, setCompleting] = useState(false);
   const [readying, setReadying] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [offerCodeViewOpen, setOfferCodeViewOpen] = useState(false);
+  // 領取者看券主那張券的兌換碼（券本身是文字碼的情況）。
+  const [codeViewOpen, setCodeViewOpen] = useState(false);
+  const [offerCode, setOfferCode] = useState("");
+  const [submittingCode, setSubmittingCode] = useState(false);
   const [disputing, setDisputing] = useState(false);
 
   if (loading) return <Skeleton className="mx-auto h-72 max-w-2xl rounded-2xl" />;
@@ -148,7 +163,14 @@ export default function TransactionPage() {
   const otherReady = isOwner ? t.claimant_ready : t.owner_ready;
   const myConfirmed = isOwner ? t.owner_completed : t.claimant_completed;
   const otherConfirmed = isOwner ? t.claimant_completed : t.owner_completed;
-  const myBarcodeReady = isOwner ? true : t.has_offer_barcode;
+  // 領取者提供圖片或兌換碼皆可（後端 ready/route.ts 也是這樣判）。
+  // 只認 has_offer_barcode 會讓兌換碼形式的人按不了「確認交換」。
+  const myBarcodeReady = isOwner ? true : t.has_offer_barcode || t.has_offer_redeem_code;
+  // 亮碼後我要看的那一份，是圖片還是文字碼？券主看的是領取者提供的（offer-*），
+  // 領取者看的是券本身。兩邊的形式互相獨立，一張圖換一組碼是常見組合。
+  const counterpartGaveCode = isOwner
+    ? t.has_offer_redeem_code
+    : !t.coupon?.has_barcode && !!t.coupon?.has_redeem_code;
 
   async function pickMessageImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -223,6 +245,26 @@ export default function TransactionPage() {
       alert(e instanceof Error ? e.message : "上傳失敗");
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function submitOfferCode() {
+    const code = offerCode.trim();
+    if (!code) return;
+    setSubmittingCode(true);
+    try {
+      const res = await apiFetch(`/api/v1/transactions/${id}/offer-redeem-code`, {
+        method: "POST",
+        body: JSON.stringify({ redeem_code: code }),
+      });
+      void res;
+      setCodeOpen(false);
+      setOfferCode("");
+      await refetch();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "送出失敗");
+    } finally {
+      setSubmittingCode(false);
     }
   }
 
@@ -347,8 +389,9 @@ export default function TransactionPage() {
             <Icon name="shieldCheck" size={20} className="text-pine" />
             <p className="text-sm font-medium text-ink">這張券已經是你的了</p>
           </div>
-          <Button icon="ticket" onClick={() => setBarcodeOpen(true)}>
-            查看條碼
+          {/* 贈送的券一樣有兩種形式；只開條碼會讓收到兌換碼券的人看到空視窗。 */}
+          <Button icon="ticket" onClick={() => (counterpartGaveCode ? setCodeViewOpen(true) : setBarcodeOpen(true))}>
+            {counterpartGaveCode ? "查看兌換碼" : "查看條碼"}
           </Button>
         </Card>
       )}
@@ -369,30 +412,41 @@ export default function TransactionPage() {
 
               <div className="mt-4 rounded-xl bg-canvas/60 p-3.5">
                 {isClaimant ? (
-                  t.has_offer_barcode ? (
+                  /* 兩種形式擇一：條碼圖片或文字兌換碼。原本只支援圖片，
+                     手上是兌換碼的人無從提交，導致按不了確認、雙方永遠亮不了碼
+                     （2026-08-04 修：正式環境有 3 筆這樣卡死、0 筆成功）。 */
+                  t.has_offer_barcode || t.has_offer_redeem_code ? (
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 text-sm text-pine">
-                        <Icon name="check" size={16} /> 你的交換條碼已上傳
+                        <Icon name="check" size={16} />
+                        {t.has_offer_redeem_code ? "你的交換兌換碼已提供" : "你的交換條碼已上傳"}
                       </span>
                       {!myReady && (
-                        <UploadButton small label="重新上傳" busy={uploading} onFile={uploadOffer} />
+                        <div className="flex items-center gap-2">
+                          <UploadButton small label="改上傳圖片" busy={uploading} onFile={uploadOffer} />
+                          <Button size="sm" variant="outline" onClick={() => setCodeOpen(true)}>
+                            改填兌換碼
+                          </Button>
+                        </div>
                       )}
                     </div>
                   ) : (
                     <div>
-                      <p className="text-sm font-medium text-ink">先上傳你要交換的條碼</p>
-                      <p className="mt-0.5 text-xs text-ink-faint">在你們都確認前，對方都看不到它。</p>
-                      <UploadButton
-                        className="mt-2.5"
-                        label="上傳交換條碼"
-                        busy={uploading}
-                        onFile={uploadOffer}
-                      />
+                      <p className="text-sm font-medium text-ink">先提供你要交換的券</p>
+                      <p className="mt-0.5 text-xs text-ink-faint">
+                        條碼圖片或文字兌換碼都可以。在你們都確認前，對方都看不到它。
+                      </p>
+                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                        <UploadButton label="上傳條碼圖片" busy={uploading} onFile={uploadOffer} />
+                        <Button variant="outline" onClick={() => setCodeOpen(true)}>
+                          改用兌換碼
+                        </Button>
+                      </div>
                     </div>
                   )
                 ) : (
                   <span className="flex items-center gap-1.5 text-sm text-pine">
-                    <Icon name="check" size={16} /> 你的券條碼已就緒
+                    <Icon name="check" size={16} /> 你的券已就緒
                   </span>
                 )}
               </div>
@@ -419,20 +473,32 @@ export default function TransactionPage() {
                 </Button>
               )}
               {!myBarcodeReady && !myReady && (
-                <p className="mt-2 text-xs text-ink-faint">要先準備好你的條碼才能確認。</p>
+                <p className="mt-2 text-xs text-ink-faint">要先提供你的條碼或兌換碼才能確認。</p>
               )}
             </>
           ) : (
             <>
               <p className="text-sm leading-relaxed text-ink-soft">
-                雙方都確認了，條碼已亮出。各自到店兌換，沒問題就按完成；如果對方的券有問題，請回報。
+                雙方都確認了，券已亮出。各自到店兌換，沒問題就按完成；如果對方的券有問題，請回報。
               </p>
+              {/* 對方給的可能是圖片條碼，也可能是文字兌換碼——券主要看的是領取者
+                  提供的那一份（offer-*），領取者要看的是券本身。兩邊都要各自判形式：
+                  原本一律開 BarcodeModal，兌換碼形式會開出一個沒有圖的空視窗，
+                  這就是「兌換碼和圖片交換看不到對方的資訊」的成因。 */}
               <Button
                 className="mt-3"
                 icon="ticket"
-                onClick={() => (isOwner ? setOfferBarcodeOpen(true) : setBarcodeOpen(true))}
+                onClick={() => {
+                  if (!isOwner) {
+                    // 券主的券：沒有圖片條碼就代表是兌換碼形式。
+                    if (counterpartGaveCode) return setCodeViewOpen(true);
+                    return setBarcodeOpen(true);
+                  }
+                  if (t.has_offer_redeem_code) return setOfferCodeViewOpen(true);
+                  setOfferBarcodeOpen(true);
+                }}
               >
-                查看對方的條碼
+                {counterpartGaveCode ? "查看對方的兌換碼" : "查看對方的條碼"}
               </Button>
 
               <div className="mt-4 border-t border-line pt-4">
@@ -653,6 +719,47 @@ export default function TransactionPage() {
         open={offerBarcodeOpen}
         onClose={() => setOfferBarcodeOpen(false)}
       />
+      <RedeemCodeModal
+        endpoint={`/api/v1/transactions/${t.id}/offer-redeem-code`}
+        title="對方的交換兌換碼"
+        owned
+        open={offerCodeViewOpen}
+        onClose={() => setOfferCodeViewOpen(false)}
+      />
+      {/* 券主的券本身就是兌換碼時，領取者走這個（沿用 coupons/[id]/redeem-code 的授權）。 */}
+      <RedeemCodeModal
+        couponId={t.coupon_id}
+        open={codeViewOpen}
+        onClose={() => setCodeViewOpen(false)}
+      />
+      <Modal
+        open={codeOpen}
+        onClose={() => setCodeOpen(false)}
+        title="填寫你要交換的兌換碼"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setCodeOpen(false)}>
+              取消
+            </Button>
+            <Button loading={submittingCode} disabled={!offerCode.trim()} onClick={submitOfferCode}>
+              送出
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm leading-relaxed text-ink-soft">
+          在你們雙方都按下「確認交換」之前，對方看不到這組碼。送出後你的確認會重置，
+          需要重新按一次確認。
+        </p>
+        <div className="mt-3">
+          <Input
+            value={offerCode}
+            onChange={(e) => setOfferCode(e.target.value)}
+            maxLength={200}
+            placeholder="貼上你的兌換碼 / 序號"
+          />
+        </div>
+      </Modal>
       <DisputeModal
         open={disputeOpen}
         onClose={() => setDisputeOpen(false)}

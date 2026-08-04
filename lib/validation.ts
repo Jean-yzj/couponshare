@@ -164,6 +164,13 @@ export const disputeSchema = z.object({
   evidence_image_url: z.string().max(700_000).optional().nullable(),
 });
 
+// 交換時領取者提供的兌換碼。長度限制與 createCouponSchema.redeem_code 一致——
+// 兩者存的是同一種東西（一組可直接兌換的文字碼），限制不同會讓「上架時填得下、
+// 交換時填不下」這種莫名其妙的情況發生。
+export const offerRedeemCodeSchema = z.object({
+  redeem_code: z.string().trim().min(1).max(200),
+});
+
 export const transactionMessageSchema = z.object({
   message: z.string().max(500).optional().default(""),
   image: z.string().max(700_000).optional().nullable(),

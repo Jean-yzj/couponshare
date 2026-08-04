@@ -154,13 +154,17 @@ export function transactionView(
     | "claimantReady"
     | "revealedAt"
     | "offerBarcodeMime"
+    | "offerRedeemCodeEncrypted"
     | "disputedAt"
     | "ownerId"
     | "claimantId"
     | "completedAt"
     | "createdAt"
   > & {
-    coupon?: Pick<Coupon, "id" | "title" | "brand"> | null;
+    coupon?: Pick<
+      Coupon,
+      "id" | "title" | "brand" | "barcodeMime" | "barcodeStorageKey" | "redeemCodeEncrypted"
+    > | null;
     owner?: OwnerRelation | null;
     claimant?: OwnerRelation | null;
     ratings?: Pick<Rating, "fromUserId">[];
@@ -171,7 +175,16 @@ export function transactionView(
     id: t.id,
     coupon_id: t.couponId,
     coupon: t.coupon
-      ? { id: t.coupon.id, title: t.coupon.title, brand: t.coupon.brand }
+      ? {
+          id: t.coupon.id,
+          title: t.coupon.title,
+          brand: t.coupon.brand,
+          // 券主的券是哪一種形式。只有「有沒有」，內容一律要走 coupons/[id]/barcode
+          // 或 /redeem-code 才拿得到。交易畫面靠這兩個旗標決定要開條碼還是兌換碼，
+          // 不然兌換碼形式的券會開出一個永遠讀不到圖的條碼視窗。
+          has_barcode: !!(t.coupon.barcodeMime || t.coupon.barcodeStorageKey),
+          has_redeem_code: !!t.coupon.redeemCodeEncrypted,
+        }
       : null,
     owner: t.owner ? publicUser(t.owner) : null,
     claimant: t.claimant ? publicUser(t.claimant) : null,
@@ -183,6 +196,9 @@ export function transactionView(
     claimant_ready: t.claimantReady,
     revealed: !!t.revealedAt,
     has_offer_barcode: !!t.offerBarcodeMime,
+    // 只回傳「有沒有」，永遠不回傳兌換碼本身——要看內容得走
+    // /transactions/[id]/offer-redeem-code，那裡才有亮碼前後的授權判斷。
+    has_offer_redeem_code: !!t.offerRedeemCodeEncrypted,
     disputed_at: t.disputedAt,
     role: viewerId
       ? viewerId === t.ownerId
