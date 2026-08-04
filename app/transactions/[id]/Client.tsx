@@ -521,9 +521,19 @@ export default function TransactionPage() {
           </div>
         )}
 
-        {!disputed && (
-          <div className="mt-4 space-y-2">
-            {imagePreview && (
+        {/* 爭議中仍可對話（2026-08-04 使用者裁定）。原本是 {!disputed && ...}：
+            交易一進入 DISPUTED，輸入框整個不渲染，使用者回報「被檢舉那筆交易
+            沒辦法繼續私訊對方」。後端 messages/route.ts 從來沒擋 DISPUTED，
+            是純前端封鎖；iOS 端（couponshare-ios/app/transaction/[id].tsx）也
+            一直沒有這個限制，所以是網頁版獨有的不一致。很多爭議其實是誤會，
+            能講清楚就不用麻煩客服，對話紀錄也能當人工複核的依據。 */}
+        <div className="mt-4 space-y-2">
+          {disputed && (
+            <Banner tone="info" icon="flag">
+              此交易複核中，你們仍可繼續溝通；對話內容會一併供平台參考。
+            </Banner>
+          )}
+          {imagePreview && (
               <div className="flex items-center gap-3 rounded-2xl border border-line bg-canvas/60 p-2.5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -576,8 +586,7 @@ export default function TransactionPage() {
                 傳送
               </Button>
             </div>
-          </div>
-        )}
+        </div>
       </Card>
 
       {/* Completion / rating.
