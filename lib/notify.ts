@@ -34,6 +34,7 @@ async function sendExpoPush(tokens: PushRecord[], args: NotifyArgs): Promise<voi
       title: args.title,
       body: args.body,
       sound: "default",
+      channelId: "default",
       data: {
         type: args.type,
         reference_type: args.referenceType ?? null,
