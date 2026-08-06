@@ -1,4 +1,5 @@
 import {
+  runDedupeBarcodes,
   runExpireCoupons,
   runExpiringSoon,
   runPendingTimeout,
@@ -37,6 +38,14 @@ async function tick() {
     if (r.purged || r.held_open_matter) console.log("[cron] purge-deleted", JSON.stringify(r));
   } catch (e) {
     console.error("[cron] purge-deleted failed", e);
+  }
+  try {
+    // Keeps barcode storage de-duplicated. A one-off cleanup does not hold: the
+    // upload path writes both copies by design, so duplicates return within days.
+    const r = await runDedupeBarcodes();
+    if (r.cleared || r.skipped) console.log("[cron] dedupe-barcodes", JSON.stringify(r));
+  } catch (e) {
+    console.error("[cron] dedupe-barcodes failed", e);
   }
 }
 

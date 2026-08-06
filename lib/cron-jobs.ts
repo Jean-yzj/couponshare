@@ -245,3 +245,64 @@ export async function runPurgeDeletedUsers() {
 
   return { scanned: deletions.length, purged, held_open_matter: held };
 }
+
+// ── 條碼去重：清掉已確實存在 R2 的資料庫副本 ──────────────────────────────
+// 上傳流程刻意先寫資料庫再傳 R2（R2 故障不該讓上架失敗），但成功後從不清除
+// 資料庫那份，於是每張券都存兩份。2026-08 一次性清掉 4740 筆後又在兩天內累積
+// 573 筆，可見一次性清理沒有用——重複會一直長回來，備份也跟著變肥。
+//
+// 這裡不動上傳路徑，改成事後掃描：只有「R2 物件確實存在、且內容雜湊與資料庫
+// 這份相符」才清除，並保留 24 小時緩衝，讓剛上傳的券仍有本地備援可退。
+const BARCODE_GRACE_HOURS = 24;
+
+export async function runDedupeBarcodes() {
+  const { getR2ClientAndBucket } = await import("./barcode-storage");
+  const r2 = getR2ClientAndBucket();
+  if (!r2) return { scanned: 0, cleared: 0, skipped: 0, reason: "r2_not_configured" };
+  const { HeadObjectCommand } = await import("@aws-sdk/client-s3");
+
+  const cutoff = new Date(Date.now() - BARCODE_GRACE_HOURS * 3600_000);
+
+  // The hash comparison runs in Postgres so the barcode blobs (up to ~6.7MB each)
+  // never travel to this process just to be checked.
+  const rows = await prisma.$queryRaw<{ id: string; key: string }[]>`
+    select id, barcode_storage_key as key
+    from coupons
+    where barcode_storage_key is not null
+      and barcode_encrypted_data is not null
+      and updated_at < ${cutoff}
+      and encode(sha256(decode(barcode_encrypted_data, 'base64')), 'hex')
+          = split_part(split_part(barcode_storage_key, '/', 4), '.', 1)
+    limit 100
+  `;
+
+  let cleared = 0;
+  let skipped = 0;
+
+  for (const row of rows) {
+    // The read path refuses an object without this checksum metadata, so an object
+    // missing it is not a usable replacement for the database copy.
+    try {
+      const head = await r2.client.send(
+        new HeadObjectCommand({ Bucket: r2.bucket, Key: row.key }),
+      );
+      if (!head.Metadata?.sha256) {
+        skipped += 1;
+        continue;
+      }
+    } catch {
+      skipped += 1;
+      continue;
+    }
+
+    // Guarded on the key still matching: if the owner replaced the barcode in the
+    // meantime the upload handler resets the key, and this row no longer applies.
+    const res = await prisma.coupon.updateMany({
+      where: { id: row.id, barcodeStorageKey: row.key },
+      data: { barcodeEncryptedData: null },
+    });
+    cleared += res.count;
+  }
+
+  return { scanned: rows.length, cleared, skipped };
+}
