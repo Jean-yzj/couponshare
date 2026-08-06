@@ -143,3 +143,105 @@ export async function runPendingTimeout() {
   }
   return { reverted: stale.length };
 }
+
+// ── 個資保存期限：清除已刪除帳號的可識別欄位 ────────────────────────────────
+// 隱私權政策 5.4：帳號刪除滿六個月後，清除稽核日誌中足資識別特定個人之欄位
+// （email / IP / User-Agent），僅保留無從識別個人的操作紀錄。
+//
+// 政策 5.5 的例外由 hasOpenMatter() 實作：帳號涉及未結爭議、檢舉、申訴或
+// 司法程序者不清除。少了這道閘門，2026-08 那件交換爭議的證據會在偵查中被抹掉。
+const RETENTION_DAYS = 180;
+
+// 法律保全：對特定帳號寫入這個 action 即可無限期擋下清除，寫入 release 則解除。
+// 刻意用稽核事件而非新增 User 欄位——schema 漂移在這個專案癱瘓過線上登入一次。
+export const LEGAL_HOLD = "user.legal_hold";
+export const LEGAL_HOLD_RELEASE = "user.legal_hold_release";
+
+async function hasOpenMatter(userId: string): Promise<boolean> {
+  const [disputed, reported, appealed, holds, releases] = await Promise.all([
+    prisma.transaction.count({
+      where: { OR: [{ ownerId: userId }, { claimantId: userId }], status: "DISPUTED" },
+    }),
+    prisma.report.count({
+      where: {
+        OR: [{ reportedUserId: userId }, { reporterId: userId }],
+        status: { in: ["PENDING", "REVIEWING"] },
+      },
+    }),
+    prisma.appeal.count({ where: { userId, status: "PENDING" } }),
+    prisma.auditLog.count({ where: { targetId: userId, action: LEGAL_HOLD } }),
+    prisma.auditLog.count({ where: { targetId: userId, action: LEGAL_HOLD_RELEASE } }),
+  ]);
+  return disputed > 0 || reported > 0 || appealed > 0 || holds > releases;
+}
+
+// Strip identifying fields from one JSON blob without discarding the rest of the
+// event (the action + timestamp stay, so the audit trail's integrity is intact).
+function scrubJson(v: unknown): unknown {
+  if (!v || typeof v !== "object") return v;
+  const o = { ...(v as Record<string, unknown>) };
+  for (const k of ["email", "ip", "ipAddress", "userAgent", "ua", "phone"]) {
+    if (k in o) o[k] = null;
+  }
+  return o;
+}
+
+export async function runPurgeDeletedUsers() {
+  const cutoff = new Date(Date.now() - RETENTION_DAYS * DAY);
+
+  // Deletion time comes from the audit event, not the user row — user.updatedAt
+  // moves whenever anything else touches the row and would reset the clock.
+  const deletions = await prisma.auditLog.findMany({
+    where: { action: "user.delete", createdAt: { lt: cutoff } },
+    select: { targetId: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+    take: 200,
+  });
+
+  let purged = 0;
+  let held = 0;
+
+  for (const d of deletions) {
+    const userId = d.targetId;
+
+    // A previous run leaves its own marker, so re-scanning the same account is a
+    // single count instead of re-reading and re-writing every one of its events.
+    const alreadyPurged = await prisma.auditLog.count({
+      where: { targetId: userId, action: "user.pii_purged" },
+    });
+    if (alreadyPurged > 0) continue;
+
+    if (await hasOpenMatter(userId)) {
+      held += 1;
+      continue;
+    }
+
+    const logs = await prisma.auditLog.findMany({
+      where: { OR: [{ actorId: userId }, { targetId: userId }] },
+      select: { id: true, beforeValue: true, afterValue: true },
+    });
+
+    await prisma.$transaction(async (tx) => {
+      for (const l of logs) {
+        await tx.auditLog.update({
+          where: { id: l.id },
+          data: {
+            ipAddress: null,
+            userAgent: null,
+            beforeValue: scrubJson(l.beforeValue) as never,
+            afterValue: scrubJson(l.afterValue) as never,
+          },
+        });
+      }
+      await writeAudit(tx, {
+        action: "user.pii_purged",
+        targetType: "user",
+        targetId: userId,
+        after: { retention_days: RETENTION_DAYS, scrubbed_events: logs.length },
+      });
+    });
+    purged += 1;
+  }
+
+  return { scanned: deletions.length, purged, held_open_matter: held };
+}

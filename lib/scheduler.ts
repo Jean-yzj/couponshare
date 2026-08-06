@@ -1,4 +1,9 @@
-import { runExpireCoupons, runExpiringSoon, runPendingTimeout } from "./cron-jobs";
+import {
+  runExpireCoupons,
+  runExpiringSoon,
+  runPendingTimeout,
+  runPurgeDeletedUsers,
+} from "./cron-jobs";
 
 // In-process cron. The Zeabur container is a single long-lived Node server, so a
 // timer here runs the housekeeping jobs without any external scheduler or secret.
@@ -23,6 +28,15 @@ async function tick() {
     await runPendingTimeout();
   } catch (e) {
     console.error("[cron] pending-timeout failed", e);
+  }
+  try {
+    // Retention limit from the privacy policy. Runs on the same 15-minute tick as
+    // everything else; it is a no-op on most passes because it only matches
+    // accounts deleted over six months ago that it has not already scrubbed.
+    const r = await runPurgeDeletedUsers();
+    if (r.purged || r.held_open_matter) console.log("[cron] purge-deleted", JSON.stringify(r));
+  } catch (e) {
+    console.error("[cron] purge-deleted failed", e);
   }
 }
 
