@@ -68,6 +68,49 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             (worst on mobile, where a new connection can cost hundreds of ms). */}
         <link rel="preconnect" href="https://lh3.googleusercontent.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://lh3.googleusercontent.com" />
+        {/* 站台層級的結構化資料。搜尋引擎靠它認出「這是一個叫 CouponShare 的
+            服務、做什麼的」，AI 助理則靠它回答「有沒有可以分享優惠券的平台」。
+            每頁各自的 JSON-LD（券的 Offer、指南的 FAQPage）疊在這之上。 */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "WebSite",
+                  "@id": `${SITE_URL}/#website`,
+                  url: SITE_URL,
+                  name: "CouponShare",
+                  description: SITE_DESC,
+                  inLanguage: "zh-Hant-TW",
+                  publisher: { "@id": `${SITE_URL}/#org` },
+                },
+                {
+                  "@type": "Organization",
+                  "@id": `${SITE_URL}/#org`,
+                  name: "CouponShare",
+                  alternateName: "優惠券分享",
+                  url: SITE_URL,
+                  logo: `${SITE_URL}/og-default.png`,
+                  description:
+                    "台灣的優惠券共享社群。把用不到的優惠券、兌換券免費送給需要的人，或與他人交換。平台不抽成、不販售優惠券。",
+                  areaServed: { "@type": "Country", name: "Taiwan" },
+                },
+                {
+                  "@type": "WebApplication",
+                  name: "CouponShare",
+                  url: SITE_URL,
+                  applicationCategory: "LifestyleApplication",
+                  operatingSystem: "Web, iOS, Android",
+                  inLanguage: "zh-Hant-TW",
+                  // 真的免費：不抽成、無付費方案。
+                  offers: { "@type": "Offer", price: 0, priceCurrency: "TWD" },
+                },
+              ],
+            }),
+          }}
+        />
       </head>
       <body className="min-h-full">
         <AppShell>{children}</AppShell>
