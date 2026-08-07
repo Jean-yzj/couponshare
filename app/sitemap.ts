@@ -15,7 +15,12 @@ const LAST_UPDATED = new Date("2026-08-05T00:00:00Z");
 // 內容（每張券都是一組具體的品牌＋優惠關鍵字）對搜尋引擎完全不存在。
 const COUPON_LIMIT = 2000;
 
-export const revalidate = 3600;
+// 必須是 force-dynamic，不能只靠 revalidate。
+// 用 revalidate 的話 Next.js 會在 **build 時** 先產生一次 sitemap，而建置容器
+// 連不到內網的正式資料庫——查詢失敗、被下面的 catch 吞掉、產出一份沒有任何
+// 券頁的 sitemap，然後這份空的被快取。2026-08-08 實際踩到：部署後線上 sitemap
+// 只有 7 個靜態 URL、券頁 0 個，但正式庫明明有符合條件的券。
+export const dynamic = "force-dynamic";
 
 async function couponEntries(): Promise<MetadataRoute.Sitemap> {
   try {
@@ -32,8 +37,11 @@ async function couponEntries(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily" as const,
       priority: 0.6,
     }));
-  } catch {
-    // DB 掛掉時回傳靜態頁就好——sitemap 整個 500 比少幾個 URL 糟糕得多。
+  } catch (e) {
+    // DB 掛掉時降級成只回靜態頁——sitemap 整個 500 比少幾個 URL 糟糕得多。
+    // 但一定要留下聲音：這個 catch 原本是靜默的，害我們部署後才發現券頁一個
+    // 都沒進 sitemap，而且從外面完全看不出是壞了還是本來就沒券。
+    console.error("[sitemap] 券頁查詢失敗，本次只輸出靜態頁", e);
     return [];
   }
 }
