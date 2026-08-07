@@ -18,7 +18,7 @@ type BrandPage = {
   coupons: BrandCouponCardData[];
 };
 
-export default function BrandPublicPage() {
+export default function Client() {
   const params = useParams<{ id: string }>();
   const { data, loading, error } = useApi<BrandPage>(`/api/v1/brands/${params.id}`);
 
