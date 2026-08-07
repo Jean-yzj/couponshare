@@ -306,3 +306,111 @@ export async function runDedupeBarcodes() {
 
   return { scanned: rows.length, cleared, skipped };
 }
+
+// ── 過期票券：刪除已經沒有用途的條碼 ────────────────────────────────────────
+// 過期或取消的票券兌換不了，留著條碼沒有任何用途，卻是最敏感的資料
+// （AES 加密的兌換憑證）。隱私權政策的立場是不必要的資料不留，這裡照做。
+//
+// 只處理 EXPIRED / CANCELLED：CLAIMED 的領取者可能還要看條碼去兌換，
+// REPORTED / SUSPENDED 則是爭議中的證據，都不能碰。
+const EXPIRED_BARCODE_GRACE_DAYS = 30;
+
+export async function runPurgeExpiredBarcodes() {
+  const { getR2ClientAndBucket } = await import("./barcode-storage");
+  const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+  const r2 = getR2ClientAndBucket();
+  const cutoff = new Date(Date.now() - EXPIRED_BARCODE_GRACE_DAYS * DAY);
+
+  const rows = await prisma.coupon.findMany({
+    where: {
+      status: { in: ["EXPIRED", "CANCELLED"] },
+      updatedAt: { lt: cutoff },
+      OR: [{ barcodeEncryptedData: { not: null } }, { barcodeStorageKey: { not: null } }],
+    },
+    select: { id: true, barcodeStorageKey: true },
+    take: 200,
+  });
+
+  let cleared = 0;
+  let held = 0;
+
+  for (const row of rows) {
+    // A coupon caught up in a dispute or an open report is evidence — the same
+    // rule the account purge follows. Deleting it would destroy the only proof
+    // of what was actually handed over.
+    const [disputed, reported] = await Promise.all([
+      prisma.transaction.count({ where: { couponId: row.id, status: "DISPUTED" } }),
+      prisma.report.count({
+        where: { couponId: row.id, status: { in: ["PENDING", "REVIEWING"] } },
+      }),
+    ]);
+    if (disputed > 0 || reported > 0) {
+      held += 1;
+      continue;
+    }
+
+    if (r2 && row.barcodeStorageKey) {
+      try {
+        await r2.client.send(
+          new DeleteObjectCommand({ Bucket: r2.bucket, Key: row.barcodeStorageKey }),
+        );
+      } catch {
+        // R2 unavailable: leave the row untouched so the next pass retries it.
+        continue;
+      }
+    }
+
+    await prisma.coupon.update({
+      where: { id: row.id },
+      data: { barcodeEncryptedData: null, barcodeStorageKey: null, barcodeMime: null },
+    });
+    cleared += 1;
+  }
+
+  return { scanned: rows.length, cleared, held_evidence: held };
+}
+
+// ── 備份保存期限 ────────────────────────────────────────────────────────────
+// R2 上的備份原本沒有任何保存期限，累積到 30GB。真正的問題不是錢（每月 US$0.46）
+// 而是每一份備份都含全部使用者的 email 與密碼雜湊——留越久，外洩時的損害面越大，
+// 也和隱私權政策 5.4「期滿清除可識別欄位」互相矛盾。
+const BACKUP_RETENTION_DAYS = 14;
+const BACKUP_KEEP_MIN = 7; // 就算全部過期也保底留這麼多份
+
+export async function runPruneBackups() {
+  const { getR2ClientAndBucket } = await import("./barcode-storage");
+  const { ListObjectsV2Command, DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+  const r2 = getR2ClientAndBucket();
+  if (!r2) return { deleted: 0, kept: 0, reason: "r2_not_configured" };
+
+  // Only the daily dumps. Anything else under backups/ (one-off pre-migration
+  // dumps, for instance) is deliberate and must not be swept up.
+  const daily: { key: string; date: string; size: number }[] = [];
+  let token: string | undefined;
+  do {
+    const r = await r2.client.send(
+      new ListObjectsV2Command({ Bucket: r2.bucket, Prefix: "backups/db-", ContinuationToken: token }),
+    );
+    for (const o of r.Contents ?? []) {
+      const m = /^backups\/db-(\d{4}-\d{2}-\d{2})\.ndjson\.gz$/.exec(o.Key ?? "");
+      if (m) daily.push({ key: o.Key!, date: m[1], size: o.Size ?? 0 });
+    }
+    token = r.IsTruncated ? r.NextContinuationToken : undefined;
+  } while (token);
+
+  daily.sort((a, b) => b.date.localeCompare(a.date));
+  const cutoff = new Date(Date.now() - BACKUP_RETENTION_DAYS * DAY).toISOString().slice(0, 10);
+
+  let deleted = 0;
+  let freed = 0;
+  for (const [i, b] of daily.entries()) {
+    // Never let a clock problem or an empty listing wipe the recent history.
+    if (i < BACKUP_KEEP_MIN) continue;
+    if (b.date >= cutoff) continue;
+    await r2.client.send(new DeleteObjectCommand({ Bucket: r2.bucket, Key: b.key }));
+    deleted += 1;
+    freed += b.size;
+  }
+
+  return { deleted, kept: daily.length - deleted, freed_mb: Math.round(freed / 1048576) };
+}

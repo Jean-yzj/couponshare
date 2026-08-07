@@ -1,5 +1,7 @@
 import {
   runDedupeBarcodes,
+  runPruneBackups,
+  runPurgeExpiredBarcodes,
   runExpireCoupons,
   runExpiringSoon,
   runPendingTimeout,
@@ -46,6 +48,22 @@ async function tick() {
     if (r.cleared || r.skipped) console.log("[cron] dedupe-barcodes", JSON.stringify(r));
   } catch (e) {
     console.error("[cron] dedupe-barcodes failed", e);
+  }
+  try {
+    // Expired and cancelled coupons cannot be redeemed, so their barcodes are
+    // dead weight — and they are the most sensitive field we hold.
+    const r = await runPurgeExpiredBarcodes();
+    if (r.cleared || r.held_evidence) console.log("[cron] purge-expired-barcodes", JSON.stringify(r));
+  } catch (e) {
+    console.error("[cron] purge-expired-barcodes failed", e);
+  }
+  try {
+    // Backups had no retention at all and had grown to 30GB, each copy holding
+    // every user's email and password hash.
+    const r = await runPruneBackups();
+    if (r.deleted) console.log("[cron] prune-backups", JSON.stringify(r));
+  } catch (e) {
+    console.error("[cron] prune-backups failed", e);
   }
 }
 
