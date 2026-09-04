@@ -439,20 +439,26 @@ export async function runAutoCompleteGifts(limit = 300) {
       disputedAt: null,
       reports: { none: {} },
     },
-    select: { id: true, ownerId: true, claimantId: true },
+    select: { id: true, createdAt: true },
     orderBy: { createdAt: "asc" },
     take: limit,
   });
 
   let completed = 0;
+  const now = new Date();
   for (const t of candidates) {
-    const now = new Date();
+    // completedAt is backdated to the moment the quiet window elapsed, not to
+    // now. Stamping 2,671 backlogged gifts with today's date would invent a
+    // 2,671-transaction week and leave every real week still undercounted —
+    // corrupting the exact metric this job exists to repair. autoCompletedAt
+    // carries the real "when the system decided" timestamp.
+    const completedAt = new Date(t.createdAt.getTime() + GIFT_AUTO_COMPLETE_DAYS * DAY);
     await prisma.$transaction(async (tx) => {
       // Guard on the status still being CREATED: a person may have confirmed it
       // between the query above and this write, and their confirmation wins.
       const res = await tx.transaction.updateMany({
         where: { id: t.id, status: "CREATED" },
-        data: { status: "COMPLETED", completedAt: now, autoCompletedAt: now },
+        data: { status: "COMPLETED", completedAt, autoCompletedAt: now },
       });
       if (res.count === 0) return;
       await writeAudit(tx, {
