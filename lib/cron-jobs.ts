@@ -414,3 +414,57 @@ export async function runPruneBackups() {
 
   return { deleted, kept: daily.length - deleted, freed_mb: Math.round(freed / 1048576) };
 }
+
+// ── 贈送交易的自動完成 ──────────────────────────────────────────────────────
+// 「確認完成」對雙方都沒有好處：送的人已經送出、收的人已經拿到券去用了，
+// 那顆按鈕純粹是平台的記帳需求。結果全站 4,630 筆交易裡有 2,735 筆（59%）
+// 永遠停在 CREATED，而北極星指標「週完成交易」因此被系統性低估。
+//
+// 量測支持「沉默＝成功」：卡住的交易中 81% 的領取者事後仍有回訪（看得到卻
+// 沒按），且被檢舉率是 0.0%。真出問題的人會檢舉、會爭議，不會一聲不響。
+//
+// 只做 GIFT：EXCHANGE 是雙方對等交付，缺一方確認就不該推定成功。
+// 不發分數：GIFT 的貢獻分在「選擇領取者」時就已發出（COUPON_GIFTED），
+// 完成本來就不計分，所以自動完成不會改變任何人的分數或等級。
+const GIFT_AUTO_COMPLETE_DAYS = 7;
+
+export async function runAutoCompleteGifts(limit = 300) {
+  const cutoff = new Date(Date.now() - GIFT_AUTO_COMPLETE_DAYS * DAY);
+
+  const candidates = await prisma.transaction.findMany({
+    where: {
+      status: "CREATED",
+      transactionType: "GIFT",
+      createdAt: { lt: cutoff },
+      disputedAt: null,
+      reports: { none: {} },
+    },
+    select: { id: true, ownerId: true, claimantId: true },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+  });
+
+  let completed = 0;
+  for (const t of candidates) {
+    const now = new Date();
+    await prisma.$transaction(async (tx) => {
+      // Guard on the status still being CREATED: a person may have confirmed it
+      // between the query above and this write, and their confirmation wins.
+      const res = await tx.transaction.updateMany({
+        where: { id: t.id, status: "CREATED" },
+        data: { status: "COMPLETED", completedAt: now, autoCompletedAt: now },
+      });
+      if (res.count === 0) return;
+      await writeAudit(tx, {
+        action: "transaction.auto_complete",
+        targetType: "transaction",
+        targetId: t.id,
+        before: { status: "CREATED" },
+        after: { status: "COMPLETED", reason: "no_dispute_after_days", days: GIFT_AUTO_COMPLETE_DAYS },
+      });
+      completed += 1;
+    });
+  }
+
+  return { scanned: candidates.length, completed };
+}

@@ -346,6 +346,11 @@ model Transaction {
   ownerCompleted    Boolean           @default(false) @map("owner_completed")
   claimantCompleted Boolean           @default(false) @map("claimant_completed")
   completedAt       DateTime?         @map("completed_at")
+  // Set when the system inferred completion instead of a person confirming it.
+  // Kept separate from completedAt so metrics can tell "a user pressed done"
+  // apart from "nobody objected for a week" — otherwise auto-completion would
+  // just replace an undercount with an unfalsifiable number.
+  autoCompletedAt   DateTime?         @map("auto_completed_at")
   // Exchange escrow: claimant's offered coupon + simultaneous-reveal gate.
   // Two mutually-exclusive forms, mirroring what a Coupon itself can hold:
   // an image barcode, or a text redeem code. Before 2026-08-04 only the image

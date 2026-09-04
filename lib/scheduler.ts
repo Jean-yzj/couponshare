@@ -1,4 +1,5 @@
 import {
+  runAutoCompleteGifts,
   runDedupeBarcodes,
   runPruneBackups,
   runPurgeExpiredBarcodes,
@@ -31,6 +32,16 @@ async function tick() {
     await runPendingTimeout();
   } catch (e) {
     console.error("[cron] pending-timeout failed", e);
+  }
+  try {
+    // GIFT transactions nobody disputed for a week. The confirm button exists for
+    // the platform's records, not for the two people involved, so 59% of all
+    // transactions sat in CREATED forever and the completion metric measured
+    // button-pressing instead of giving.
+    const r = await runAutoCompleteGifts();
+    if (r.completed) console.log("[cron] auto-complete-gifts", JSON.stringify(r));
+  } catch (e) {
+    console.error("[cron] auto-complete-gifts failed", e);
   }
   try {
     // Retention limit from the privacy policy. Runs on the same 15-minute tick as
