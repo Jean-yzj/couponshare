@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { CATEGORY_LABEL, REDEEM_KIND_LABEL } from "@/lib/categories";
 import Client from "./Client";
@@ -99,6 +100,17 @@ export default async function Page({ params }: Params) {
   const { id } = await params;
   const c = await getCoupon(id).catch(() => null);
 
+  // 同品牌的其他券。在此之前券頁對爬蟲是死路——沒有任何連到其他券的連結，
+  // 每一張券頁都是孤島，只能靠 sitemap 被發現，內部連結權重完全不流動。
+  const sameBrand = c
+    ? await prisma.coupon.findMany({
+        where: { status: "AVAILABLE", brand: { equals: c.brand, mode: "insensitive" }, id: { not: c.id } },
+        select: { id: true, title: true },
+        orderBy: { createdAt: "desc" },
+        take: 6,
+      })
+    : [];
+
   const jsonLd = c
     ? {
         "@context": "https://schema.org",
@@ -136,6 +148,20 @@ export default async function Page({ params }: Params) {
             {c.brand} {c.title}
           </h1>
           <p>{summarize(c)}</p>
+          {/* 這幾條連結是給爬蟲走的路，不是版面元素——所以留在 sr-only 裡，
+              一般使用者看到的仍然是 Client 的完整互動介面。 */}
+          <Link href={`/b/${encodeURIComponent(c.brand)}`}>看更多{c.brand}的優惠券</Link>
+          {sameBrand.length > 0 && (
+            <ul>
+              {sameBrand.map((o) => (
+                <li key={o.id}>
+                  <Link href={`/coupons/${o.id}`}>
+                    {c.brand} {o.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
       <Client />

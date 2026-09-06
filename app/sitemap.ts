@@ -46,6 +46,31 @@ async function couponEntries(): Promise<MetadataRoute.Sitemap> {
   }
 }
 
+// 品牌頁只收「現在真的有券可領」的品牌 —— 與 app/b/[brand]/page.tsx 的
+// robots 判斷一致（沒有可領的券時那一頁會 noindex，收進 sitemap 只會互相矛盾）。
+async function brandEntries(): Promise<MetadataRoute.Sitemap> {
+  try {
+    const rows = await prisma.coupon.groupBy({
+      by: ["brand"],
+      where: { status: "AVAILABLE", visibilityLevel: "PUBLIC" },
+      _count: true,
+      orderBy: { _count: { brand: "desc" } },
+      take: 200,
+    });
+    return rows
+      .filter((r) => r.brand.trim().length > 0)
+      .map((r) => ({
+        url: `${SITE}/b/${encodeURIComponent(r.brand)}`,
+        lastModified: LAST_UPDATED,
+        changeFrequency: "daily" as const,
+        priority: 0.7,
+      }));
+  } catch (e) {
+    console.error("[sitemap] 品牌頁查詢失敗，本次略過品牌頁", e);
+    return [];
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const statics: MetadataRoute.Sitemap = [
     { url: SITE, lastModified: LAST_UPDATED, changeFrequency: "daily", priority: 1 },
@@ -56,5 +81,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE}/terms`, lastModified: LAST_UPDATED, changeFrequency: "yearly", priority: 0.2 },
     { url: `${SITE}/privacy`, lastModified: LAST_UPDATED, changeFrequency: "yearly", priority: 0.2 },
   ];
-  return [...statics, ...(await couponEntries())];
+  const [brands, coupons] = await Promise.all([brandEntries(), couponEntries()]);
+  return [...statics, ...brands, ...coupons];
 }

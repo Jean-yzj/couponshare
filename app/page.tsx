@@ -2,6 +2,7 @@ import { DEFAULT_FEED_FILTERS, HomeClient, type FeedFilters, type OfficialCoupon
 import { getCurrentUser } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
 import { CATEGORY_KEYS, REDEEM_KIND_KEYS } from "@/lib/categories";
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getCouponFeed } from "@/lib/feed";
 import { brandCouponsVisible } from "@/lib/brand-access";
@@ -86,14 +87,58 @@ export default async function HomePage({
   const filters = parseFilters(await searchParams);
 
   if (!viewer) {
+    // 未登入看到的是 Landing，feed 是空的——爬蟲也是未登入，所以首頁對搜尋引擎
+    // 一直是一個沒有任何券連結的頁面。站上 63 張券只能靠 sitemap 被發現，
+    // 內部連結權重完全不流動，而首頁正是全站被連最多次的那一頁。
+    //
+    // 這一段只補「路」不動版面：sr-only 而不是 display:none（後者會被當成隱藏
+    // 文字而降權），一般使用者看到的仍然是原本的 Landing。
+    const [latest, brands] = await Promise.all([
+      prisma.coupon.findMany({
+        where: { status: "AVAILABLE", visibilityLevel: "PUBLIC" },
+        select: { id: true, title: true, brand: true },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+      }),
+      prisma.coupon.groupBy({
+        by: ["brand"],
+        where: { status: "AVAILABLE", visibilityLevel: "PUBLIC" },
+        _count: true,
+        orderBy: { _count: { brand: "desc" } },
+        take: 20,
+      }),
+    ]);
+
     return (
-      <HomeClient
-        signedIn={false}
-        initialFeed={{ data: [], pagination: { total: 0, has_more: false } }}
-        initialExpiring={[]}
-        initialBrands={[]}
-        initialFilters={DEFAULT_FEED_FILTERS}
-      />
+      <>
+        <div className="sr-only">
+          <h2>目前可以免費索取的優惠券</h2>
+          <ul>
+            {latest.map((c) => (
+              <li key={c.id}>
+                <Link href={`/coupons/${c.id}`}>
+                  {c.brand} {c.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <h2>依品牌瀏覽</h2>
+          <ul>
+            {brands.map((b) => (
+              <li key={b.brand}>
+                <Link href={`/b/${encodeURIComponent(b.brand)}`}>{b.brand}優惠券</Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <HomeClient
+          signedIn={false}
+          initialFeed={{ data: [], pagination: { total: 0, has_more: false } }}
+          initialExpiring={[]}
+          initialBrands={[]}
+          initialFilters={DEFAULT_FEED_FILTERS}
+        />
+      </>
     );
   }
 
