@@ -32,9 +32,34 @@ export async function GET(req: NextRequest) {
           .catch(() => null)
       : null;
 
-  // 查不到就退回全站預設卡，而不是報錯——預覽圖壞掉會讓整個連結看起來可疑。
+  // 查不到（券被刪、已下架、id 亂填）時畫一張不具名的卡，而不是轉址到預設圖。
+  // 原本用 Response.redirect(new URL("/og-default.png", req.url))，但在 Zeabur 的
+  // 反向代理後面 req.url 的 origin 是容器內部位址，實測吐出的是
+  // `https://localhost:8080/og-default.png`——LINE 或 Facebook 跟著走只會拿到空的，
+  // 預覽圖照樣壞掉。直接畫就沒有這個問題，也不必猜對外網址是什麼。
   if (!c) {
-    return Response.redirect(new URL("/og-default.png", req.url), 302);
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            width: 1200, height: 630, display: "flex", flexDirection: "column", alignItems: "center",
+            justifyContent: "center", background: BLUE, fontFamily: "Noto",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={MARK_WHITE} width={150} height={94} alt="" />
+          <div style={{ display: "flex", fontSize: 44, fontWeight: 900, color: "#fff", marginTop: 30, flexShrink: 0 }}>
+            CouponShare
+          </div>
+          <div
+            style={{ display: "flex", fontSize: 27, color: "rgba(255,255,255,0.82)", marginTop: 16, flexShrink: 0 }}
+          >
+            把用不到的票券送給需要的人
+          </div>
+        </div>
+      ),
+      { width: 1200, height: 630, fonts: OG_FONTS, headers: { "Cache-Control": "public, max-age=3600" } },
+    );
   }
 
   // 站上標題最長 35 字（中位數 13）。字級固定的話長標題會爆版。
