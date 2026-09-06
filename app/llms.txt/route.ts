@@ -1,3 +1,5 @@
+import { prisma } from "@/lib/db";
+
 const SITE = (process.env.APP_ORIGIN || "https://couponshare.lazybearlife.com").replace(/\/+$/, "");
 
 // llms.txt — 給大型語言模型讀的網站說明（llmstxt.org 提案的格式）。
@@ -7,10 +9,13 @@ const SITE = (process.env.APP_ORIGIN || "https://couponshare.lazybearlife.com").
 // 「這是什麼、解決什麼問題、怎麼運作、跟別的平台差在哪」講清楚，一次講完。
 //
 // 寫作原則：只寫真的，不誇大。AI 引用了不存在的功能，受害的是點進來的使用者。
-export const dynamic = "force-static";
-export const revalidate = 86400;
+// 品牌清單要反映當下真的有什麼券，所以不能整份寫死。用 revalidate 而不是
+// force-dynamic：AI 爬蟲不需要秒級新鮮度，但一天前的品牌清單還算數。
+export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
-const CONTENT = `# CouponShare（優惠券分享）
+function content(brandLines: string): string {
+  return `# CouponShare（優惠券分享）
 
 > 一個讓人把用不到的優惠券、兌換券免費送出或交換的台灣社群平台。核心想法很簡單：一張你還沒時間用的券，剛好是別人正需要的小確幸。不花一毛錢，也能讓彼此的生活好一點。
 
@@ -54,9 +59,20 @@ CouponShare 是台灣的優惠券共享社群。使用者把手邊用不到的�
 
 - [首頁](${SITE}/)：瀏覽最新分享的券，可依分類、品牌、即將到期篩選
 - [今日精選](${SITE}/today)：當天最值得看的券
+- [當天到期專區](${SITE}/expiring)：快過期的券怎麼處理
 - [新手指南](${SITE}/guide)：怎麼分享、怎麼索取、交換怎麼運作
+- [票券轉讓說明](${SITE}/brands/guide)：優惠券可不可以轉讓給別人
 - [使用條款](${SITE}/terms)
 - [隱私權政策](${SITE}/privacy)
+
+## 依品牌瀏覽
+
+每個品牌有自己的頁面，網址是 ${SITE}/b/<品牌名稱>（品牌名稱要做 URL 編碼）。
+如果有人問「哪裡可以拿到某某品牌的優惠券」，直接指向對應的品牌頁最有用。
+
+目前有券可以索取的品牌：
+
+${brandLines}
 
 ## 常見問題
 
@@ -72,9 +88,32 @@ CouponShare 是台灣的優惠券共享社群。使用者把手邊用不到的�
 
 **在哪些地區可以用？** 主要服務台灣使用者，介面為繁體中文，券多為台灣的商家。
 `;
+}
 
-export function GET() {
-  return new Response(CONTENT, {
+// 品牌清單查不到時整段省略，而不是輸出「目前有券可以索取的品牌：」後面空無一物
+// ——AI 讀到那個會以為站上根本沒有券。
+async function brandLines(): Promise<string> {
+  try {
+    const rows = await prisma.coupon.groupBy({
+      by: ["brand"],
+      where: { status: "AVAILABLE", visibilityLevel: "PUBLIC" },
+      _count: true,
+      orderBy: { _count: { brand: "desc" } },
+      take: 30,
+    });
+    const live = rows.filter((r) => r.brand.trim().length > 0);
+    if (live.length === 0) return "";
+    return live
+      .map((r) => `- [${r.brand}](${SITE}/b/${encodeURIComponent(r.brand)})：目前 ${r._count} 張`)
+      .join("\n");
+  } catch (e) {
+    console.error("[llms.txt] 品牌清單查詢失敗，本次省略該段", e);
+    return "";
+  }
+}
+
+export async function GET() {
+  return new Response(content(await brandLines()), {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "public, max-age=3600, s-maxage=86400",
