@@ -50,6 +50,23 @@ const FIELD_LABELS: Record<string, string> = {
   cta_text: "按鈕文字",
   rating_score: "評分",
   expiry_date: "到期日",
+  company: "公司／品牌名稱",
+  brand_name: "品牌名稱",
+  job_title: "職稱",
+  phone: "電話",
+  line_id: "LINE ID",
+  goals: "合作目標",
+  plan: "方案",
+  full_name: "姓名",
+  contact_name: "聯絡人",
+  contact_email: "聯絡 Email",
+  logo_text: "標誌文字",
+  note: "備註",
+  tags: "標籤",
+  categories: "分類",
+  birth_year: "出生年",
+  max_applications: "名額",
+  max_per_user: "每人可領數量",
 };
 
 function describeIssue(issue: $ZodIssue, raw: unknown): string | null {
