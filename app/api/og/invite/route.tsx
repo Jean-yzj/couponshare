@@ -1,37 +1,13 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { MARK_WHITE, OG, OG_FONTS } from "@/lib/og-assets";
 
 // 邀請連結（/login?ref=<userId>）貼到 LINE／Threads 時顯示的預覽卡。在此之前
 // 邀請連結沿用的是首頁那張通用卡，看起來像廣告而不像朋友的邀請。
 export const runtime = "nodejs";
 
-const DIR = path.join(process.cwd(), "public");
-
-// 字型在模組層讀一次。繁中一定要自載：next/og 內建的字型只有拉丁，沒傳 fonts
-// 時它會在執行時去 fonts.googleapis.com 抓中文子集——那是間歇性失敗（單張測
-// 幾乎都過、批次時零星整張豆腐框），而且 CJK 備援只有一個字重，中文永遠不會粗。
-const FONTS = [400, 700, 900].map((weight) => ({
-  name: "Noto",
-  data: readFileSync(path.join(DIR, `fonts/noto-sans-tc-${weight}.woff`)),
-  weight: weight as 400 | 700 | 900,
-  style: "normal" as const,
-}));
-
-const markSrc = readFileSync(path.join(DIR, "couponshare-mark.svg")).toString();
-// 藍底上要用單色白版：原圖左半就是品牌藍，直接放上去那一半會整塊消失。
-const MARK_WHITE =
-  "data:image/svg+xml;base64," +
-  Buffer.from(
-    markSrc
-      .replace(/fill="#2867E0"/i, 'fill="#ffffff"')
-      .replace(/fill="#7B8492"/i, 'fill="#ffffff" fill-opacity="0.55"')
-      .replace(/fill="#fff"/i, 'fill="#2867e0"'),
-  ).toString("base64");
-
-const INK = "#16181d", FAINT = "#8b93a1", BLUE = "#2867e0", TINT = "#edf3fe";
+const { INK, FAINT, BLUE, TINT } = OG;
 
 export async function GET(req: NextRequest) {
   const ref = new URL(req.url).searchParams.get("ref");
@@ -96,7 +72,7 @@ export async function GET(req: NextRequest) {
     {
       width: 1200,
       height: 630,
-      fonts: FONTS,
+      fonts: OG_FONTS,
       // 具名的卡片會隨暱稱改變，但改動極少；一天的快取讓 LINE／Threads 重複抓
       // 同一張時不必每次都查資料庫，又不至於讓改暱稱的人卡住太久。
       headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400" },

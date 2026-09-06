@@ -74,14 +74,24 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const description = summarize(c);
   const url = `${SITE}/coupons/${c.id}`;
 
+  // 分享一張券出去時，預覽卡要顯示這張券本身；在此之前用的是全站預設的
+  // 「這個網站是什麼」卡，看的人完全不知道被分享的是什麼。
+  const image = `${SITE}/api/og/coupon?id=${c.id}`;
+
   return {
     title,
     description,
     alternates: { canonical: `/coupons/${c.id}` },
     // 非公開或已結束的券不進索引，但頁面本身仍可正常瀏覽。
     robots: INDEXABLE.has(c.status) && c.visibilityLevel === "PUBLIC" ? undefined : { index: false },
-    openGraph: { title, description, url, type: "article" },
-    twitter: { card: "summary_large_image", title, description },
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "article",
+      images: [{ url: image, width: 1200, height: 630, alt: title }],
+    },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
   };
 }
 
