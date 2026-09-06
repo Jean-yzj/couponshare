@@ -474,3 +474,105 @@ export async function runAutoCompleteGifts(limit = 300) {
 
   return { scanned: candidates.length, completed };
 }
+
+// ── 被遺棄的上架 ────────────────────────────────────────────────────────────
+// 既有規則是「上架 7 天、零申請 → 自動下架，不要占用版面」。缺的是它的雙胞胎：
+// 有人申請、擁有者卻一次都沒回應過的券。這種比零申請更糟——零申請只是沒人要，
+// 這種是把人騙進去等。
+//
+// 2026-09-04 的實況：架上 127 張券有 76 張屬於這種，年齡中位數 58 天（七月爆紅
+// 那批），62 位擁有者已經 14 天沒上線，上面壓著 2,102 筆申請、1,426 個人在空等，
+// 最熱門的一張有 276 人申請。新使用者看到的貨架有六成是拿不到的東西。
+//
+// 「一次都沒回應」的判準是這張券從來沒有任何一筆申請被 APPROVED 或 REJECTED。
+// 只要擁有者處理過任何一筆，就不算遺棄——他只是還在挑。
+const ABANDONED_DAYS = 7;
+
+export async function runCloseAbandonedListings(limit = 200) {
+  const cutoff = new Date(Date.now() - ABANDONED_DAYS * DAY);
+  const now = new Date();
+
+  // (1) 掛在已經不可能成交的券上的申請（券被取消、擁有者被停權）。
+  // 這些申請不會有任何結果，卻一直顯示成「申請中」。
+  const stranded = await prisma.claimRequest.findMany({
+    where: { status: "PENDING", coupon: { status: { notIn: ["AVAILABLE", "PENDING"] } } },
+    select: { id: true },
+    take: 500,
+  });
+  if (stranded.length) {
+    await prisma.claimRequest.updateMany({
+      where: { id: { in: stranded.map((s) => s.id) } },
+      data: { status: "EXPIRED" },
+    });
+  }
+
+  // (2) 被遺棄的上架本身。
+  const abandoned = await prisma.coupon.findMany({
+    where: {
+      status: "AVAILABLE",
+      createdAt: { lt: cutoff },
+      claimRequests: {
+        some: { status: "PENDING", createdAt: { lt: cutoff } },
+        none: { status: { in: ["APPROVED", "REJECTED"] } },
+      },
+    },
+    select: { id: true, ownerId: true, title: true, claimRequestCount: true },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+  });
+
+  let delisted = 0;
+  for (const c of abandoned) {
+    await prisma.$transaction(async (tx) => {
+      const res = await tx.coupon.updateMany({
+        where: { id: c.id, status: "AVAILABLE" },
+        data: { status: "EXPIRED" },
+      });
+      if (res.count === 0) return; // 期間被領走或下架了，對方的動作優先
+
+      // 通知只發給還記得自己申請過的人：申請未滿 14 天的。兩個月前那批補發
+      // 兩千多則通知只會洗版，而洗版正是上一輪剛修掉的問題。
+      const recent = await tx.claimRequest.findMany({
+        where: {
+          couponId: c.id,
+          status: "PENDING",
+          createdAt: { gt: new Date(now.getTime() - 14 * DAY) },
+        },
+        select: { requesterId: true },
+      });
+      await tx.claimRequest.updateMany({
+        where: { couponId: c.id, status: "PENDING" },
+        data: { status: "EXPIRED" },
+      });
+      for (const r of recent) {
+        await notify(tx, {
+          userId: r.requesterId,
+          type: "CLAIM_REJECTED",
+          title: "申請已自動關閉",
+          body: `「${c.title}」的擁有者一直沒有回應，已自動關閉申請，別再空等了。你今天的申請次數不受影響。`,
+          referenceType: "coupon",
+          referenceId: c.id,
+        });
+      }
+
+      await notify(tx, {
+        userId: c.ownerId,
+        type: "COUPON_EXPIRED",
+        title: "票券已自動下架",
+        body: `「${c.title}」有 ${c.claimRequestCount} 位朋友申請，但一直沒有收到回覆，已先自動下架以免大家空等。這張券還在的話，歡迎重新上架並回覆申請。`,
+        referenceType: "coupon",
+        referenceId: c.id,
+      });
+      await writeAudit(tx, {
+        action: "coupon.auto_delist_abandoned",
+        targetType: "coupon",
+        targetId: c.id,
+        before: { status: "AVAILABLE" },
+        after: { status: "EXPIRED", pending_applications: c.claimRequestCount, reason: "owner_never_responded" },
+      });
+      delisted += 1;
+    });
+  }
+
+  return { stranded_requests_closed: stranded.length, delisted };
+}

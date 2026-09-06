@@ -1,5 +1,6 @@
 import {
   runAutoCompleteGifts,
+  runCloseAbandonedListings,
   runDedupeBarcodes,
   runPruneBackups,
   runPurgeExpiredBarcodes,
@@ -42,6 +43,15 @@ async function tick() {
     if (r.completed) console.log("[cron] auto-complete-gifts", JSON.stringify(r));
   } catch (e) {
     console.error("[cron] auto-complete-gifts failed", e);
+  }
+  try {
+    // The sibling of the zero-application delist above: listings whose owner
+    // never answered anyone. Those are worse than unwanted — they draw people in
+    // and leave them waiting (2,102 applications on 76 coupons before this ran).
+    const r = await runCloseAbandonedListings();
+    if (r.delisted || r.stranded_requests_closed) console.log("[cron] close-abandoned", JSON.stringify(r));
+  } catch (e) {
+    console.error("[cron] close-abandoned failed", e);
   }
   try {
     // Retention limit from the privacy policy. Runs on the same 15-minute tick as
