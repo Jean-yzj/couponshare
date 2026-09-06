@@ -31,7 +31,10 @@ async function brandStats(brand: string) {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const brand = decodeURIComponent((await params).brand);
   const { live, total } = await brandStats(brand);
-  if (total === 0) return { title: "找不到這個品牌", robots: { index: false } };
+  // 在 generateMetadata 就 notFound()，而不是等到頁面元件。force-dynamic 的頁面
+  // 是串流出去的，元件裡才丟已經來不及改狀態碼——實測會回 200 帶著 404 畫面，
+  // 也就是 Google 會扣分的 soft-404。metadata 階段還在回應開始之前。
+  if (total === 0) notFound();
 
   const title = `${brand}優惠券｜免費索取與交換`;
   const description =
