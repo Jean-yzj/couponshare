@@ -17,7 +17,7 @@ export const POST = route(async (req) => {
   const rec = await prisma.passwordReset.findUnique({ where: { tokenHash: hashToken(token) } });
   if (!rec || rec.usedAt || rec.expiresAt <= new Date()) {
     throw new ApiError("VALIDATION_ERROR", {
-      message: "這條重設連結無效或已過期，請再向管理員索取一條。",
+      message: "這條重設連結無效或已過期。回登入頁按「忘記密碼？」就能再要一條新的。",
     });
   }
 

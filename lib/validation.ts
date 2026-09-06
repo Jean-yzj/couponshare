@@ -241,6 +241,10 @@ export const adminResetLinkSchema = z.object({
 });
 
 // A user sets a new password using a one-time reset token (from the admin's link).
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("請輸入正確的 Email").max(120),
+});
+
 export const resetPasswordSchema = z.object({
   token: z.string().min(10).max(500),
   password: z.string().min(6, "密碼至少 6 個字").max(200),

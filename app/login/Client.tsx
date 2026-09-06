@@ -40,6 +40,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [inApp, setInApp] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [ref, setRef] = useState("");
   const [birthYear, setBirthYear] = useState("");
   const [utm, setUtm] = useState<UtmPayload>({});
@@ -66,6 +67,32 @@ export default function LoginPage() {
       setMode("register"); // an invite link means they're here to sign up
     }
   }, []);
+
+  // 回應刻意不分「有沒有這個帳號」——否則這個按鈕就成了查詢某人有沒有註冊過的
+  // 工具，而這是個票券分享站，會員身分本身就是不該外洩的資訊。
+  async function sendReset() {
+    setError(null);
+    if (!email.trim()) {
+      setError("請先填上你的 Email，我們才知道要把重設連結寄到哪裡。");
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await apiFetch<{ email_enabled?: boolean }>("/api/v1/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (r?.email_enabled === false) {
+        setError("重設密碼的信件功能還在設定中。請來信 iamlazybear2023@gmail.com，我們會直接幫你處理。");
+        return;
+      }
+      setResetSent(true);
+    } catch (e) {
+      setError(e instanceof ApiErr ? e.message : "寄送失敗，請稍後再試");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function copyLink() {
     try {
@@ -231,7 +258,25 @@ export default function LoginPage() {
             />
           </Field>
 
+          {mode === "login" && (
+            <div className="-mt-1 text-right">
+              <button
+                type="button"
+                onClick={sendReset}
+                disabled={busy}
+                className="text-xs font-medium text-accent hover:text-accent-press disabled:opacity-50"
+              >
+                忘記密碼？
+              </button>
+            </div>
+          )}
+
           {error && <Banner tone="warn" icon="info">{error}</Banner>}
+          {resetSent && (
+            <Banner tone="info" icon="check">
+              如果這個 Email 有註冊過，重設密碼的信已經寄出去了，請收信（記得看一下垃圾郵件）。連結 24 小時內有效。
+            </Banner>
+          )}
 
           <Button type="submit" full size="lg" loading={busy}>
             {mode === "login" ? "登入" : "建立帳號"}
