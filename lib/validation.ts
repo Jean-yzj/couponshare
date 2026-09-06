@@ -171,8 +171,11 @@ export const offerRedeemCodeSchema = z.object({
   redeem_code: z.string().trim().min(1).max(200),
 });
 
+// 2,000 rather than 500: the cap was only ever hit by pasted links (a Google
+// Maps share URL alone runs 400-700 characters), and the rejection surfaced as
+// an unexplained 「輸入資料有誤」 — users concluded the chat refuses links.
 export const transactionMessageSchema = z.object({
-  message: z.string().max(500).optional().default(""),
+  message: z.string().max(2000).optional().default(""),
   image: z.string().max(700_000).optional().nullable(),
 }).refine((v) => v.message.trim().length > 0 || !!v.image, {
   message: "請輸入訊息或選擇圖片",

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { $ZodIssue } from "zod/v4/core";
 import type { ZodType } from "zod";
 import { ApiError, errorResponse } from "./errors";
 import { clientIp } from "./ip";
@@ -18,6 +19,74 @@ export function route<P extends Record<string, string> = Record<string, string>>
   };
 }
 
+// zod speaks English ("Too big: expected string to have <=500 characters") and
+// that string never reached anyone anyway — the client only ever showed the
+// registry's 「輸入資料有誤」. These two helpers turn an issue into a sentence a
+// person can act on, which is the whole point of rejecting their input.
+const FIELD_LABELS: Record<string, string> = {
+  message: "訊息",
+  comment: "評價留言",
+  description: "說明",
+  title: "標題",
+  brand: "品牌",
+  category: "分類",
+  display_name: "暱稱",
+  name: "名稱",
+  email: "Email",
+  password: "密碼",
+  redeem_code: "兌換碼",
+  redeem_info: "兌換方式",
+  exchange_offer_text: "想交換的內容",
+  exchange_target: "想換的東西",
+  topic: "主題",
+  image: "圖片",
+  evidence_image: "審核截圖",
+  reason: "原因",
+  post_url: "發文連結",
+  website_url: "官網網址",
+  task_url: "任務連結",
+  task_instruction: "任務說明",
+  cta_url: "按鈕連結",
+  cta_text: "按鈕文字",
+  rating_score: "評分",
+  expiry_date: "到期日",
+};
+
+function describeIssue(issue: $ZodIssue, raw: unknown): string | null {
+  const key = issue.path.filter((p) => typeof p === "string").pop() as string | undefined;
+  const label = (key && FIELD_LABELS[key]) || "";
+  // A schema that already carries its own zh-Hant message (e.g. .url("網址格式不正確")
+  // or a .refine) has said it better than anything generic here could.
+  if (/[\u4e00-\u9fff]/.test(issue.message)) return issue.message;
+
+  const value = key && raw && typeof raw === "object" ? (raw as Record<string, unknown>)[key] : undefined;
+  const actual = typeof value === "string" ? value.length : null;
+
+  switch (issue.code) {
+    case "too_big": {
+      if (issue.origin !== "string") return label ? `${label}超過允許的範圍` : null;
+      const now = actual === null ? "" : `（目前 ${actual.toLocaleString()} 字）`;
+      return `${label || "這個欄位"}最多 ${Number(issue.maximum).toLocaleString()} 字${now}`;
+    }
+    case "too_small": {
+      if (issue.origin !== "string") return label ? `${label}不能小於 ${issue.minimum}` : null;
+      return Number(issue.minimum) <= 1
+        ? `請填寫${label || "這個欄位"}`
+        : `${label || "這個欄位"}至少要 ${issue.minimum} 個字`;
+    }
+    case "invalid_format":
+      if (issue.format === "url") return `${label || "網址"}要填完整網址，開頭要有 https://`;
+      if (issue.format === "email") return "Email 格式不正確";
+      return label ? `${label}格式不正確` : null;
+    case "invalid_type":
+      return label ? `請填寫${label}` : null;
+    case "invalid_value":
+      return label ? `${label}的選項不正確` : null;
+    default:
+      return null;
+  }
+}
+
 export async function readBody<T>(req: NextRequest, schema: ZodType<T>): Promise<T> {
   let raw: unknown;
   try {
@@ -27,8 +96,13 @@ export async function readBody<T>(req: NextRequest, schema: ZodType<T>): Promise
   }
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
+    const issues = parsed.error.issues;
+    // First issue that can be explained wins; if none can, fall back to the
+    // registry line rather than showing the user raw English from zod.
+    const explained = issues.map((i) => describeIssue(i, raw)).find((m): m is string => !!m);
     throw new ApiError("VALIDATION_ERROR", {
-      issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+      ...(explained ? { message: explained } : {}),
+      issues: issues.map((i) => ({ path: i.path.join("."), message: i.message })),
     });
   }
   return parsed.data;

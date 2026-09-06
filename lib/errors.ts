@@ -41,7 +41,14 @@ export class ApiError extends Error {
 
   constructor(code: ErrorCode, details: Record<string, unknown> = {}) {
     const entry = ERROR_REGISTRY[code];
-    super(entry.message);
+    // 61 call sites hand a specific explanation in `details.message` — and until
+    // 2026-09-04 every one of them was discarded. errorResponse serialises
+    // `err.message`, which was always the registry's generic line, and neither
+    // client ever read `details`. So a user whose image was the wrong format,
+    // whose coupon was full, or whose message ran past the length cap saw the
+    // same 「輸入資料有誤」 and had no way to know what to change.
+    const specific = typeof details.message === "string" ? details.message.trim() : "";
+    super(specific || entry.message);
     this.code = code;
     this.status = entry.status;
     this.details = details;

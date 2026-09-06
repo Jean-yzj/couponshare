@@ -91,6 +91,49 @@ const DISPUTE_REASONS: { key: string; label: string }[] = [
   { key: "OTHER", label: "其他問題" },
 ];
 
+// Matches lib/validation.ts transactionMessageSchema. Kept as a constant so the
+// counter below and the server cap can't drift apart silently.
+const MESSAGE_MAX = 2000;
+
+// Chat messages used to render as inert text, so a link someone sent was
+// unopenable — and on iOS not even selectable. Split on http(s) URLs and make
+// those parts real anchors. Built as React elements (never innerHTML), so the
+// message text can't inject markup. rel=nofollow because these are unvetted
+// links between strangers; the platform shouldn't vouch for them.
+// 網址在遇到空白、全形標點或中文字時結束。用 [^\s]+ 會出事：中文句子裡的
+// 連結後面常常沒有空白（「看這個（https://a.com/x），很好用。」），整串中文
+// 會被吃進網址裡變成一條打不開的連結。
+const URL_RE = /(https?:\/\/[^\s\u3000-\u303f\uff00-\uffef\u4e00-\u9fff]+)/g;
+
+function Linkified({ text, mine }: { text: string; mine: boolean }) {
+  return (
+    <>
+      {text.split(URL_RE).map((part, i) => {
+        // Note: never URL_RE.test() here — a /g regex carries lastIndex between
+        // calls and would match every other time. The split already isolated the
+        // URLs; a plain prefix check is enough to tell them from the text parts.
+        if (!/^https?:\/\//.test(part)) return <span key={i}>{part}</span>;
+        // Trailing punctuation is almost always the sentence's, not the URL's.
+        const trail = part.match(/[.,;:!?)\]}]+$/)?.[0] ?? "";
+        const href = trail ? part.slice(0, -trail.length) : part;
+        return (
+          <span key={i}>
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className={cn("underline underline-offset-2", mine ? "text-white" : "text-accent")}
+            >
+              {href}
+            </a>
+            {trail}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 function fileToChatImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -127,6 +170,7 @@ export default function TransactionPage() {
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const [text, setText] = useState("");
+  const tooLong = text.length > MESSAGE_MAX;
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [barcodeOpen, setBarcodeOpen] = useState(false);
@@ -572,11 +616,11 @@ export default function TransactionPage() {
                     {m.message && (
                       <div
                         className={cn(
-                          "inline-block rounded-2xl px-3.5 py-2 text-sm leading-relaxed",
+                          "inline-block rounded-2xl px-3.5 py-2 text-sm leading-relaxed break-words",
                           mine ? "bg-accent text-white" : "bg-sand text-ink",
                         )}
                       >
-                        {m.message}
+                        <Linkified text={m.message} mine={mine} />
                       </div>
                     )}
                     <p className="mt-0.5 text-[11px] text-ink-faint">{relativeTime(m.created_at)}</p>
@@ -648,10 +692,25 @@ export default function TransactionPage() {
                 }}
                 placeholder={imagePreview ? "加一句話（可不填）…" : "輸入訊息…"}
               />
-              <Button icon="send" loading={sending} onClick={send} disabled={!text.trim() && !imagePreview}>
+              <Button
+                icon="send"
+                loading={sending}
+                onClick={send}
+                disabled={(!text.trim() && !imagePreview) || tooLong}
+              >
                 傳送
               </Button>
             </div>
+            {/* Deliberately no maxLength on the input: truncating a pasted link
+                silently would send a broken URL, which is worse than refusing.
+                Show the count instead, and only once it's close to mattering. */}
+            {text.length > MESSAGE_MAX * 0.8 && (
+              <p className={cn("text-right text-xs", tooLong ? "text-danger" : "text-ink-faint")}>
+                {tooLong
+                  ? `訊息太長了（${text.length.toLocaleString()}／${MESSAGE_MAX.toLocaleString()} 字），請縮短，或改用短網址`
+                  : `${text.length.toLocaleString()}／${MESSAGE_MAX.toLocaleString()} 字`}
+              </p>
+            )}
         </div>
       </Card>
 
