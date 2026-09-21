@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
-
-const SITE = (process.env.APP_ORIGIN || "https://couponshare.lazybearlife.com").replace(/\/+$/, "");
+import { SITE_URL } from "@/lib/seo";
 
 // 靜態頁的更新時間手動維護——內容真的改了才動，不要每次請求都塞 new Date()，
 // 那會讓搜尋引擎學會忽略這個欄位。
@@ -32,7 +31,7 @@ async function couponEntries(): Promise<MetadataRoute.Sitemap> {
       take: COUPON_LIMIT,
     });
     return rows.map((c) => ({
-      url: `${SITE}/coupons/${c.id}`,
+      url: `${SITE_URL}/coupons/${c.id}`,
       lastModified: c.updatedAt,
       changeFrequency: "daily" as const,
       priority: 0.6,
@@ -60,7 +59,7 @@ async function brandEntries(): Promise<MetadataRoute.Sitemap> {
     return rows
       .filter((r) => r.brand.trim().length > 0)
       .map((r) => ({
-        url: `${SITE}/b/${encodeURIComponent(r.brand)}`,
+        url: `${SITE_URL}/b/${encodeURIComponent(r.brand)}`,
         lastModified: LAST_UPDATED,
         changeFrequency: "daily" as const,
         priority: 0.7,
@@ -73,13 +72,14 @@ async function brandEntries(): Promise<MetadataRoute.Sitemap> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const statics: MetadataRoute.Sitemap = [
-    { url: SITE, lastModified: LAST_UPDATED, changeFrequency: "daily", priority: 1 },
-    { url: `${SITE}/today`, lastModified: LAST_UPDATED, changeFrequency: "daily", priority: 0.8 },
-    { url: `${SITE}/guide`, lastModified: LAST_UPDATED, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${SITE}/expiring`, lastModified: LAST_UPDATED, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${SITE}/brands/guide`, lastModified: LAST_UPDATED, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${SITE}/terms`, lastModified: LAST_UPDATED, changeFrequency: "yearly", priority: 0.2 },
-    { url: `${SITE}/privacy`, lastModified: LAST_UPDATED, changeFrequency: "yearly", priority: 0.2 },
+    { url: SITE_URL, lastModified: LAST_UPDATED, changeFrequency: "daily", priority: 1 },
+    { url: `${SITE_URL}/today`, lastModified: LAST_UPDATED, changeFrequency: "daily", priority: 0.8 },
+    { url: `${SITE_URL}/guide`, lastModified: LAST_UPDATED, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${SITE_URL}/expiring`, lastModified: LAST_UPDATED, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${SITE_URL}/brands/guide`, lastModified: LAST_UPDATED, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${SITE_URL}/terms`, lastModified: LAST_UPDATED, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${SITE_URL}/privacy`, lastModified: LAST_UPDATED, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${SITE_URL}/account-deletion`, lastModified: LAST_UPDATED, changeFrequency: "yearly", priority: 0.2 },
   ];
   const [brands, coupons] = await Promise.all([brandEntries(), couponEntries()]);
   return [...statics, ...brands, ...coupons];

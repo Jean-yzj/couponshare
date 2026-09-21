@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icons";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "刪除帳號 — CouponShare",
   description:
     "說明如何刪除 CouponShare 帳號、刪除後會移除哪些資料，以及依法令與爭議處理需要保留的資料與其期間。",
-};
+  path: "/account-deletion",
+});
 
 function Clause({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (

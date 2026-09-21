@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getCouponFeed } from "@/lib/feed";
 import { CouponCard } from "@/components/CouponCard";
 import { Banner, Button, EmptyState, PageHeader } from "@/components/ui";
+import { SITE_URL } from "@/lib/seo";
 
 // 品牌著陸頁。站上的券帶著品牌欄位（全家 2,644 張、7-11 1,301 張、肯德基 616 張…
 // 累計 626 個品牌），但在此之前完全沒有對應的頁面——而「全家 優惠券」「肯德基
@@ -15,7 +16,6 @@ import { Banner, Button, EmptyState, PageHeader } from "@/components/ui";
 // 所以另開 /b/ 而不是擠進去。
 export const dynamic = "force-dynamic";
 
-const SITE = "https://couponshare.lazybearlife.com";
 const LIMIT = 24;
 
 type Params = { params: Promise<{ brand: string }> };
@@ -48,7 +48,16 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     alternates: { canonical: `/b/${encodeURIComponent(brand)}` },
     // 沒有可領的券時是空頁，不要讓它進索引稀釋整站品質。
     robots: live > 0 ? undefined : { index: false },
-    openGraph: { title, description, url: `${SITE}/b/${encodeURIComponent(brand)}`, type: "website" },
+    openGraph: {
+      title,
+      description,
+      url: `${SITE_URL}/b/${encodeURIComponent(brand)}`,
+      type: "website",
+      siteName: "CouponShare",
+      locale: "zh_TW",
+      images: [{ url: "/og-default.png", width: 1200, height: 630, alt: title }],
+    },
+    twitter: { card: "summary_large_image", title, description, images: ["/og-default.png"] },
   };
 }
 
@@ -74,15 +83,15 @@ export default async function BrandPage({ params }: Params) {
     "@type": "CollectionPage",
     name: `${brand}優惠券`,
     description: `${brand}的優惠券共享專區，目前有 ${live} 張可以免費索取或交換。`,
-    url: `${SITE}/b/${encodeURIComponent(brand)}`,
-    isPartOf: { "@type": "WebSite", name: "CouponShare", url: SITE },
+    url: `${SITE_URL}/b/${encodeURIComponent(brand)}`,
+    isPartOf: { "@type": "WebSite", name: "CouponShare", url: SITE_URL },
     mainEntity: {
       "@type": "ItemList",
       numberOfItems: feed.data.length,
       itemListElement: feed.data.map((c, i) => ({
         "@type": "ListItem",
         position: i + 1,
-        url: `${SITE}/coupons/${c.id}`,
+        url: `${SITE_URL}/coupons/${c.id}`,
         name: c.title,
       })),
     },

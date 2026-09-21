@@ -3,12 +3,13 @@ import { Banner, Button, EmptyState, PageHeader } from "@/components/ui";
 import { CouponCard } from "@/components/CouponCard";
 import { getCurrentUser } from "@/lib/auth";
 import { getCouponFeed } from "@/lib/feed";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "當日專區",
-  alternates: { canonical: "/today" },
   description: "今天（台灣時間）就到期的贈送券，先領先用。用不到的當日券，分享給需要的人。",
-};
+  path: "/today",
+});
 
 // 內容以「台灣時間今天」為界，跨日就變 — 跟隨首頁的 force-dynamic，不做靜態快取。
 export const dynamic = "force-dynamic";

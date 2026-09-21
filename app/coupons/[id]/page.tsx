@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { CATEGORY_LABEL, REDEEM_KIND_LABEL } from "@/lib/categories";
+import { SITE_URL } from "@/lib/seo";
 import Client from "./Client";
 
 // 券詳情頁是全站最有搜尋價值的頁面（「星巴克 買一送一 優惠券」這種查詢的落點），
@@ -16,8 +17,6 @@ import Client from "./Client";
 // 資料直接讀 DB 而不是打自己的 API：省一次 HTTP 往返，也避開「SSR 時沒有 cookie
 // 導致拿不到資料」的坑。這裡只取公開欄位，條碼與兌換碼一律不碰。
 export const dynamic = "force-dynamic";
-
-const SITE = (process.env.APP_ORIGIN || "https://couponshare.lazybearlife.com").replace(/\/+$/, "");
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -73,11 +72,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // 根 layout 的 template 會自動接上「· CouponShare」，這裡不要再寫一次站名。
   const title = `${c.brand} ${c.title}｜${kind}`;
   const description = summarize(c);
-  const url = `${SITE}/coupons/${c.id}`;
+  const url = `${SITE_URL}/coupons/${c.id}`;
 
   // 分享一張券出去時，預覽卡要顯示這張券本身；在此之前用的是全站預設的
   // 「這個網站是什麼」卡，看的人完全不知道被分享的是什麼。
-  const image = `${SITE}/api/og/coupon?id=${c.id}`;
+  const image = `${SITE_URL}/api/og/coupon?id=${c.id}`;
 
   return {
     title,
@@ -117,7 +116,7 @@ export default async function Page({ params }: Params) {
         "@type": "Offer",
         name: c.title,
         description: summarize(c),
-        url: `${SITE}/coupons/${c.id}`,
+        url: `${SITE_URL}/coupons/${c.id}`,
         category: c.category ? CATEGORY_LABEL[c.category] : undefined,
         // 這個平台上的券一律免費取得，交換也不涉及金錢。
         price: 0,

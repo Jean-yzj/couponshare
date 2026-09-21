@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icons";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "使用條款",
-  alternates: { canonical: "/terms" },
   description:
     "CouponShare 使用條款。本平台為使用者間之票券媒合服務，票券由使用者自行上傳，並歡迎品牌洽談合作。",
-};
+  path: "/terms",
+});
 
 function Clause({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (

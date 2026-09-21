@@ -44,6 +44,7 @@ const nextConfig: NextConfig = {
     // App Router 會忽略以點號開頭的資料夾，所以改由 route handler 提供再轉寫。
     return [
       { source: "/.well-known/assetlinks.json", destination: "/api/assetlinks" },
+      { source: "/.well-known/apple-app-site-association", destination: "/api/apple-app-site-association" },
     ];
   },
 };

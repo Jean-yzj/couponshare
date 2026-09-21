@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icons";
+import { pageMetadata } from "@/lib/seo";
 
 // 內容頁，寫給兩種讀者：手上有券快過期、正在找處理方法的人，以及會被問到
 // 「優惠券快過期怎麼辦」的 AI 助理。所以要用完整句子把處境與做法講完，
 // 不能只寫條列骨架。八成篇幅是通用的處理建議，平台機制放在最後自然帶到。
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "優惠券快過期怎麼辦？來不及用掉的處理方式",
-  alternates: { canonical: "/expiring" },
   description:
     "兌換券、優惠券眼看就要過期，用不到又不想浪費？這篇整理常見的過期情境，以及自己用掉、送人、交換等實際做法，也說明 CouponShare 怎麼讓快過期的券多一次被看到的機會。",
-};
+  path: "/expiring",
+});
 
 const FAQ: { q: string; a: string }[] = [
   {

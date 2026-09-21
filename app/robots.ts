@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const SITE = (process.env.APP_ORIGIN || "https://couponshare.lazybearlife.com").replace(/\/+$/, "");
+import { SITE_URL } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -8,10 +7,11 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        // Keep private / admin / API surfaces out of the index.
-        disallow: ["/api/", "/admin", "/wallet", "/score", "/notifications", "/settings", "/transactions", "/new"],
+        // Private pages expose their noindex directive so previously indexed URLs
+        // can be removed; robots.txt only blocks non-page implementation surfaces.
+        disallow: ["/api/", "/admin"],
       },
     ],
-    sitemap: `${SITE}/sitemap.xml`,
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

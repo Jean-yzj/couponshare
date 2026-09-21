@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import { brandCouponsVisible } from "@/lib/brand-access";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import Client from "./Client";
 
 // 品牌官方福利券。搜尋價值比使用者上傳的券更高——這是品牌自己發的，
@@ -9,8 +10,6 @@ import Client from "./Client";
 // 與 coupons/[id] 相同的做法：server 包一層補 metadata / JSON-LD /
 // 爬蟲摘要，Client 的互動完全不動。
 export const dynamic = "force-dynamic";
-
-const SITE = (process.env.APP_ORIGIN || "https://couponshare.lazybearlife.com").replace(/\/+$/, "");
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -70,7 +69,16 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     description,
     alternates: { canonical: `/brand-coupons/${c.id}` },
     robots: visible && live(c) ? undefined : { index: false },
-    openGraph: { title, description, url: `${SITE}/brand-coupons/${c.id}`, type: "article" },
+    openGraph: {
+      title,
+      description,
+      url: `${SITE_URL}/brand-coupons/${c.id}`,
+      siteName: SITE_NAME,
+      locale: "zh_TW",
+      type: "article",
+      images: [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630, alt: title }],
+    },
+    twitter: { card: "summary_large_image", title, description, images: [DEFAULT_OG_IMAGE] },
   };
 }
 
@@ -84,7 +92,7 @@ export default async function Page({ params }: Params) {
         "@type": "Offer",
         name: c.title,
         description: describe(c),
-        url: `${SITE}/brand-coupons/${c.id}`,
+        url: `${SITE_URL}/brand-coupons/${c.id}`,
         category: c.category || undefined,
         price: 0,
         priceCurrency: "TWD",

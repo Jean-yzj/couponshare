@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
+import { DEFAULT_OG_IMAGE, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/seo";
 
 // GenSenRounded 2 TW (源泉圓體, Bold) — a chunky, rounded Traditional-Chinese
 // font, self-hosted so it works under the CSP (font-src 'self'). It gives headings
@@ -24,15 +25,10 @@ const round = localFont({
   preload: false,
 });
 
-const SITE_URL = (process.env.APP_ORIGIN || "https://couponshare.lazybearlife.com").replace(/\/+$/, "");
-const SITE_TITLE = "CouponShare — 把用不到的優惠券，和需要的人分享";
-const SITE_DESC =
-  "分享、贈送、交換閒置的優惠券與票券。把「我用不到」交給「我需要」，不花一毛錢，也能讓世界溫暖一點。以互助與貢獻值為核心的票券共享社群。";
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: SITE_TITLE, template: "%s · CouponShare" },
-  description: SITE_DESC,
+  description: SITE_DESCRIPTION,
   applicationName: "CouponShare",
   keywords: [
     "優惠券", "票券", "兌換券", "折價券", "分享", "贈送", "交換",
@@ -43,14 +39,14 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
   openGraph: {
     type: "website",
-    siteName: "CouponShare",
+    siteName: SITE_NAME,
     locale: "zh_TW",
     url: SITE_URL,
     title: SITE_TITLE,
-    description: SITE_DESC,
-    images: [{ url: "/og-default.png", width: 1200, height: 630, alt: "CouponShare" }],
+    description: SITE_DESCRIPTION,
+    images: [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630, alt: SITE_NAME }],
   },
-  twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESC, images: ["/og-default.png"] },
+  twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION, images: [DEFAULT_OG_IMAGE] },
 };
 
 export const viewport: Viewport = {
@@ -61,7 +57,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="zh-Hant" className={`${round.variable} h-full antialiased`}>
+    <html lang="zh-Hant-TW" className={`${round.variable} h-full antialiased`}>
       <head>
         {/* Most avatars are Google account photos — open the TLS connection to
             their CDN early so a feed of avatars doesn't each pay a cold handshake
@@ -82,7 +78,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                   "@id": `${SITE_URL}/#website`,
                   url: SITE_URL,
                   name: "CouponShare",
-                  description: SITE_DESC,
+                  description: SITE_DESCRIPTION,
                   inLanguage: "zh-Hant-TW",
                   publisher: { "@id": `${SITE_URL}/#org` },
                 },

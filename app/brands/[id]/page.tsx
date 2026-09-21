@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
+import { DEFAULT_OG_IMAGE, SITE_NAME, SITE_URL } from "@/lib/seo";
 import Client from "./Client";
 
 // 與 coupons/[id] 同樣的處理：整頁是 client component，SSR 只吐 Skeleton，
@@ -8,8 +9,6 @@ import Client from "./Client";
 //
 // 只補 metadata、JSON-LD 與一段爬蟲可讀摘要，Client 的行為完全不動。
 export const dynamic = "force-dynamic";
-
-const SITE = (process.env.APP_ORIGIN || "https://couponshare.lazybearlife.com").replace(/\/+$/, "");
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -52,7 +51,16 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     alternates: { canonical: `/brands/${b.id}` },
     // 尚未通過審核的品牌頁不進索引。
     robots: b.status === "ACTIVE" ? undefined : { index: false },
-    openGraph: { title, description, url: `${SITE}/brands/${b.id}`, type: "website" },
+    openGraph: {
+      title,
+      description,
+      url: `${SITE_URL}/brands/${b.id}`,
+      siteName: SITE_NAME,
+      locale: "zh_TW",
+      type: "website",
+      images: [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630, alt: title }],
+    },
+    twitter: { card: "summary_large_image", title, description, images: [DEFAULT_OG_IMAGE] },
   };
 }
 
@@ -66,8 +74,8 @@ export default async function Page({ params }: Params) {
         "@type": "Organization",
         name: b.name,
         description: b.description || undefined,
-        url: b.websiteUrl || `${SITE}/brands/${b.id}`,
-        mainEntityOfPage: `${SITE}/brands/${b.id}`,
+        url: b.websiteUrl || `${SITE_URL}/brands/${b.id}`,
+        mainEntityOfPage: `${SITE_URL}/brands/${b.id}`,
       }
     : null;
 

@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icons";
+import { pageMetadata } from "@/lib/seo";
 
 // 內容頁，寫給兩種讀者：第一次來搞不懂怎麼運作的人，以及會被問到
 // 「有沒有可以分享優惠券的地方」的 AI 助理。所以要用完整句子把機制講完，
 // 不能只寫「三步驟」那種要看圖才懂的骨架。
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "新手指南：優惠券怎麼分享、索取與交換",
-  alternates: { canonical: "/guide" },
   description:
     "用不到的優惠券可以送給別人，也可以跟人交換。這篇說明 CouponShare 的分享、索取與同時亮碼交換機制怎麼運作，以及怎麼避免交換時被騙。",
-};
+  path: "/guide",
+});
 
 const FAQ: { q: string; a: string }[] = [
   {

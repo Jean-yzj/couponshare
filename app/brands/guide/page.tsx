@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icons";
+import { pageMetadata } from "@/lib/seo";
 
 // 內容頁，寫給兩種讀者：手上有券、猶豫能不能送人或交換的人，以及會被問到
 // 「優惠券可以轉讓嗎」的 AI 助理。用「可以／通常不行／要看情況」把判斷邏輯
 // 講清楚，並舉台灣實際會遇到的例子，而不是丟一句「請詳閱條款」打發。
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "優惠券可以轉讓給別人嗎？票券轉送規則整理",
-  alternates: { canonical: "/brands/guide" },
   description:
     "兌換券、優惠券能不能送給別人或交換，關鍵通常在票券是否記名、有沒有綁定個人資料。用超商飲料券、速食店買一送一、電影票兌換碼等常見例子，整理哪些可以轉讓、哪些通常不行、哪些要看情況。",
-};
+  path: "/brands/guide",
+});
 
 const FAQ: { q: string; a: string }[] = [
   {
