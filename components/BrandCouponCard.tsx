@@ -30,7 +30,7 @@ export function BrandCouponCard({
   return (
     <Link
       href={`/brand-coupons/${coupon.id}`}
-      className="block rounded-2xl border border-line bg-paper p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-lift"
+      className="block rounded-[22px] border border-line bg-paper p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-card-lift"
     >
       {coupon.image_url && (
         // eslint-disable-next-line @next/next/no-img-element

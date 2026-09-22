@@ -49,7 +49,7 @@ export function CouponCard({ c }: { c: FeedCoupon }) {
     <Link href={`/coupons/${c.id}`} prefetch={false} className="group block">
       <div
         className={cn(
-          "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-paper shadow-soft transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lift",
+          "relative flex h-full flex-col overflow-hidden rounded-[22px] border bg-paper shadow-card transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-card-lift",
           applied === APPLIED_META.PENDING
             ? "border-transparent ring-2 ring-gold/40"
             : applied === APPLIED_META.APPROVED
