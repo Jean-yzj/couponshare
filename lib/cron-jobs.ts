@@ -487,15 +487,59 @@ export async function runAutoCompleteGifts(limit = 300) {
 // 「一次都沒回應」的判準是這張券從來沒有任何一筆申請被 APPROVED 或 REJECTED。
 // 只要擁有者處理過任何一筆，就不算遺棄——他只是還在挑。
 const ABANDONED_DAYS = 7;
+const ABANDONED_REMINDER_DAYS = ABANDONED_DAYS - 2;
+const ABANDONED_REMINDER_TITLE = "票券將於 2 天後自動下架";
 
 export async function runCloseAbandonedListings(limit = 200) {
   const cutoff = new Date(Date.now() - ABANDONED_DAYS * DAY);
   const now = new Date();
 
+  // Give owners two full days to respond before delisting. The reminder is keyed
+  // by its exact title so coupon-expiry reminders do not count as this warning.
+  const reminderCutoff = new Date(now.getTime() - ABANDONED_REMINDER_DAYS * DAY);
+  const reminderCandidates = await prisma.coupon.findMany({
+    where: {
+      status: "AVAILABLE",
+      createdAt: { lt: cutoff },
+      claimRequests: {
+        some: { status: "PENDING", createdAt: { lt: reminderCutoff } },
+        none: { status: { in: ["APPROVED", "REJECTED"] } },
+      },
+    },
+    select: { id: true, ownerId: true, title: true },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+  });
+
+  let reminded = 0;
+  for (const c of reminderCandidates) {
+    const priorReminder = await prisma.notification.findFirst({
+      where: {
+        userId: c.ownerId,
+        type: "COUPON_EXPIRING_SOON",
+        referenceType: "coupon",
+        referenceId: c.id,
+        title: ABANDONED_REMINDER_TITLE,
+      },
+      select: { id: true },
+    });
+    if (priorReminder) continue;
+
+    await notify(prisma, {
+      userId: c.ownerId,
+      type: "COUPON_EXPIRING_SOON",
+      title: ABANDONED_REMINDER_TITLE,
+      body: `「${c.title}」有尚未處理的申請，兩天後會從探索頁下架。下架後仍可從申請列表選擇送出；請確認票券尚未過期。`,
+      referenceType: "coupon",
+      referenceId: c.id,
+    });
+    reminded++;
+  }
+
   // (1) 掛在已經不可能成交的券上的申請（券被取消、擁有者被停權）。
-  // 這些申請不會有任何結果，卻一直顯示成「申請中」。
+  // EXPIRED 不在這裡關閉：自動下架只是離開探索頁，仍有效的券要保留申請供持有人選人。
   const stranded = await prisma.claimRequest.findMany({
-    where: { status: "PENDING", coupon: { status: { notIn: ["AVAILABLE", "PENDING"] } } },
+    where: { status: "PENDING", coupon: { status: { notIn: ["AVAILABLE", "PENDING", "EXPIRED"] } } },
     select: { id: true },
     take: 500,
   });
@@ -523,6 +567,19 @@ export async function runCloseAbandonedListings(limit = 200) {
 
   let delisted = 0;
   for (const c of abandoned) {
+    const reminder = await prisma.notification.findFirst({
+      where: {
+        userId: c.ownerId,
+        type: "COUPON_EXPIRING_SOON",
+        referenceType: "coupon",
+        referenceId: c.id,
+        title: ABANDONED_REMINDER_TITLE,
+        createdAt: { lte: new Date(now.getTime() - 2 * DAY) },
+      },
+      select: { id: true },
+    });
+    if (!reminder) continue;
+
     await prisma.$transaction(async (tx) => {
       const res = await tx.coupon.updateMany({
         where: { id: c.id, status: "AVAILABLE" },
@@ -530,36 +587,11 @@ export async function runCloseAbandonedListings(limit = 200) {
       });
       if (res.count === 0) return; // 期間被領走或下架了，對方的動作優先
 
-      // 通知只發給還記得自己申請過的人：申請未滿 14 天的。兩個月前那批補發
-      // 兩千多則通知只會洗版，而洗版正是上一輪剛修掉的問題。
-      const recent = await tx.claimRequest.findMany({
-        where: {
-          couponId: c.id,
-          status: "PENDING",
-          createdAt: { gt: new Date(now.getTime() - 14 * DAY) },
-        },
-        select: { requesterId: true },
-      });
-      await tx.claimRequest.updateMany({
-        where: { couponId: c.id, status: "PENDING" },
-        data: { status: "EXPIRED" },
-      });
-      for (const r of recent) {
-        await notify(tx, {
-          userId: r.requesterId,
-          type: "CLAIM_REJECTED",
-          title: "申請已自動關閉",
-          body: `「${c.title}」的擁有者一直沒有回應，已自動關閉申請，別再空等了。你今天的申請次數不受影響。`,
-          referenceType: "coupon",
-          referenceId: c.id,
-        });
-      }
-
       await notify(tx, {
         userId: c.ownerId,
         type: "COUPON_EXPIRED",
         title: "票券已自動下架",
-        body: `「${c.title}」有 ${c.claimRequestCount} 位朋友申請，但一直沒有收到回覆，已先自動下架以免大家空等。這張券還在的話，歡迎重新上架並回覆申請。`,
+        body: `「${c.title}」有 ${c.claimRequestCount} 位朋友申請，但一直沒有收到回覆，已從探索頁下架。尚未處理的申請仍保留，你可以在票券頁選擇領取者；請確認票券尚未過期。`,
         referenceType: "coupon",
         referenceId: c.id,
       });
@@ -574,5 +606,5 @@ export async function runCloseAbandonedListings(limit = 200) {
     });
   }
 
-  return { stranded_requests_closed: stranded.length, delisted };
+  return { stranded_requests_closed: stranded.length, reminded, delisted };
 }

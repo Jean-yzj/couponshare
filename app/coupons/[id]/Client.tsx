@@ -133,6 +133,11 @@ export default function Client() {
 
   const exp = expiryText(coupon.expiry_date);
   const isExpired = !!coupon.expiry_date && new Date(coupon.expiry_date).getTime() <= Date.now();
+  const canChooseAfterDelist =
+    coupon.is_owner &&
+    coupon.status === "EXPIRED" &&
+    !isExpired &&
+    !!reqs.data?.data.some((request) => request.status === "PENDING");
   const canClaim = !coupon.is_owner && coupon.status === "AVAILABLE" && !isExpired;
   const hasPendingRequest = coupon.my_request_status === "PENDING";
   const canCancel =
@@ -284,7 +289,10 @@ export default function Client() {
                 </h1>
               </div>
             </div>
-            <StatusPill status={coupon.status} />
+            <StatusPill
+              status={coupon.status}
+              label={coupon.status === "EXPIRED" && !isExpired ? "已下架" : undefined}
+            />
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <TypePill type={coupon.type} />
@@ -430,6 +438,11 @@ export default function Client() {
       {/* Owner: actions + applicants */}
       {coupon.is_owner ? (
         <div className="mt-4 space-y-4">
+          {canChooseAfterDelist && (
+            <Card className="border-accent/20 bg-accent-weak p-4 text-sm leading-relaxed text-ink-soft">
+              這張票券已從探索頁下架，但仍可選擇下方的申請者送出。請確認票券還沒過期。
+            </Card>
+          )}
           <Card className="flex flex-wrap items-center gap-2 p-4">
             {["DRAFT", "AVAILABLE", "PENDING"].includes(coupon.status) && (
               <Button variant="outline" icon="edit" href={`/coupons/${coupon.id}/edit`}>
@@ -470,7 +483,7 @@ export default function Client() {
                   <RequestRow
                     key={r.id}
                     r={r}
-                    actionable={["AVAILABLE", "PENDING"].includes(coupon.status)}
+                    actionable={["AVAILABLE", "PENDING"].includes(coupon.status) || canChooseAfterDelist}
                     acting={actingId === r.id}
                     onApprove={() => act(r.id, "approve")}
                     onReject={() => act(r.id, "reject")}
@@ -562,7 +575,9 @@ export default function Client() {
           ) : (
             !coupon.is_claimant && (
               <Banner tone="warn" icon="info">
-                {UNAVAILABLE_MSG[coupon.status] ?? "此票券目前無法申請"}
+                {coupon.status === "EXPIRED" && !isExpired
+                  ? "這張票券已從探索頁下架"
+                  : UNAVAILABLE_MSG[coupon.status] ?? "此票券目前無法申請"}
               </Banner>
             )
           )}

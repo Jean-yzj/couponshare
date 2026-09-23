@@ -34,15 +34,19 @@ export const POST = route(async (req, ctx) => {
     const locked = await tx.coupon.findUnique({ where: { id: coupon.id } });
     if (!locked) throw new ApiError("COUPON_NOT_FOUND");
     if (locked.status === "CLAIMED") throw new ApiError("COUPON_ALREADY_CLAIMED");
-    if (locked.status !== "AVAILABLE" && locked.status !== "PENDING") {
+    const now = new Date();
+    const validAfterAutoDelist =
+      locked.status === "EXPIRED" && (!locked.expiryDate || locked.expiryDate > now);
+    if (locked.status !== "AVAILABLE" && locked.status !== "PENDING" && !validAfterAutoDelist) {
       throw new ApiError("COUPON_NOT_AVAILABLE");
     }
+    if (locked.expiryDate && locked.expiryDate <= now) throw new ApiError("COUPON_EXPIRED");
     if (cr.status !== "PENDING") {
       throw new ApiError("INVALID_STATUS_TRANSITION", { from: cr.status, to: "APPROVED" });
     }
-    assertTransition(locked.status, "CLAIMED");
-
-    const now = new Date();
+    // EXPIRED with live pending requests means the no-response auto-delist path.
+    // It is intentionally selectable here; real expired dates are blocked above.
+    if (!validAfterAutoDelist) assertTransition(locked.status, "CLAIMED");
 
     await tx.claimRequest.update({
       where: { id: cr.id },

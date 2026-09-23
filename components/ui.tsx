@@ -262,9 +262,9 @@ export function LevelBadge({ level }: { level: string }) {
   );
 }
 
-export function StatusPill({ status }: { status: string }) {
+export function StatusPill({ status, label }: { status: string; label?: string }) {
   const m = STATUS_META[status] ?? { label: status, cls: "bg-sand text-ink-soft" };
-  return <Pill className={m.cls}>{m.label}</Pill>;
+  return <Pill className={m.cls}>{label ?? m.label}</Pill>;
 }
 
 export function TypePill({ type }: { type: string }) {
