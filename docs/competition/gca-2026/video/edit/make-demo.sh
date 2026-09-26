@@ -67,23 +67,18 @@ for i in "${!texts[@]}"; do
   speech_duration="$($FFPROBE -v error -show_entries format=duration -of csv=p=0 "$audio")"
   duration="$(python3 - "$speech_duration" <<'PY'
 import sys
-print(f"{float(sys.argv[1]) + 1.15:.3f}")
+print(f"{float(sys.argv[1]) / 2 + 0.85:.3f}")
 PY
 )"
   fade_out="$(python3 - "$duration" <<'PY'
 import sys
-print(f"{max(0.0, float(sys.argv[1]) - 0.45):.3f}")
-PY
-)"
-  frames="$(python3 - "$duration" <<'PY'
-import sys
-print(int(round(float(sys.argv[1]) * 30)))
+print(f"{max(0.0, float(sys.argv[1]) - 0.25):.3f}")
 PY
 )"
 
   "$FFMPEG" -y -hide_banner -loglevel error \
     -loop 1 -i "${images[$i]}" -i "$audio" \
-    -filter_complex "[0:v]scale=2016:1134,crop=1920:1080,zoompan=z='min(zoom+0.00018,1.045)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=1920x1080:fps=30,fade=t=in:st=0:d=0.35,fade=t=out:st=${fade_out}:d=0.45,format=yuv420p[v];[1:a]apad=pad_dur=1.15,afade=t=in:st=0:d=0.03,afade=t=out:st=${fade_out}:d=0.03,aresample=48000[a]" \
+    -filter_complex "[0:v]scale=1920:1080,fps=30,format=yuv420p[v];[1:a]atempo=2.0,apad=pad_dur=0.85,afade=t=in:st=0:d=0.03,afade=t=out:st=${fade_out}:d=0.03,aresample=48000[a]" \
     -map '[v]' -map '[a]' -t "$duration" -c:v libx264 -preset medium -crf 18 \
     -c:a aac -b:a 160k -movflags +faststart "$scene"
 
