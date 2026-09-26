@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fbff"/>
+      <stop offset="1" stop-color="#edf4ff"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4b8dff"/>
+      <stop offset="1" stop-color="#2867e0"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="20" stdDeviation="28" flood-color="#173a78" flood-opacity="0.13"/>
+    </filter>
+    <filter id="smallShadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#173a78" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      text { font-family: "PingFang TC", "Noto Sans TC", sans-serif; }
+      .ink { fill: #18233a; }
+      .soft { fill: #5a6880; }
+      .label { font-size: 22px; font-weight: 700; letter-spacing: 3px; }
+      .metric { font-size: 48px; font-weight: 800; fill: #2867e0; }
+      .metric-label { font-size: 19px; font-weight: 600; fill: #5a6880; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <circle cx="1660" cy="120" r="330" fill="#dce9ff" opacity="0.55"/>
+  <circle cx="1770" cy="930" r="280" fill="#dff6ec" opacity="0.65"/>
+  <path d="M0 920C310 805 570 1024 910 904C1200 802 1494 694 1920 832V1080H0Z" fill="#fff" opacity="0.62"/>
+
+  <g transform="translate(150 118)">
+    <g transform="translate(0 2) scale(.62)">
+      <path d="M16 8H64V72H16C11.6 72 8 68.4 8 64V52C16 52 22 47 22 40C22 33 16 28 8 28V16C8 11.6 11.6 8 16 8Z" fill="#2867E0"/>
+      <path d="M64 8H112C116.4 8 120 11.6 120 16V28C112 28 106 33 106 40C106 47 112 52 120 52V64C120 68.4 116.4 72 112 72H64V8Z" fill="#7B8492"/>
+      <path d="M46 28H64V20L86 40L64 60V52H46V28Z" fill="#fff"/>
+    </g>
+    <text x="92" y="47" font-size="38" font-weight="800" class="ink">CouponShare</text>
+    <rect x="354" y="8" width="172" height="46" rx="23" fill="#e7f0ff"/>
+    <text x="440" y="39" text-anchor="middle" font-size="18" font-weight="700" fill="#2867e0">公益社會</text>
+
+    <text x="0" y="155" class="label" fill="#2867e0">SHARE WHAT YOU DON'T USE</text>
+    <text x="0" y="280" font-size="72" font-weight="800" class="ink">讓用不到的券，</text>
+    <text x="0" y="378" font-size="72" font-weight="800" class="ink">找到<tspan fill="#2867e0">需要它的人</tspan></text>
+    <text x="0" y="452" font-size="27" font-weight="500" class="soft">安全申請・同時亮碼・貢獻循環</text>
+    <text x="0" y="502" font-size="24" class="soft">台灣的免費優惠券共享社群，讓每一張好券都不再白白過期。</text>
+
+    <g transform="translate(0 570)">
+      <g>
+        <rect width="210" height="126" rx="24" fill="#fff" stroke="#dfe7f3"/>
+        <text x="26" y="60" class="metric">7,509</text>
+        <text x="26" y="96" class="metric-label">張票券已分享</text>
+      </g>
+      <g transform="translate(230 0)">
+        <rect width="210" height="126" rx="24" fill="#fff" stroke="#dfe7f3"/>
+        <text x="26" y="60" class="metric">4,814</text>
+        <text x="26" y="96" class="metric-label">張成功送出</text>
+      </g>
+      <g transform="translate(460 0)">
+        <rect width="228" height="126" rx="24" fill="#fff" stroke="#dfe7f3"/>
+        <text x="26" y="60" class="metric">35,427</text>
+        <text x="26" y="96" class="metric-label">位成員一起分享</text>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(1038 112)" filter="url(#shadow)">
+    <rect width="710" height="826" rx="48" fill="#fff"/>
+    <rect width="710" height="116" rx="48" fill="#fff"/>
+    <rect y="78" width="710" height="38" fill="#fff"/>
+    <circle cx="58" cy="57" r="20" fill="#2867e0"/>
+    <path d="M49 57l7 7 13-16" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="94" y="66" font-size="31" font-weight="800" class="ink">探索票券</text>
+    <rect x="510" y="34" width="150" height="48" rx="24" fill="url(#blue)"/>
+    <text x="585" y="66" text-anchor="middle" font-size="18" font-weight="700" fill="#fff">分享一張券</text>
+
+    <rect x="42" y="134" width="626" height="60" rx="30" fill="#f5f8fd" stroke="#dfe7f3"/>
+    <circle cx="76" cy="164" r="10" fill="none" stroke="#7b879b" stroke-width="3"/>
+    <path d="M83 172l10 10" stroke="#7b879b" stroke-width="3" stroke-linecap="round"/>
+    <text x="112" y="172" font-size="20" class="soft">搜尋品牌，例如星巴克、全家、摩斯</text>
+
+    <g transform="translate(42 220)">
+      <rect width="104" height="42" rx="21" fill="#2867e0"/>
+      <text x="52" y="28" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">全部</text>
+      <g transform="translate(118 0)"><rect width="104" height="42" rx="21" fill="#fff" stroke="#dfe7f3"/><text x="52" y="28" text-anchor="middle" font-size="16" class="soft">超商</text></g>
+      <g transform="translate(236 0)"><rect width="104" height="42" rx="21" fill="#fff" stroke="#dfe7f3"/><text x="52" y="28" text-anchor="middle" font-size="16" class="soft">咖啡</text></g>
+      <g transform="translate(354 0)"><rect width="104" height="42" rx="21" fill="#fff" stroke="#dfe7f3"/><text x="52" y="28" text-anchor="middle" font-size="16" class="soft">速食</text></g>
+    </g>
+
+    <g transform="translate(42 292)" filter="url(#smallShadow)">
+      <g>
+        <rect width="302" height="218" rx="26" fill="#fff" stroke="#dfe7f3"/>
+        <path d="M0 26A26 26 0 0 1 26 0H276A26 26 0 0 1 302 26V74H0Z" fill="#e7f8ef"/>
+        <circle cx="38" cy="38" r="22" fill="#4db879"/>
+        <text x="38" y="46" text-anchor="middle" font-size="20" font-weight="800" fill="#fff">全</text>
+        <text x="72" y="44" font-size="18" font-weight="700" fill="#2b8152">全家</text>
+        <rect x="206" y="21" width="76" height="34" rx="17" fill="#dff5e8"/>
+        <text x="244" y="44" text-anchor="middle" font-size="14" font-weight="700" fill="#2b8152">免費贈送</text>
+        <text x="22" y="116" font-size="22" font-weight="700" class="ink">大冰美式好禮即享券</text>
+        <path d="M22 144H280" stroke="#d9e2ee" stroke-dasharray="6 7"/>
+        <text x="22" y="184" font-size="16" class="soft">小熊分享者・達人</text>
+        <text x="280" y="184" text-anchor="end" font-size="16" fill="#d46d45">2 天後到期</text>
+      </g>
+      <g transform="translate(324 0)">
+        <rect width="302" height="218" rx="26" fill="#fff" stroke="#dfe7f3"/>
+        <path d="M0 26A26 26 0 0 1 26 0H276A26 26 0 0 1 302 26V74H0Z" fill="#fff0ea"/>
+        <circle cx="38" cy="38" r="22" fill="#e27555"/>
+        <text x="38" y="46" text-anchor="middle" font-size="20" font-weight="800" fill="#fff">摩</text>
+        <text x="72" y="44" font-size="18" font-weight="700" fill="#a84d35">摩斯</text>
+        <rect x="214" y="21" width="68" height="34" rx="17" fill="#fde3d8"/>
+        <text x="248" y="44" text-anchor="middle" font-size="14" font-weight="700" fill="#a84d35">交換</text>
+        <text x="22" y="116" font-size="22" font-weight="700" class="ink">經典漢堡買一送一</text>
+        <path d="M22 144H280" stroke="#d9e2ee" stroke-dasharray="6 7"/>
+        <text x="22" y="184" font-size="16" class="soft">暖心分享者・傳奇</text>
+        <text x="280" y="184" text-anchor="end" font-size="16" class="soft">想換超商券</text>
+      </g>
+    </g>
+
+    <g transform="translate(42 540)" filter="url(#smallShadow)">
+      <rect width="626" height="208" rx="26" fill="#fff" stroke="#dfe7f3"/>
+      <path d="M0 26A26 26 0 0 1 26 0H600A26 26 0 0 1 626 26V72H0Z" fill="#f1ecff"/>
+      <circle cx="38" cy="36" r="22" fill="#8069c8"/>
+      <text x="38" y="44" text-anchor="middle" font-size="20" font-weight="800" fill="#fff">星</text>
+      <text x="72" y="43" font-size="18" font-weight="700" fill="#6650a5">星巴克・咖啡</text>
+      <rect x="520" y="19" width="82" height="34" rx="17" fill="#e8e1fb"/>
+      <text x="561" y="42" text-anchor="middle" font-size="14" font-weight="700" fill="#6650a5">免費贈送</text>
+      <text x="24" y="118" font-size="26" font-weight="700" class="ink">大杯飲料買一送一</text>
+      <path d="M24 146H602" stroke="#d9e2ee" stroke-dasharray="6 7"/>
+      <text x="24" y="182" font-size="16" class="soft">條碼不公開・獲選後安全查看</text>
+      <rect x="466" y="158" width="136" height="32" rx="16" fill="#e7f0ff"/>
+      <text x="534" y="180" text-anchor="middle" font-size="14" font-weight="700" fill="#2867e0">留言申請</text>
+    </g>
+  </g>
+
+  <text x="150" y="1012" font-size="20" font-weight="600" fill="#7b879b">couponshare.lazybearlife.com</text>
+  <text x="1768" y="1012" text-anchor="end" font-size="20" font-weight="600" fill="#7b879b">GOLDEN CODE AWARDS 2026</text>
+</svg>
